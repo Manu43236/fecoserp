@@ -9,7 +9,9 @@ import fecosLogo from '@/assets/fecos_logo.png'
 import { useAuthStore } from '@/store/authStore'
 import { authApi } from '@/api/auth'
 import { roleHomeMap, webRoles } from '@/lib/roleRoutes'
-import type { Role, User } from '@/types'
+import type { Role, User, TenantConfig } from '@/types'
+
+const DEFAULT_COLORS = { primaryColor: '#0F172A', darkColor: '#1E293B', accentColor: '#E5D4CF' }
 
 const SLIDES = [
   {
@@ -112,8 +114,18 @@ type FormData = z.infer<typeof schema>
 
 export function LoginPage() {
   const [loading, setLoading] = useState(false)
+  const [colors, setColors] = useState<Pick<TenantConfig, 'primaryColor' | 'darkColor' | 'accentColor'>>(DEFAULT_COLORS)
   const login = useAuthStore((s) => s.login)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    authApi.tenantConfig()
+      .then((res) => {
+        const { primaryColor, darkColor, accentColor } = res.data.data
+        if (primaryColor && darkColor) setColors({ primaryColor, darkColor, accentColor })
+      })
+      .catch(() => { /* no tenant — keep defaults */ })
+  }, [])
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -156,7 +168,7 @@ export function LoginPage() {
   return (
     <div
       className="min-h-screen flex"
-      style={{ background: 'linear-gradient(to right, #3F0C00, #1A0500)' }}
+      style={{ background: `linear-gradient(to right, ${colors.primaryColor}, ${colors.darkColor})` }}
     >
       {/* Left panel */}
       <div className="hidden lg:flex lg:w-[52%] flex-col bg-transparent">
@@ -191,7 +203,7 @@ export function LoginPage() {
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-gray-700">Mobile Number</label>
                 <div className="flex gap-2">
-                  <span className="flex items-center px-3 h-11 rounded-md border border-gray-200 bg-gray-50 text-sm font-semibold select-none" style={{ color: '#751903' }}>
+                  <span className="flex items-center px-3 h-11 rounded-md border border-gray-200 bg-gray-50 text-sm font-semibold select-none" style={{ color: colors.primaryColor }}>
                     +1
                   </span>
                   <input
@@ -230,7 +242,7 @@ export function LoginPage() {
                 type="submit"
                 disabled={loading}
                 className="w-full h-11 rounded-md text-sm font-semibold text-white transition disabled:opacity-60"
-                style={{ backgroundColor: '#751903' }}
+                style={{ backgroundColor: colors.primaryColor }}
               >
                 {loading ? 'Signing in…' : 'Sign In'}
               </button>
