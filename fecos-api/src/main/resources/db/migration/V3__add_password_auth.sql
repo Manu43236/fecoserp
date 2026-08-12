@@ -26,8 +26,9 @@ VALUES (
 );
 
 -- Update Endura ADMIN seed to also have email + password (password: Admin@2024)
+SET SQL_SAFE_UPDATES = 0;
 UPDATE users
 SET email         = 'admin@endura.com',
     password_hash = '$2a$10$8K1p/a0dL1LXMIgoEDFrwOfMQkLMJY9iLX2kWB4mTNqBi/M2Hcvf2'
-WHERE email = 'admin@endura.com'
-   OR (mobile_number = '4321234321' AND role = 'ADMIN');
+WHERE mobile_number = '4321234321' AND role = 'ADMIN';
+SET SQL_SAFE_UPDATES = 1;
