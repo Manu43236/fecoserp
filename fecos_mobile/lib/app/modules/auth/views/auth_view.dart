@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import '../controllers/auth_controller.dart';
 
@@ -7,8 +8,8 @@ class AuthView extends GetView<AuthController> {
 
   @override
   Widget build(BuildContext context) {
-    final emailCtrl = TextEditingController();
-    final passCtrl = TextEditingController();
+    final mobileCtrl = TextEditingController();
+    final pinCtrl = TextEditingController();
 
     return Scaffold(
       body: SafeArea(
@@ -30,38 +31,89 @@ class AuthView extends GetView<AuthController> {
                 style: TextStyle(fontSize: 14, color: Color(0xFF6B4A44)),
               ),
               const SizedBox(height: 48),
-              TextField(
-                controller: emailCtrl,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(labelText: 'Email'),
+
+              // Mobile number with +1 prefix
+              const Text('Mobile Number',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: const Color(0xFFD1C5C0)),
+                      borderRadius: BorderRadius.circular(8),
+                      color: const Color(0xFFF5F0EE),
+                    ),
+                    child: const Text('+1',
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF751903))),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: mobileCtrl,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(10),
+                      ],
+                      decoration: const InputDecoration(
+                        hintText: '10-digit number',
+                      ),
+                    ),
+                  ),
+                ],
               ),
+
               const SizedBox(height: 16),
+
+              // PIN — visible (type text)
+              const Text('PIN',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+              const SizedBox(height: 6),
               TextField(
-                controller: passCtrl,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Password'),
+                controller: pinCtrl,
+                keyboardType: TextInputType.number,
+                obscureText: false,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(6),
+                ],
+                style: const TextStyle(letterSpacing: 8, fontSize: 18),
+                decoration: const InputDecoration(hintText: 'Enter PIN'),
               ),
-              const SizedBox(height: 8),
+
+              // Error
               Obx(() {
                 final err = controller.errorMessage.value;
                 if (err == null) return const SizedBox.shrink();
                 return Padding(
                   padding: const EdgeInsets.only(top: 8),
-                  child: Text(err, style: const TextStyle(color: Color(0xFFDC2626), fontSize: 13)),
+                  child: Text(err,
+                      style: const TextStyle(color: Color(0xFFDC2626), fontSize: 13)),
                 );
               }),
+
               const SizedBox(height: 24),
-              Obx(() => ElevatedButton(
-                    onPressed: controller.isLoading.value
-                        ? null
-                        : () => controller.login(emailCtrl.text.trim(), passCtrl.text),
-                    child: controller.isLoading.value
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Text('Sign In'),
+              Obx(() => SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: controller.isLoading.value
+                          ? null
+                          : () => controller.login(
+                              mobileCtrl.text.trim(), pinCtrl.text.trim()),
+                      child: controller.isLoading.value
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Text('Sign In'),
+                    ),
                   )),
               const Spacer(flex: 2),
             ],

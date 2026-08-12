@@ -11,8 +11,13 @@ import { roleHomeMap, webRoles } from '@/lib/roleRoutes'
 import type { Role, User } from '@/types'
 
 const schema = z.object({
-  email: z.string().email('Enter a valid email'),
-  password: z.string().min(1, 'Password is required'),
+  mobileNumber: z
+    .string()
+    .regex(/^\d{10}$/, 'Enter a 10-digit mobile number'),
+  pin: z
+    .string()
+    .min(4, 'PIN must be at least 4 digits')
+    .regex(/^\d+$/, 'PIN must be digits only'),
 })
 
 type FormData = z.infer<typeof schema>
@@ -43,8 +48,8 @@ export function LoginPage() {
       const user: User = {
         id: payload.id,
         fullName: payload.fullName,
-        mobileNumber: '',
-        email: payload.email,
+        mobileNumber: data.mobileNumber,
+        email: payload.email ?? undefined,
         role,
         tenantId: payload.tenantId ?? undefined,
         isActive: true,
@@ -63,7 +68,10 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--color-content-bg)' }}>
+    <div
+      className="min-h-screen flex items-center justify-center"
+      style={{ backgroundColor: 'var(--color-content-bg)' }}
+    >
       <div className="w-full max-w-sm px-4">
         <div className="text-center mb-8">
           <img src={fecosLogo} alt="FECOS" className="h-12 mx-auto mb-3 object-contain" />
@@ -77,45 +85,71 @@ export function LoginPage() {
           className="bg-white rounded-lg border p-6 space-y-4"
           style={{ borderColor: 'var(--color-border)' }}
         >
+          {/* Mobile number */}
           <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-primary)' }}>
-              Email
+            <label
+              className="block text-sm font-medium mb-1"
+              style={{ color: 'var(--color-text-primary)' }}
+            >
+              Mobile Number
             </label>
-            <input
-              {...register('email')}
-              type="email"
-              autoComplete="email"
-              placeholder="you@company.com"
-              className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 transition"
-              style={{
-                borderColor: errors.email ? '#ef4444' : 'var(--color-border)',
-                backgroundColor: 'var(--color-content-bg)',
-                color: 'var(--color-text-primary)',
-              }}
-            />
-            {errors.email && (
-              <p className="text-xs mt-1" style={{ color: '#ef4444' }}>{errors.email.message}</p>
+            <div className="flex gap-2">
+              <span
+                className="flex items-center px-3 rounded-md border text-sm font-medium select-none"
+                style={{
+                  borderColor: 'var(--color-border)',
+                  backgroundColor: 'var(--color-content-bg)',
+                  color: 'var(--color-text-secondary)',
+                }}
+              >
+                +1
+              </span>
+              <input
+                {...register('mobileNumber')}
+                type="tel"
+                inputMode="numeric"
+                maxLength={10}
+                placeholder="Enter 10-digit number"
+                className="flex-1 rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 transition"
+                style={{
+                  borderColor: errors.mobileNumber ? '#ef4444' : 'var(--color-border)',
+                  backgroundColor: 'var(--color-content-bg)',
+                  color: 'var(--color-text-primary)',
+                }}
+              />
+            </div>
+            {errors.mobileNumber && (
+              <p className="text-xs mt-1" style={{ color: '#ef4444' }}>
+                {errors.mobileNumber.message}
+              </p>
             )}
           </div>
 
+          {/* PIN — visible */}
           <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-primary)' }}>
-              Password
+            <label
+              className="block text-sm font-medium mb-1"
+              style={{ color: 'var(--color-text-primary)' }}
+            >
+              PIN
             </label>
             <input
-              {...register('password')}
-              type="password"
-              autoComplete="current-password"
-              placeholder="••••••••"
-              className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 transition"
+              {...register('pin')}
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              placeholder="Enter PIN"
+              className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 tracking-widest transition"
               style={{
-                borderColor: errors.password ? '#ef4444' : 'var(--color-border)',
+                borderColor: errors.pin ? '#ef4444' : 'var(--color-border)',
                 backgroundColor: 'var(--color-content-bg)',
                 color: 'var(--color-text-primary)',
               }}
             />
-            {errors.password && (
-              <p className="text-xs mt-1" style={{ color: '#ef4444' }}>{errors.password.message}</p>
+            {errors.pin && (
+              <p className="text-xs mt-1" style={{ color: '#ef4444' }}>
+                {errors.pin.message}
+              </p>
             )}
           </div>
 

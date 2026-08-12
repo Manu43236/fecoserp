@@ -39,13 +39,13 @@ class AuthController extends GetxController {
     }
   }
 
-  Future<void> login(String email, String password) async {
+  Future<void> login(String mobileNumber, String pin) async {
     isLoading.value = true;
     errorMessage.value = null;
     try {
       final res = await _dio.post<Map<String, dynamic>>(
         '/auth/login',
-        data: {'email': email, 'password': password},
+        data: {'mobileNumber': mobileNumber, 'pin': pin},
       );
       final data = res.data!['data'] as Map<String, dynamic>;
       final token = data['token'] as String;

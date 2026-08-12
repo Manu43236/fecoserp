@@ -10,6 +10,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -24,19 +25,19 @@ public class AuthService {
     public AuthResponse login(AuthRequest request) {
         UUID tenantId = TenantContext.get();
 
-        UserEntity user = findUser(request.getEmail(), tenantId);
+        UserEntity user = findUser(request.getMobileNumber(), tenantId);
 
         if (!user.isActive()) {
             throw new BadCredentialsException("Account is disabled");
         }
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+        if (!passwordEncoder.matches(request.getPin(), user.getPinHash())) {
             throw new BadCredentialsException("Invalid credentials");
         }
 
-        Map<String, Object> claims = new java.util.HashMap<>();
+        Map<String, Object> claims = new HashMap<>();
         claims.put("role", user.getRole().name());
-        claims.put("email", user.getEmail());
+        claims.put("mobileNumber", user.getMobileNumber());
         if (user.getTenantId() != null) {
             claims.put("tenantId", user.getTenantId().toString());
         }
@@ -66,14 +67,13 @@ public class AuthService {
                 .build();
     }
 
-    private UserEntity findUser(String email, UUID tenantId) {
-        // SUPER_ADMIN has no tenant
+    private UserEntity findUser(String mobileNumber, UUID tenantId) {
         if (tenantId == null) {
-            return userRepository.findByEmailAndIsDeletedFalse(email)
+            return userRepository.findByMobileNumberAndIsDeletedFalse(mobileNumber)
                     .filter(u -> u.getRole() == Role.SUPER_ADMIN)
                     .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
         }
-        return userRepository.findByEmailAndTenantIdAndIsDeletedFalse(email, tenantId)
+        return userRepository.findByMobileNumberAndTenantIdAndIsDeletedFalse(mobileNumber, tenantId)
                 .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
     }
 }
