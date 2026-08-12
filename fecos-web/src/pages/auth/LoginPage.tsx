@@ -156,7 +156,7 @@ export function LoginPage() {
   return (
     <div
       className="min-h-screen flex"
-      style={{ background: 'linear-gradient(to right, #751903, #3F0C00)' }}
+      style={{ background: 'linear-gradient(to right, #3F0C00, #1A0500)' }}
     >
       {/* Left panel */}
       <div className="hidden lg:flex lg:w-[52%] flex-col bg-transparent">
