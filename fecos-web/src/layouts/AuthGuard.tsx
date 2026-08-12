@@ -1,6 +1,6 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
-import { webRoles } from '@/lib/roleRoutes'
+import { roleHomeMap, webRoles } from '@/lib/roleRoutes'
 
 export function AuthGuard() {
   const { isAuthenticated, user } = useAuthStore()
@@ -22,7 +22,7 @@ export function SuperAdminGuard() {
 }
 
 export function GuestGuard() {
-  const { isAuthenticated } = useAuthStore()
-  if (isAuthenticated) return <Navigate to="/dashboard" replace />
+  const { isAuthenticated, user } = useAuthStore()
+  if (isAuthenticated && user) return <Navigate to={roleHomeMap[user.role]} replace />
   return <Outlet />
 }

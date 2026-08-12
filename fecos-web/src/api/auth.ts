@@ -13,6 +13,10 @@ export interface LoginResponse {
   email: string | null
   role: string
   tenantId: string | null
+  tenantName: string | null
+  primaryColor: string | null
+  darkColor: string | null
+  accentColor: string | null
 }
 
 export const authApi = {

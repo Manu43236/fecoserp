@@ -1,4 +1,6 @@
 import 'package:get/get.dart';
+import 'package:fecos_mobile/app/modules/splash/bindings/splash_binding.dart';
+import 'package:fecos_mobile/app/modules/splash/views/splash_view.dart';
 import 'package:fecos_mobile/app/modules/auth/bindings/auth_binding.dart';
 import 'package:fecos_mobile/app/modules/auth/views/auth_view.dart';
 import 'package:fecos_mobile/app/modules/home/bindings/home_binding.dart';
@@ -13,9 +15,14 @@ import 'package:fecos_mobile/app/modules/pre_trip/views/pre_trip_view.dart';
 part 'app_routes.dart';
 
 class AppPages {
-  static const initial = Routes.login;
+  static const initial = Routes.splash;
 
   static final routes = [
+    GetPage(
+      name: _Paths.splash,
+      page: () => const SplashView(),
+      binding: SplashBinding(),
+    ),
     GetPage(
       name: _Paths.login,
       page: () => const AuthView(),

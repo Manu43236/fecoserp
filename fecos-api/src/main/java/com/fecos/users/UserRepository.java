@@ -12,4 +12,8 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
     Optional<UserEntity> findByMobileNumberAndIsDeletedFalse(String mobileNumber);
 
     Optional<UserEntity> findByMobileNumberAndTenantIdAndIsDeletedFalse(String mobileNumber, UUID tenantId);
+
+    Optional<UserEntity> findFirstByTenantIdAndRoleAndIsDeletedFalse(UUID tenantId, Role role);
+
+    boolean existsByMobileNumberAndTenantIdAndIsDeletedFalse(String mobileNumber, UUID tenantId);
 }

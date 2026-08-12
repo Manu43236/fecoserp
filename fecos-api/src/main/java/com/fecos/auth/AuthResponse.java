@@ -13,4 +13,8 @@ public class AuthResponse {
     private String email;
     private Role role;
     private String tenantId;
+    private String tenantName;
+    private String primaryColor;
+    private String darkColor;
+    private String accentColor;
 }

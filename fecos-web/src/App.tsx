@@ -7,6 +7,7 @@ import { AppLayout } from '@/layouts/AppLayout'
 import { SuperAdminLayout } from '@/layouts/SuperAdminLayout'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { PlaceholderPage } from '@/pages/shared/PlaceholderPage'
+import { TenantsPage } from '@/pages/super-admin/TenantsPage'
 
 const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -27,7 +28,7 @@ export default function App() {
             <Route element={<SuperAdminGuard />}>
               <Route element={<SuperAdminLayout />}>
                 <Route path="/sa/dashboard"     element={<PlaceholderPage title="SA Dashboard" />} />
-                <Route path="/sa/tenants"       element={<PlaceholderPage title="Tenants" />} />
+                <Route path="/sa/tenants"       element={<TenantsPage />} />
                 <Route path="/sa/subscriptions" element={<PlaceholderPage title="Subscriptions" />} />
                 <Route path="/sa/users"         element={<PlaceholderPage title="Users" />} />
                 <Route path="/sa/settings"      element={<PlaceholderPage title="Settings" />} />

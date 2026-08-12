@@ -39,6 +39,15 @@ public class TenantEntity extends BaseEntity {
     @Column(nullable = false)
     private TenantPlan plan = TenantPlan.PILOT;
 
+    @Column(name = "owner_name")
+    private String ownerName;
+
+    @Column(name = "contact_phone", length = 20)
+    private String contactPhone;
+
+    @Column(name = "contact_email")
+    private String contactEmail;
+
     @Column(name = "is_active", nullable = false)
     private boolean isActive = true;
 }

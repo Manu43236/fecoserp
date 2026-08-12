@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:get/get.dart';
 import 'package:fecos_mobile/app/core/exceptions/exception_handler.dart';
@@ -16,6 +17,9 @@ class AuthController extends GetxController {
 
   bool get isLoggedIn => user.value != null;
 
+  final _sessionCompleter = Completer<void>();
+  Future<void> get sessionRestored => _sessionCompleter.future;
+
   @override
   void onInit() {
     super.onInit();
@@ -24,18 +28,22 @@ class AuthController extends GetxController {
 
   Future<void> _restoreSession() async {
     final token = await _storage.getToken();
-    if (token == null) return;
+    if (token == null) {
+      _sessionCompleter.complete();
+      return;
+    }
     try {
       final res = await _dio.get<Map<String, dynamic>>('/auth/me');
       final u = UserModel.fromJson(res.data!['data'] as Map<String, dynamic>);
       if (!u.role.isMobileRole) {
         await _storage.clearAll();
-        return;
+      } else {
+        user.value = u;
       }
-      user.value = u;
-      Get.offAllNamed(Routes.home);
     } on DioException {
       await _storage.clearAll();
+    } finally {
+      _sessionCompleter.complete();
     }
   }
 

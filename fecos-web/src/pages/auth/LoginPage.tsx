@@ -6,12 +6,12 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import toast from 'react-hot-toast'
 import { FlaskConical, Truck, ClipboardList, BarChart3, Users, Beaker } from 'lucide-react'
 import fecosLogo from '@/assets/fecos_logo.png'
-import { useAuthStore } from '@/store/authStore'
+import { useAuthStore, applyTenantTheme } from '@/store/authStore'
 import { authApi } from '@/api/auth'
 import { roleHomeMap, webRoles } from '@/lib/roleRoutes'
-import type { Role, User, TenantConfig } from '@/types'
+import type { Role } from '@/types'
 
-const DEFAULT_COLORS = { primaryColor: '#0F172A', darkColor: '#1E293B', accentColor: '#E5D4CF' }
+const DEFAULT_COLORS = { primaryColor: '#1E3A5F', darkColor: '#0F2137', accentColor: '#CBD5E1' }
 
 const SLIDES = [
   {
@@ -114,17 +114,12 @@ type FormData = z.infer<typeof schema>
 
 export function LoginPage() {
   const [loading, setLoading] = useState(false)
-  const [colors, setColors] = useState<Pick<TenantConfig, 'primaryColor' | 'darkColor' | 'accentColor'>>(DEFAULT_COLORS)
+  const [colors] = useState(DEFAULT_COLORS)
   const login = useAuthStore((s) => s.login)
   const navigate = useNavigate()
 
   useEffect(() => {
-    authApi.tenantConfig()
-      .then((res) => {
-        const { primaryColor, darkColor, accentColor } = res.data.data
-        if (primaryColor && darkColor) setColors({ primaryColor, darkColor, accentColor })
-      })
-      .catch(() => { /* no tenant — keep defaults */ })
+    applyTenantTheme(null) // reset to FECOS defaults; subdomain theming handled in prod only
   }, [])
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
@@ -143,17 +138,21 @@ export function LoginPage() {
         return
       }
 
-      const user: User = {
-        id: payload.id,
-        fullName: payload.fullName,
-        mobileNumber: data.mobileNumber,
-        email: payload.email ?? undefined,
-        role,
-        tenantId: payload.tenantId ?? undefined,
-        isActive: true,
-      }
-
-      login(user, payload.token)
+      login(
+        {
+          id: payload.id,
+          fullName: payload.fullName,
+          mobileNumber: data.mobileNumber,
+          email: payload.email,
+          role,
+          tenantId: payload.tenantId,
+          tenantName: payload.tenantName,
+          primaryColor: payload.primaryColor,
+          darkColor: payload.darkColor,
+          accentColor: payload.accentColor,
+        },
+        payload.token,
+      )
       navigate(roleHomeMap[role])
     } catch (err: unknown) {
       const msg =

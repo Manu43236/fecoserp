@@ -39,3 +39,19 @@ export interface AuthTokens {
   token: string
   expiresAt: string
 }
+
+export interface Tenant {
+  id: string
+  companyName: string
+  subdomain: string
+  ownerName: string | null
+  contactPhone: string | null
+  contactEmail: string | null
+  primaryColor: string | null
+  darkColor: string | null
+  accentColor: string | null
+  logoUrl: string | null
+  plan: string
+  active: boolean
+  createdAt: string
+}
