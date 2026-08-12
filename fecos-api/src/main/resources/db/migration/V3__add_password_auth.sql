@@ -6,11 +6,11 @@ ALTER TABLE users
     ADD COLUMN    email_verified TINYINT(1) NOT NULL DEFAULT 0 AFTER password_hash;
 
 -- Make tenant_id nullable for SUPER_ADMIN (no tenant scope)
+-- Split into two statements: MySQL rejects DROP+ADD of same FK name in one ALTER
+ALTER TABLE users DROP FOREIGN KEY fk_users_tenant;
 ALTER TABLE users
-    DROP FOREIGN KEY fk_users_tenant,
     MODIFY COLUMN tenant_id CHAR(36) NULL,
-    ADD CONSTRAINT fk_users_tenant
-        FOREIGN KEY (tenant_id) REFERENCES tenants(id);
+    ADD CONSTRAINT fk_users_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id);
 
 -- Seed SUPER_ADMIN (no tenant, email: super@fecos.app, password: Fecos@2024)
 -- password_hash is BCrypt of 'Fecos@2024'
