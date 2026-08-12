@@ -1,0 +1,32 @@
+# macOS
+.DS_Store
+**/.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Env files
+.env
+.env.local
+.env.*.local
+
+# Web (Node)
+fecos-web/node_modules/
+fecos-web/dist/
+fecos-web/.pnpm-store/
+
+# Mobile (Flutter)
+fecos_mobile/.dart_tool/
+fecos_mobile/build/
+fecos_mobile/.flutter-plugins
+fecos_mobile/.flutter-plugins-dependencies
+
+# API (Java/Maven)
+fecos-api/target/
+fecos-api/*.jar
+fecos-api/*.war
+
+# Dart defines (may contain URLs — keep in VCS, but not secrets)
+# fecos_mobile/.dart_defines/

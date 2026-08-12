@@ -1,0 +1,17 @@
+part of 'app_pages.dart';
+
+abstract class Routes {
+  static const login = _Paths.login;
+  static const home = _Paths.home;
+  static const deliveryDetail = _Paths.deliveryDetail;
+  static const serviceVisit = _Paths.serviceVisit;
+  static const preTrip = _Paths.preTrip;
+}
+
+abstract class _Paths {
+  static const login = '/login';
+  static const home = '/home';
+  static const deliveryDetail = '/delivery/:id';
+  static const serviceVisit = '/service-visit/:id';
+  static const preTrip = '/pre-trip';
+}

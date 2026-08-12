@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary:       #751903;
+  --color-primary-hover: #8B2010;
+  --color-primary-light: #F5E6E2;
+  --color-dark:          #3F0C00;
+  --color-accent:        #E5D4CF;
+
+  --color-content-bg:    #F8FAFC;
+  --color-surface:       #FFFFFF;
+  --color-border:        #E2E8F0;
+  --color-border-strong: #CBD5E1;
+
+  --color-text-primary:   #0F172A;
+  --color-text-secondary: #475569;
+  --color-text-hint:      #94A3B8;
+
+  --color-success:     #166534;
+  --color-success-bg:  #DCFCE7;
+  --color-warning:     #92400E;
+  --color-warning-bg:  #FEF3C7;
+  --color-critical:    #991B1B;
+  --color-critical-bg: #FEE2E2;
+  --color-info:        #1E40AF;
+  --color-info-bg:     #DBEAFE;
+
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --sidebar-width: 240px;
+  --header-height: 60px;
+}
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--color-content-bg);
+    color: var(--color-text-primary);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* JetBrains Mono on all numeric data */
+  .numeric { font-family: var(--font-mono); }
+}

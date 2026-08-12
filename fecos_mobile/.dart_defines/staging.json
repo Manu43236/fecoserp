@@ -1,0 +1,4 @@
+{
+  "FLAVOR": "staging",
+  "API_BASE_URL": "https://staging-api.fecos.app/api/v1"
+}

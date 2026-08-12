@@ -1,0 +1,28 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: fecos-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: fecos123
+      MYSQL_DATABASE: fecos_dev
+    ports:
+      - "3306:3306"
+    volumes:
+      - fecos_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-pfecos123"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  adminer:
+    image: adminer:4
+    container_name: fecos-adminer
+    ports:
+      - "8081:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+volumes:
+  fecos_mysql_data:

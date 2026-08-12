@@ -1,0 +1,10 @@
+target/
+*.class
+*.jar
+*.war
+.mvn/wrapper/maven-wrapper.jar
+.env
+*.env
+application-local.yml
+application-secret.yml
+firebase-credentials.json
