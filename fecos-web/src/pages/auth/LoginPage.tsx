@@ -179,7 +179,7 @@ export function LoginPage() {
           </div>
         </div>
         <p className="text-center text-xs pb-8" style={{ color: 'rgba(229,212,207,0.4)' }}>
-          © {new Date().getFullYear()} FECOS. Powered by Endura Products Corp.
+          © {new Date().getFullYear()} FECOS. Powered by M&M Technologies.
         </p>
       </div>
 
