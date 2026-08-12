@@ -2,6 +2,7 @@ package com.fecos.auth;
 
 import com.fecos.config.JwtService;
 import com.fecos.tenant.TenantContext;
+import com.fecos.users.Role;
 import com.fecos.users.UserEntity;
 import com.fecos.users.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,36 +23,57 @@ public class AuthService {
 
     public AuthResponse login(AuthRequest request) {
         UUID tenantId = TenantContext.get();
-        if (tenantId == null) {
-            throw new BadCredentialsException("Unknown tenant");
-        }
 
-        UserEntity user = userRepository
-                .findByMobileNumberAndTenantIdAndIsDeletedFalse(request.getMobileNumber(), tenantId)
-                .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
+        UserEntity user = findUser(request.getEmail(), tenantId);
 
         if (!user.isActive()) {
             throw new BadCredentialsException("Account is disabled");
         }
 
-        if (!passwordEncoder.matches(request.getPin(), user.getPinHash())) {
+        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new BadCredentialsException("Invalid credentials");
         }
 
-        String token = jwtService.generate(
-                user.getId().toString(),
-                Map.of(
-                        "role", user.getRole().name(),
-                        "tenantId", tenantId.toString(),
-                        "mobile", user.getMobileNumber()
-                )
-        );
+        Map<String, Object> claims = new java.util.HashMap<>();
+        claims.put("role", user.getRole().name());
+        claims.put("email", user.getEmail());
+        if (user.getTenantId() != null) {
+            claims.put("tenantId", user.getTenantId().toString());
+        }
+
+        String token = jwtService.generate(user.getId().toString(), claims);
 
         return AuthResponse.builder()
                 .token(token)
-                .role(user.getRole().name())
+                .id(user.getId().toString())
                 .fullName(user.getFullName())
-                .mobile(user.getMobileNumber())
+                .email(user.getEmail())
+                .role(user.getRole())
+                .tenantId(user.getTenantId() != null ? user.getTenantId().toString() : null)
                 .build();
+    }
+
+    public AuthResponse me(String userId) {
+        UserEntity user = userRepository.findById(UUID.fromString(userId))
+                .orElseThrow(() -> new BadCredentialsException("User not found"));
+
+        return AuthResponse.builder()
+                .id(user.getId().toString())
+                .fullName(user.getFullName())
+                .email(user.getEmail())
+                .role(user.getRole())
+                .tenantId(user.getTenantId() != null ? user.getTenantId().toString() : null)
+                .build();
+    }
+
+    private UserEntity findUser(String email, UUID tenantId) {
+        // SUPER_ADMIN has no tenant
+        if (tenantId == null) {
+            return userRepository.findByEmailAndIsDeletedFalse(email)
+                    .filter(u -> u.getRole() == Role.SUPER_ADMIN)
+                    .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
+        }
+        return userRepository.findByEmailAndTenantIdAndIsDeletedFalse(email, tenantId)
+                .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
     }
 }

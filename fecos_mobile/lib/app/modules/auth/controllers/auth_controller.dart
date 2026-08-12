@@ -49,7 +49,7 @@ class AuthController extends GetxController {
       );
       final data = res.data!['data'] as Map<String, dynamic>;
       final token = data['token'] as String;
-      final u = UserModel.fromJson(data['user'] as Map<String, dynamic>);
+      final u = UserModel.fromJson(data);
       if (!u.role.isMobileRole) {
         errorMessage.value = 'This account is not authorized for mobile access.';
         return;

@@ -28,20 +28,20 @@ class UserModel {
     required this.name,
     required this.email,
     required this.role,
-    required this.tenantId,
+    this.tenantId,
   });
 
   final String id;
   final String name;
   final String email;
   final UserRole role;
-  final String tenantId;
+  final String? tenantId;
 
   factory UserModel.fromJson(Map<String, dynamic> json) => UserModel(
         id: json['id'] as String,
-        name: json['name'] as String,
+        name: json['fullName'] as String,
         email: json['email'] as String,
         role: UserRole.fromString(json['role'] as String),
-        tenantId: json['tenantId'] as String,
+        tenantId: json['tenantId'] as String?,
       );
 }

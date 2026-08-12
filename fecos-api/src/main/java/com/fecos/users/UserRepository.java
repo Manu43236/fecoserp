@@ -8,5 +8,10 @@ import java.util.UUID;
 
 @Repository
 public interface UserRepository extends JpaRepository<UserEntity, UUID> {
+
+    Optional<UserEntity> findByEmailAndIsDeletedFalse(String email);
+
+    Optional<UserEntity> findByEmailAndTenantIdAndIsDeletedFalse(String email, UUID tenantId);
+
     Optional<UserEntity> findByMobileNumberAndTenantIdAndIsDeletedFalse(String mobileNumber, UUID tenantId);
 }

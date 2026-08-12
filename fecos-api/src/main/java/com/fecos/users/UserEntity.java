@@ -1,27 +1,35 @@
 package com.fecos.users;
 
-import com.fecos.common.TenantAwareEntity;
+import com.fecos.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+
+import java.util.UUID;
 
 @Getter
 @Setter
 @Entity
 @Table(name = "users")
-public class UserEntity extends TenantAwareEntity {
+public class UserEntity extends BaseEntity {
+
+    @Column(name = "tenant_id")
+    private UUID tenantId;
 
     @Column(name = "full_name", nullable = false)
     private String fullName;
 
-    @Column(name = "mobile_number", nullable = false)
+    @Column(name = "mobile_number")
     private String mobileNumber;
-
-    @Column(name = "pin_hash", nullable = false)
-    private String pinHash;
 
     @Column(name = "email")
     private String email;
+
+    @Column(name = "password_hash")
+    private String passwordHash;
+
+    @Column(name = "pin_hash")
+    private String pinHash;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

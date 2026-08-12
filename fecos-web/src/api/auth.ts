@@ -1,15 +1,18 @@
 import api from '@/lib/axios'
-import type { ApiResponse, User, AuthTokens } from '@/types'
+import type { ApiResponse, User, TenantConfig } from '@/types'
 
-interface LoginRequest {
-  mobileNumber: string
-  pin: string
-  tenantId?: string
+export interface LoginRequest {
+  email: string
+  password: string
 }
 
-interface LoginResponse {
-  user: User
-  tokens: AuthTokens
+export interface LoginResponse {
+  token: string
+  id: string
+  fullName: string
+  email: string
+  role: string
+  tenantId: string | null
 }
 
 export const authApi = {
@@ -17,8 +20,8 @@ export const authApi = {
     api.post<ApiResponse<LoginResponse>>('/api/v1/auth/login', data),
 
   me: () =>
-    api.get<ApiResponse<User>>('/api/v1/auth/me'),
+    api.get<ApiResponse<LoginResponse>>('/api/v1/auth/me'),
 
   tenantConfig: (subdomain: string) =>
-    api.get<ApiResponse<import('@/types').TenantConfig>>(`/api/v1/tenants/config/${subdomain}`),
+    api.get<ApiResponse<TenantConfig>>(`/api/v1/tenant/config`),
 }
