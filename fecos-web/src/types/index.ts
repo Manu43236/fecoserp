@@ -6,6 +6,15 @@ export interface ApiResponse<T> {
   timestamp: string
 }
 
+// Spring Data Page wrapper
+export interface PageResponse<T> {
+  content: T[]
+  totalElements: number
+  totalPages: number
+  number: number
+  size: number
+}
+
 export type Role =
   | 'SUPER_ADMIN'
   | 'ADMIN'

@@ -15,6 +15,7 @@ interface Props {
   placeholder?: string
   searchPlaceholder?: string
   className?: string
+  showClear?: boolean  // show placeholder as a "clear" option in the list (true for filters, false for form fields)
 }
 
 export function SearchableDropdown({
@@ -24,6 +25,7 @@ export function SearchableDropdown({
   placeholder = 'All',
   searchPlaceholder = 'Search…',
   className = '',
+  showClear = true,
 }: Props) {
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
@@ -45,7 +47,7 @@ export function SearchableDropdown({
       <button
         type="button"
         onClick={() => { setOpen(o => !o); setQ('') }}
-        className={`flex items-center gap-2 h-9 px-3 text-sm border rounded-lg outline-none transition whitespace-nowrap bg-white ${
+        className={`w-full flex items-center justify-between gap-2 h-9 px-3 text-sm border rounded-lg outline-none transition whitespace-nowrap bg-white ${
           selected ? 'border-gray-300 font-medium text-gray-800' : 'border-gray-200 text-gray-500 hover:border-gray-300'
         }`}
       >
@@ -61,7 +63,7 @@ export function SearchableDropdown({
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 mt-1 z-50 w-56 bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden">
+        <div className="absolute top-full left-0 mt-1 z-50 w-full min-w-[180px] bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden">
           <div className="p-2 border-b border-gray-100">
             <div className="relative">
               <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -75,13 +77,15 @@ export function SearchableDropdown({
             </div>
           </div>
           <div className="py-1 max-h-60 overflow-y-auto">
-            <button
-              onClick={() => { onChange(null); setOpen(false) }}
-              className={`w-full flex items-center justify-between px-3 py-2 text-xs hover:bg-gray-50 transition-colors ${!value ? 'font-semibold text-gray-900' : 'text-gray-600'}`}
-            >
-              <span>{placeholder}</span>
-              {!value && <Check size={12} className="text-gray-700" />}
-            </button>
+            {showClear && (
+              <button
+                onClick={() => { onChange(null); setOpen(false) }}
+                className={`w-full flex items-center justify-between px-3 py-2 text-xs hover:bg-gray-50 transition-colors ${!value ? 'font-semibold text-gray-900' : 'text-gray-600'}`}
+              >
+                <span>{placeholder}</span>
+                {!value && <Check size={12} className="text-gray-700" />}
+              </button>
+            )}
             {filtered.map(o => (
               <button
                 key={o.value}

@@ -10,6 +10,7 @@ import { PlaceholderPage } from '@/pages/shared/PlaceholderPage'
 import { TenantsPage } from '@/pages/super-admin/TenantsPage'
 import { SAUsersPage } from '@/pages/super-admin/SAUsersPage'
 import { UsersPage } from '@/pages/tenant/UsersPage'
+import { ClientsPage } from '@/pages/tenant/ClientsPage'
 
 const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -46,7 +47,7 @@ export default function App() {
               {/* Manager */}
               <Route path="/field-activity"   element={<PlaceholderPage title="Field Activity" />} />
               <Route path="/deliveries"       element={<PlaceholderPage title="Deliveries" />} />
-              <Route path="/clients"          element={<PlaceholderPage title="Clients" />} />
+              <Route path="/clients"          element={<ClientsPage />} />
               <Route path="/pump-shop"        element={<PlaceholderPage title="Pump Shop" />} />
               <Route path="/reports"          element={<PlaceholderPage title="Reports" />} />
 

@@ -16,6 +16,7 @@ interface NavItem { label: string; path: string; icon: LucideIcon }
 const navByRole: Record<string, NavItem[]> = {
   ADMIN: [
     { label: 'Dashboard', path: '/dashboard',  icon: LayoutDashboard },
+    { label: 'Clients',   path: '/clients',    icon: Building2       },
     { label: 'Dispatch',  path: '/dispatch',   icon: Truck           },
     { label: 'Routes',    path: '/routes',     icon: MapPin          },
     { label: 'Schedule',  path: '/schedule',   icon: CalendarDays    },
