@@ -29,10 +29,10 @@ public class CreateTenantRequest {
     private String adminFullName;
 
     @NotBlank
-    @Pattern(regexp = "^\\d{10}$", message = "Mobile number must be 10 digits")
+    @Pattern(regexp = "^[2-9]\\d{9}$", message = "Enter a valid US 10-digit mobile number")
     private String adminMobileNumber;
 
     @NotBlank
-    @Pattern(regexp = "^\\d{4,6}$", message = "PIN must be 4-6 digits")
+    @Pattern(regexp = "^\\d{4}$", message = "PIN must be exactly 4 digits")
     private String adminPin;
 }

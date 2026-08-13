@@ -1,0 +1,1 @@
+ALTER TABLE users ADD COLUMN pin VARCHAR(10) AFTER pin_hash;

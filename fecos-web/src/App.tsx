@@ -8,6 +8,8 @@ import { SuperAdminLayout } from '@/layouts/SuperAdminLayout'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { PlaceholderPage } from '@/pages/shared/PlaceholderPage'
 import { TenantsPage } from '@/pages/super-admin/TenantsPage'
+import { SAUsersPage } from '@/pages/super-admin/SAUsersPage'
+import { UsersPage } from '@/pages/tenant/UsersPage'
 
 const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -30,7 +32,7 @@ export default function App() {
                 <Route path="/sa/dashboard"     element={<PlaceholderPage title="SA Dashboard" />} />
                 <Route path="/sa/tenants"       element={<TenantsPage />} />
                 <Route path="/sa/subscriptions" element={<PlaceholderPage title="Subscriptions" />} />
-                <Route path="/sa/users"         element={<PlaceholderPage title="Users" />} />
+                <Route path="/sa/users"         element={<SAUsersPage />} />
                 <Route path="/sa/settings"      element={<PlaceholderPage title="Settings" />} />
               </Route>
             </Route>
@@ -59,7 +61,7 @@ export default function App() {
               <Route path="/routes"           element={<PlaceholderPage title="Routes" />} />
               <Route path="/schedule"         element={<PlaceholderPage title="Schedule" />} />
               <Route path="/inventory"        element={<PlaceholderPage title="Inventory" />} />
-              <Route path="/users"            element={<PlaceholderPage title="Users" />} />
+              <Route path="/users"            element={<UsersPage />} />
 
               {/* Account Rep */}
               <Route path="/rep/portfolio"    element={<PlaceholderPage title="Portfolio" />} />

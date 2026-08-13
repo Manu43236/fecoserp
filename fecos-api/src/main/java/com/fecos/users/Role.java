@@ -15,6 +15,7 @@ public enum Role {
     }
 
     public boolean isMobileRole() {
-        return this == TRUCK_DRIVER || this == SERVICE_TECH || this == ACCOUNT_REP;
+        return this == TRUCK_DRIVER || this == SERVICE_TECH
+                || this == ACCOUNT_REP || this == MANAGER;
     }
 }

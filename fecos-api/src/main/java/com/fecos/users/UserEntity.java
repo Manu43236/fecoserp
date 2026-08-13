@@ -31,6 +31,9 @@ public class UserEntity extends BaseEntity {
     @Column(name = "pin_hash")
     private String pinHash;
 
+    @Column(name = "pin")
+    private String pin;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;

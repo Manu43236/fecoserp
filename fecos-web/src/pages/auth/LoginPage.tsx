@@ -106,6 +106,13 @@ function FeatureCarousel() {
   )
 }
 
+function formatPhoneInput(raw: string): string {
+  const d = raw.replace(/\D/g, '').slice(0, 10)
+  if (d.length <= 3) return d
+  if (d.length <= 6) return `(${d.slice(0, 3)}) ${d.slice(3)}`
+  return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`
+}
+
 const schema = z.object({
   mobileNumber: z.string().regex(/^\d{10}$/, 'Enter a valid 10-digit mobile number'),
   pin: z.string().min(4, 'PIN must be at least 4 digits').regex(/^\d+$/, 'Digits only'),
@@ -122,7 +129,7 @@ export function LoginPage() {
     applyTenantTheme(null) // reset to FECOS defaults; subdomain theming handled in prod only
   }, [])
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
   })
 
@@ -206,13 +213,17 @@ export function LoginPage() {
                     +1
                   </span>
                   <input
-                    {...register('mobileNumber')}
                     type="tel"
                     inputMode="numeric"
-                    maxLength={10}
-                    placeholder="10-digit number"
+                    maxLength={14}
+                    placeholder="(555) 000-0000"
                     autoComplete="off"
-                    className={`flex-1 h-11 px-3 text-sm rounded-md border outline-none transition focus:ring-2 focus:ring-red-100 ${errors.mobileNumber ? 'border-red-400' : 'border-gray-200'}`}
+                    value={formatPhoneInput(watch('mobileNumber') ?? '')}
+                    onChange={e => {
+                      const raw = e.target.value.replace(/\D/g, '').slice(0, 10)
+                      setValue('mobileNumber', raw, { shouldValidate: false })
+                    }}
+                    className={`flex-1 h-11 px-3 text-sm rounded-md border outline-none transition focus:ring-2 focus:ring-red-100 tracking-wide ${errors.mobileNumber ? 'border-red-400' : 'border-gray-200'}`}
                   />
                 </div>
                 {errors.mobileNumber && (

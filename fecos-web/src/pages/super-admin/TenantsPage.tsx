@@ -125,8 +125,8 @@ function TenantDialog({ open, onClose, tenant }: { open: boolean; onClose: () =>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Initial Admin User</p>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Admin Full Name" name="adminFullName" required />
-                <Field label="Mobile Number (10 digits)" name="adminMobileNumber" required />
-                <Field label="PIN (4–6 digits)" name="adminPin" required />
+                <Field label="Admin Mobile (US, 10 digits)" name="adminMobileNumber" required />
+                <Field label="PIN (4 digits)" name="adminPin" required />
               </div>
             </section>
           )}
