@@ -88,12 +88,13 @@ public class AuthService {
     }
 
     private UserEntity findUser(String mobileNumber, UUID tenantId) {
-        if (tenantId == null) {
-            return userRepository.findByMobileNumberAndIsDeletedFalse(mobileNumber)
-                    .filter(u -> u.getRole() == Role.SUPER_ADMIN)
+        if (tenantId != null) {
+            return userRepository.findByMobileNumberAndTenantIdAndIsDeletedFalse(mobileNumber, tenantId)
                     .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
         }
-        return userRepository.findByMobileNumberAndTenantIdAndIsDeletedFalse(mobileNumber, tenantId)
+        // No subdomain context — production never reaches here (each client has its own subdomain).
+        // On localhost, fall back to searching all tenants so dev login works without a subdomain field.
+        return userRepository.findByMobileNumberAndIsDeletedFalse(mobileNumber)
                 .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
     }
 }

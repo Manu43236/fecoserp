@@ -115,7 +115,7 @@ function formatPhoneInput(raw: string): string {
 
 const schema = z.object({
   mobileNumber: z.string().regex(/^\d{10}$/, 'Enter a valid 10-digit mobile number'),
-  pin: z.string().min(4, 'PIN must be at least 4 digits').regex(/^\d+$/, 'Digits only'),
+  pin:          z.string().min(4, 'PIN must be at least 4 digits').regex(/^\d+$/, 'Digits only'),
 })
 type FormData = z.infer<typeof schema>
 
