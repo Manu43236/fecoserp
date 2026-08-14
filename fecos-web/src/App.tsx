@@ -11,6 +11,11 @@ import { TenantsPage } from '@/pages/super-admin/TenantsPage'
 import { SAUsersPage } from '@/pages/super-admin/SAUsersPage'
 import { UsersPage } from '@/pages/tenant/UsersPage'
 import { ClientsPage } from '@/pages/tenant/ClientsPage'
+import { LeasesPage } from '@/pages/tenant/LeasesPage'
+import { WellsPage } from '@/pages/tenant/WellsPage'
+import MastersPage from '@/pages/tenant/MastersPage'
+import ProductsPage from '@/pages/tenant/ProductsPage'
+import InventoryPage from '@/pages/tenant/InventoryPage'
 
 const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -48,6 +53,8 @@ export default function App() {
               <Route path="/field-activity"   element={<PlaceholderPage title="Field Activity" />} />
               <Route path="/deliveries"       element={<PlaceholderPage title="Deliveries" />} />
               <Route path="/clients"          element={<ClientsPage />} />
+              <Route path="/leases"           element={<LeasesPage />} />
+              <Route path="/wells"            element={<WellsPage />} />
               <Route path="/pump-shop"        element={<PlaceholderPage title="Pump Shop" />} />
               <Route path="/reports"          element={<PlaceholderPage title="Reports" />} />
 
@@ -61,8 +68,10 @@ export default function App() {
               <Route path="/dispatch"         element={<PlaceholderPage title="Dispatch Board" />} />
               <Route path="/routes"           element={<PlaceholderPage title="Routes" />} />
               <Route path="/schedule"         element={<PlaceholderPage title="Schedule" />} />
-              <Route path="/inventory"        element={<PlaceholderPage title="Inventory" />} />
+              <Route path="/inventory"        element={<InventoryPage />} />
               <Route path="/users"            element={<UsersPage />} />
+              <Route path="/masters"          element={<MastersPage />} />
+              <Route path="/products"         element={<ProductsPage />} />
 
               {/* Account Rep */}
               <Route path="/rep/portfolio"    element={<PlaceholderPage title="Portfolio" />} />

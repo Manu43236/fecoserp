@@ -1,0 +1,114 @@
+package com.fecos.inventory;
+
+import com.fecos.products.ProductRepository;
+import com.fecos.users.UserRepository;
+import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class InventoryService {
+
+    private final InventoryTransactionRepository txRepository;
+    private final WarehouseRepository warehouseRepository;
+    private final ProductRepository productRepository;
+    private final UserRepository userRepository;
+
+    public List<StockResponse> stock(UUID warehouseId) {
+        UUID tenantId = currentTenantId();
+        List<Object[]> rows = txRepository.stockSummary(tenantId, warehouseId);
+
+        Map<UUID, String> warehouseNames = warehouseRepository
+                .findByTenantIdAndIsDeletedFalseAndIsActiveTrue(tenantId)
+                .stream().collect(Collectors.toMap(w -> w.getId(), w -> w.getName()));
+
+        return rows.stream().map(row -> {
+            UUID wId  = (UUID) row[0];
+            UUID pId  = (UUID) row[1];
+            String unit = (String) row[2];
+            BigDecimal qty = (BigDecimal) row[3];
+
+            String warehouseName = warehouseNames.getOrDefault(wId, wId.toString());
+            String productName   = productRepository.findById(pId)
+                    .map(p -> p.getName()).orElse(pId.toString());
+
+            return new StockResponse(wId, warehouseName, pId, productName, unit, qty);
+        }).toList();
+    }
+
+    public Page<InventoryTransactionResponse> listTransactions(UUID warehouseId, InventoryTransactionType type, int page, int size) {
+        UUID tenantId = currentTenantId();
+        Page<InventoryTransactionEntity> txPage = txRepository.search(tenantId, warehouseId, type, PageRequest.of(page, size));
+
+        Map<UUID, String> warehouseNames = warehouseRepository
+                .findByTenantIdAndIsDeletedFalseAndIsActiveTrue(tenantId)
+                .stream().collect(Collectors.toMap(w -> w.getId(), w -> w.getName()));
+
+        return txPage.map(t -> {
+            String wName = warehouseNames.getOrDefault(t.getWarehouseId(), t.getWarehouseId().toString());
+            String pName = productRepository.findById(t.getProductId())
+                    .map(p -> p.getName()).orElse(t.getProductId().toString());
+            return InventoryTransactionResponse.from(t, wName, pName);
+        });
+    }
+
+    @Transactional
+    public InventoryTransactionResponse record(InventoryTransactionRequest req) {
+        UUID tenantId = currentTenantId();
+
+        // Validate warehouse and product belong to this tenant
+        warehouseRepository.findByIdAndTenantIdAndIsDeletedFalse(req.getWarehouseId(), tenantId)
+                .orElseThrow(() -> new EntityNotFoundException("Warehouse not found"));
+        String productName = productRepository.findById(req.getProductId())
+                .orElseThrow(() -> new EntityNotFoundException("Product not found"))
+                .getName();
+        String warehouseName = warehouseRepository.findByIdAndTenantIdAndIsDeletedFalse(req.getWarehouseId(), tenantId)
+                .get().getName();
+
+        UUID userId = currentUserId();
+        String createdByName = userRepository.findById(userId)
+                .map(u -> u.getFullName()).orElse("Unknown");
+
+        InventoryTransactionEntity tx = new InventoryTransactionEntity();
+        tx.setTenantId(tenantId);
+        tx.setCreatedBy(userId);
+        tx.setCreatedByName(createdByName);
+        tx.setWarehouseId(req.getWarehouseId());
+        tx.setProductId(req.getProductId());
+        tx.setType(req.getType());
+        tx.setUnit(req.getUnit());
+        tx.setNotes(req.getNotes());
+        tx.setSupplierName(req.getSupplierName());
+        tx.setTransactionDate(req.getTransactionDate());
+
+        // RECEIPT = +qty, ISSUE = -qty, ADJUSTMENT = as entered (already signed)
+        BigDecimal qty = req.getType() == InventoryTransactionType.ISSUE
+                ? req.getQuantity().negate()
+                : req.getQuantity();
+        tx.setQuantity(qty);
+
+        return InventoryTransactionResponse.from(txRepository.save(tx), warehouseName, productName);
+    }
+
+    private UUID currentTenantId() {
+        String userId = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userRepository.findById(UUID.fromString(userId))
+                .orElseThrow(() -> new EntityNotFoundException("Current user not found"))
+                .getTenantId();
+    }
+
+    private UUID currentUserId() {
+        return UUID.fromString(SecurityContextHolder.getContext().getAuthentication().getName());
+    }
+}

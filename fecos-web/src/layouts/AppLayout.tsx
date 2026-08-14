@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Truck, MapPin, CalendarDays, Package, Users,
   Activity, PackageCheck, Building2, Wrench, BarChart3,
   FlaskConical, ClipboardList, TestTube, CheckCircle2,
-  Briefcase, CheckSquare, LogOut,
+  Briefcase, CheckSquare, LogOut, Drill, Settings2,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
@@ -17,17 +17,23 @@ const navByRole: Record<string, NavItem[]> = {
   ADMIN: [
     { label: 'Dashboard', path: '/dashboard',  icon: LayoutDashboard },
     { label: 'Clients',   path: '/clients',    icon: Building2       },
+    { label: 'Leases',    path: '/leases',     icon: MapPin          },
+    { label: 'Wells',     path: '/wells',      icon: Drill           },
     { label: 'Dispatch',  path: '/dispatch',   icon: Truck           },
     { label: 'Routes',    path: '/routes',     icon: MapPin          },
     { label: 'Schedule',  path: '/schedule',   icon: CalendarDays    },
     { label: 'Inventory', path: '/inventory',  icon: Package         },
     { label: 'Users',     path: '/users',      icon: Users           },
+    { label: 'Products',  path: '/products',   icon: FlaskConical    },
+    { label: 'Masters',   path: '/masters',    icon: Settings2       },
   ],
   MANAGER: [
     { label: 'Dashboard',      path: '/dashboard',      icon: LayoutDashboard },
     { label: 'Field Activity', path: '/field-activity', icon: Activity        },
     { label: 'Deliveries',     path: '/deliveries',     icon: PackageCheck    },
     { label: 'Clients',        path: '/clients',        icon: Building2       },
+    { label: 'Leases',         path: '/leases',         icon: MapPin          },
+    { label: 'Wells',          path: '/wells',          icon: Drill           },
     { label: 'Inventory',      path: '/inventory',      icon: Package         },
     { label: 'Pump Shop',      path: '/pump-shop',      icon: Wrench          },
     { label: 'Reports',        path: '/reports',        icon: BarChart3       },
