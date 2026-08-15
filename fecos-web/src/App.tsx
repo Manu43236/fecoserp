@@ -16,6 +16,7 @@ import { WellsPage } from '@/pages/tenant/WellsPage'
 import MastersPage from '@/pages/tenant/MastersPage'
 import ProductsPage from '@/pages/tenant/ProductsPage'
 import InventoryPage from '@/pages/tenant/InventoryPage'
+import PlansPage from '@/pages/tenant/PlansPage'
 
 const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -69,6 +70,7 @@ export default function App() {
               <Route path="/routes"           element={<PlaceholderPage title="Routes" />} />
               <Route path="/schedule"         element={<PlaceholderPage title="Schedule" />} />
               <Route path="/inventory"        element={<InventoryPage />} />
+              <Route path="/plans"             element={<PlansPage />} />
               <Route path="/users"            element={<UsersPage />} />
               <Route path="/masters"          element={<MastersPage />} />
               <Route path="/products"         element={<ProductsPage />} />

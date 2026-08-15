@@ -8,6 +8,8 @@ public record LeaseResponse(
         UUID id,
         UUID clientId,
         String clientName,
+        UUID accountRepId,
+        String accountRepName,
         String leaseName,
         String county,
         String state,
@@ -17,11 +19,13 @@ public record LeaseResponse(
         boolean isActive,
         Instant createdAt
 ) {
-    public static LeaseResponse from(LeaseEntity l, String clientName) {
+    public static LeaseResponse from(LeaseEntity l, String clientName, UUID accountRepId, String accountRepName) {
         return new LeaseResponse(
                 l.getId(),
                 l.getClientId(),
                 clientName,
+                accountRepId,
+                accountRepName,
                 l.getLeaseName(),
                 l.getCounty(),
                 l.getState(),

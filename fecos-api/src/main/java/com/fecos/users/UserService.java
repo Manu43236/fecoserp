@@ -23,6 +23,12 @@ public class UserService {
                 .stream().map(UserResponse::from).toList();
     }
 
+    public List<UserResponse> findByRole(Role role) {
+        UUID tenantId = currentTenantId();
+        return userRepository.findAllByTenantIdAndRoleAndIsDeletedFalseOrderByFullNameAsc(tenantId, role)
+                .stream().map(UserResponse::from).toList();
+    }
+
     @Transactional
     public UserResponse create(CreateUserRequest req) {
         UUID tenantId = currentTenantId();

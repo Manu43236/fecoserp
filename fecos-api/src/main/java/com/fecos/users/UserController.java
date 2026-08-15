@@ -18,9 +18,11 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
-    public ResponseEntity<ApiResponse<List<UserResponse>>> list() {
-        return ResponseEntity.ok(ApiResponse.ok(userService.findAll()));
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP')")
+    public ResponseEntity<ApiResponse<List<UserResponse>>> list(
+            @RequestParam(required = false) Role role) {
+        List<UserResponse> users = role != null ? userService.findByRole(role) : userService.findAll();
+        return ResponseEntity.ok(ApiResponse.ok(users));
     }
 
     @PostMapping

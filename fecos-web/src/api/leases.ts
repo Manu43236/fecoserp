@@ -5,6 +5,8 @@ export interface LeaseRecord {
   id: string
   clientId: string
   clientName: string | null
+  accountRepId: string | null
+  accountRepName: string | null
   leaseName: string
   county: string | null
   state: string | null

@@ -24,12 +24,11 @@ public class LeaseService {
         UUID tenantId = currentTenantId();
         return leaseRepository
                 .search(tenantId, search, clientId, isActive, PageRequest.of(page, size))
-                .map(l -> LeaseResponse.from(l, resolveClientName(l.getClientId())));
+                .map(l -> toResponse(l));
     }
 
     public LeaseResponse findById(UUID id) {
-        LeaseEntity l = findForTenant(id);
-        return LeaseResponse.from(l, resolveClientName(l.getClientId()));
+        return toResponse(findForTenant(id));
     }
 
     @Transactional
@@ -43,14 +42,14 @@ public class LeaseService {
         l.setTenantId(tenantId);
         l.setCreatedBy(currentUserId());
         apply(l, req);
-        return LeaseResponse.from(leaseRepository.save(l), resolveClientName(l.getClientId()));
+        return toResponse(leaseRepository.save(l));
     }
 
     @Transactional
     public LeaseResponse update(UUID id, LeaseRequest req) {
         LeaseEntity l = findForTenant(id);
         apply(l, req);
-        return LeaseResponse.from(leaseRepository.save(l), resolveClientName(l.getClientId()));
+        return toResponse(leaseRepository.save(l));
     }
 
     @Transactional
@@ -76,9 +75,23 @@ public class LeaseService {
                 .orElseThrow(() -> new EntityNotFoundException("Lease not found"));
     }
 
-    private String resolveClientName(UUID clientId) {
-        if (clientId == null) return null;
-        return clientRepository.findById(clientId).map(c -> c.getCompanyName()).orElse(null);
+    private LeaseResponse toResponse(LeaseEntity l) {
+        String clientName = null;
+        UUID accountRepId = null;
+        String accountRepName = null;
+        if (l.getClientId() != null) {
+            var clientOpt = clientRepository.findById(l.getClientId());
+            if (clientOpt.isPresent()) {
+                var client = clientOpt.get();
+                clientName = client.getCompanyName();
+                accountRepId = client.getAccountRepId();
+                if (accountRepId != null) {
+                    accountRepName = userRepository.findById(accountRepId)
+                            .map(u -> u.getFullName()).orElse(null);
+                }
+            }
+        }
+        return LeaseResponse.from(l, clientName, accountRepId, accountRepName);
     }
 
     private UUID currentTenantId() {

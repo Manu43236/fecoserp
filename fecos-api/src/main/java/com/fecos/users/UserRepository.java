@@ -22,4 +22,6 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
     List<UserEntity> findAllByTenantIdAndIsDeletedFalseOrderByCreatedAtDesc(UUID tenantId);
 
     List<UserEntity> findAllByIsDeletedFalseOrderByCreatedAtDesc();
+
+    List<UserEntity> findAllByTenantIdAndRoleAndIsDeletedFalseOrderByFullNameAsc(UUID tenantId, Role role);
 }

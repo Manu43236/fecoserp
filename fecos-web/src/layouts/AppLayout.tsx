@@ -23,6 +23,7 @@ const navByRole: Record<string, NavItem[]> = {
     { label: 'Routes',    path: '/routes',     icon: MapPin          },
     { label: 'Schedule',  path: '/schedule',   icon: CalendarDays    },
     { label: 'Inventory', path: '/inventory',  icon: Package         },
+    { label: 'Plans',     path: '/plans',      icon: ClipboardList   },
     { label: 'Users',     path: '/users',      icon: Users           },
     { label: 'Products',  path: '/products',   icon: FlaskConical    },
     { label: 'Masters',   path: '/masters',    icon: Settings2       },
@@ -35,6 +36,7 @@ const navByRole: Record<string, NavItem[]> = {
     { label: 'Leases',         path: '/leases',         icon: MapPin          },
     { label: 'Wells',          path: '/wells',          icon: Drill           },
     { label: 'Inventory',      path: '/inventory',      icon: Package         },
+    { label: 'Plans',          path: '/plans',          icon: ClipboardList   },
     { label: 'Pump Shop',      path: '/pump-shop',      icon: Wrench          },
     { label: 'Reports',        path: '/reports',        icon: BarChart3       },
   ],
@@ -46,6 +48,7 @@ const navByRole: Record<string, NavItem[]> = {
   ],
   ACCOUNT_REP: [
     { label: 'Portfolio',  path: '/rep/portfolio', icon: Briefcase   },
+    { label: 'Plans',      path: '/plans',         icon: ClipboardList },
     { label: 'Approvals',  path: '/rep/approvals', icon: CheckSquare },
     { label: 'Reports',    path: '/reports',       icon: BarChart3   },
   ],
