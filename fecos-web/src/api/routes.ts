@@ -1,7 +1,7 @@
 import api from '@/lib/axios'
 import type { ApiResponse, PageResponse } from '@/types'
 
-export type RouteStatus = 'PLANNED' | 'DISPATCHED' | 'IN_PROGRESS' | 'COMPLETED'
+export type RouteStatus = 'PLANNED' | 'DISPATCHED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
 export type RouteStopStatus = 'PENDING' | 'COMPLETED' | 'SKIPPED'
 
 export interface RouteStopItemRecord {

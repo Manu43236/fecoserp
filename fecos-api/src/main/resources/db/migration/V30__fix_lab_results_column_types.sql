@@ -1,0 +1,23 @@
+-- Convert DECIMAL columns to DOUBLE to match Java Double / Hibernate float(53)
+ALTER TABLE lab_results
+    MODIFY calcium               DOUBLE,
+    MODIFY magnesium             DOUBLE,
+    MODIFY sodium                DOUBLE,
+    MODIFY chlorides             DOUBLE,
+    MODIFY sulfates              DOUBLE,
+    MODIFY bicarbonates          DOUBLE,
+    MODIFY iron                  DOUBLE,
+    MODIFY ph                    DOUBLE,
+    MODIFY tds                   DOUBLE,
+    MODIFY specific_gravity      DOUBLE,
+    MODIFY dissolved_oxygen      DOUBLE,
+    MODIFY scaling_index         DOUBLE,
+    MODIFY corrosion_potential   DOUBLE,
+    MODIFY srb_count             DOUBLE,
+    MODIFY apb_count             DOUBLE,
+    MODIFY treatment_effectiveness DOUBLE,
+    MODIFY pour_point            DOUBLE,
+    MODIFY paraffin_inhibitor_effectiveness DOUBLE,
+    MODIFY corrosion_rate        DOUBLE,
+    MODIFY corrosion_inhibitor_performance  DOUBLE,
+    MODIFY oil_content           DOUBLE;

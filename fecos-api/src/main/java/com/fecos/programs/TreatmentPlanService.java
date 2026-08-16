@@ -154,6 +154,7 @@ public class TreatmentPlanService {
                     .map(u -> u.getFullName()).orElse(null);
         }
 
+        long lineCount = lineRepository.countByProgramIdAndIsDeletedFalse(p.getId());
         List<TreatmentPlanLineResponse> lines = List.of();
         if (includeLines) {
             lines = lineRepository.findAllByProgramIdAndIsDeletedFalseOrderByCreatedAtAsc(p.getId())
@@ -166,7 +167,7 @@ public class TreatmentPlanService {
                     .toList();
         }
 
-        return TreatmentPlanResponse.from(p, wellName, leaseName, clientName, accountRepName, lines);
+        return TreatmentPlanResponse.from(p, wellName, leaseName, clientName, accountRepName, lines, lineCount);
     }
 
     private TreatmentPlanEntity findForTenant(UUID id) {

@@ -18,6 +18,8 @@ import ProductsPage from '@/pages/tenant/ProductsPage'
 import InventoryPage from '@/pages/tenant/InventoryPage'
 import PlansPage from '@/pages/tenant/PlansPage'
 import RoutesPage from '@/pages/tenant/RoutesPage'
+import LabPage from '@/pages/tenant/LabPage'
+import ApprovalsPage from '@/pages/tenant/ApprovalsPage'
 
 const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -61,13 +63,12 @@ export default function App() {
               <Route path="/reports"          element={<PlaceholderPage title="Reports" />} />
 
               {/* Lab */}
-              <Route path="/lab/queue"        element={<PlaceholderPage title="Sample Queue" />} />
-              <Route path="/lab/results"      element={<PlaceholderPage title="Enter Results" />} />
+              <Route path="/lab/queue"        element={<LabPage />} />
+              <Route path="/lab/results"      element={<LabPage />} />
               <Route path="/lab/raw-qc"       element={<PlaceholderPage title="Raw Material QC" />} />
               <Route path="/lab/prod-qc"      element={<PlaceholderPage title="Finished Product QC" />} />
 
               {/* Admin/Dispatcher */}
-              <Route path="/dispatch"         element={<PlaceholderPage title="Dispatch Board" />} />
               <Route path="/routes"           element={<RoutesPage />} />
               <Route path="/schedule"         element={<PlaceholderPage title="Schedule" />} />
               <Route path="/inventory"        element={<InventoryPage />} />
@@ -78,7 +79,7 @@ export default function App() {
 
               {/* Account Rep */}
               <Route path="/rep/portfolio"    element={<PlaceholderPage title="Portfolio" />} />
-              <Route path="/rep/approvals"    element={<PlaceholderPage title="Approvals" />} />
+              <Route path="/rep/approvals"    element={<ApprovalsPage />} />
             </Route>
           </Route>
 

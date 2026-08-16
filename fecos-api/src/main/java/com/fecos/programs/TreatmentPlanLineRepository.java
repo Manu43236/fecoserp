@@ -11,4 +11,6 @@ public interface TreatmentPlanLineRepository extends JpaRepository<TreatmentPlan
     List<TreatmentPlanLineEntity> findAllByProgramIdAndIsDeletedFalseOrderByCreatedAtAsc(UUID programId);
 
     Optional<TreatmentPlanLineEntity> findByIdAndProgramIdAndIsDeletedFalse(UUID id, UUID programId);
+
+    long countByProgramIdAndIsDeletedFalse(UUID programId);
 }

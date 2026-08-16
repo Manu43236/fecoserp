@@ -12,6 +12,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -27,9 +28,9 @@ public class RouteService {
     private final WellRepository wellRepository;
     private final ProductRepository productRepository;
 
-    public Page<RouteResponse> list(RouteStatus status, UUID driverId, int page, int size) {
+    public Page<RouteResponse> list(RouteStatus status, UUID driverId, LocalDate routeDate, int page, int size) {
         UUID tenantId = currentTenantId();
-        return routeRepository.search(tenantId, status, driverId, PageRequest.of(page, size))
+        return routeRepository.search(tenantId, status, driverId, routeDate, PageRequest.of(page, size))
                 .map(r -> toResponse(r, false));
     }
 

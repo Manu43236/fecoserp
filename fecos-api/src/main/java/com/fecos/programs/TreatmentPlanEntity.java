@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -35,4 +36,7 @@ public class TreatmentPlanEntity extends TenantAwareEntity {
 
     @Column(name = "end_date")
     private LocalDate endDate;
+
+    @Column(name = "superseded_at")
+    private Instant supersededAt;
 }

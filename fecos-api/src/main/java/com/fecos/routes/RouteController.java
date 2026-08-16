@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @RestController
@@ -22,10 +23,11 @@ public class RouteController {
     public ResponseEntity<ApiResponse<Page<RouteResponse>>> list(
             @RequestParam(required = false) RouteStatus status,
             @RequestParam(required = false) UUID driverId,
+            @RequestParam(required = false) LocalDate routeDate,
             @RequestParam(defaultValue = "0")  int page,
             @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(ApiResponse.ok("Routes retrieved",
-                routeService.list(status, driverId, page, size)));
+                routeService.list(status, driverId, routeDate, page, size)));
     }
 
     @GetMapping("/{id}")

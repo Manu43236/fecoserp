@@ -18,6 +18,7 @@ public record TreatmentPlanResponse(
         LocalDate startDate,
         LocalDate endDate,
         List<TreatmentPlanLineResponse> lines,
+        long lineCount,
         Instant createdAt
 ) {
     public static TreatmentPlanResponse from(
@@ -26,7 +27,8 @@ public record TreatmentPlanResponse(
             String leaseName,
             String clientName,
             String accountRepName,
-            List<TreatmentPlanLineResponse> lines) {
+            List<TreatmentPlanLineResponse> lines,
+            long lineCount) {
         return new TreatmentPlanResponse(
                 p.getId(),
                 p.getWellId(),
@@ -40,6 +42,7 @@ public record TreatmentPlanResponse(
                 p.getStartDate(),
                 p.getEndDate(),
                 lines,
+                lineCount,
                 p.getCreatedAt()
         );
     }

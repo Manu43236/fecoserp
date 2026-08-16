@@ -1,7 +1,7 @@
 import api from '@/lib/axios'
 import type { ApiResponse, PageResponse } from '@/types'
 
-export type PlanStatus = 'DRAFT' | 'ACTIVE' | 'INACTIVE'
+export type PlanStatus = 'DRAFT' | 'ACTIVE' | 'INACTIVE' | 'SUPERSEDED'
 export type PlanMethod = 'CONTINUOUS' | 'BATCH'
 export type PlanSchedule = 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY'
 
@@ -29,6 +29,7 @@ export interface PlanRecord {
   startDate: string | null
   endDate: string | null
   lines: PlanLineRecord[]
+  lineCount: number
   createdAt: string
 }
 

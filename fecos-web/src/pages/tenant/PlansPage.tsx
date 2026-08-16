@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -22,12 +23,13 @@ interface UserRecord { id: string; fullName: string; role: string }
 
 // ── Status helpers ─────────────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: PlanStatus }) {
-  const map = {
-    ACTIVE:   { bg: 'bg-emerald-50', text: 'text-emerald-700', ring: 'ring-emerald-200', dot: 'bg-emerald-500', label: 'Active' },
-    DRAFT:    { bg: 'bg-gray-50',    text: 'text-gray-500',    ring: 'ring-gray-200',    dot: 'bg-gray-400',    label: 'Draft' },
-    INACTIVE: { bg: 'bg-amber-50',   text: 'text-amber-700',   ring: 'ring-amber-200',   dot: 'bg-amber-500',   label: 'Inactive' },
+  const map: Record<PlanStatus, { bg: string; text: string; ring: string; dot: string; label: string }> = {
+    ACTIVE:     { bg: 'bg-emerald-50', text: 'text-emerald-700', ring: 'ring-emerald-200', dot: 'bg-emerald-500', label: 'Active' },
+    DRAFT:      { bg: 'bg-gray-50',    text: 'text-gray-500',    ring: 'ring-gray-200',    dot: 'bg-gray-400',    label: 'Draft' },
+    INACTIVE:   { bg: 'bg-amber-50',   text: 'text-amber-700',   ring: 'ring-amber-200',   dot: 'bg-amber-500',   label: 'Inactive' },
+    SUPERSEDED: { bg: 'bg-purple-50',  text: 'text-purple-600',  ring: 'ring-purple-200',  dot: 'bg-purple-400',  label: 'Superseded' },
   }
-  const s = map[status]
+  const s = map[status] ?? map.INACTIVE
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ring-1 ${s.bg} ${s.text} ${s.ring}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
@@ -86,6 +88,7 @@ type LineFormData = z.infer<typeof lineSchema>
 // ── Plan form panel (440px right slide) ───────────────────────────────────────
 function PlanFormPanel({
   open, onClose, plan, wellsData, leasesData, repOptions, canEdit,
+  prefillWellId, prefillLeaseId, fromLabSampleNumber,
 }: {
   open: boolean
   onClose: () => void
@@ -94,13 +97,16 @@ function PlanFormPanel({
   leasesData: LeaseRecord[]
   repOptions: DropdownOption[]
   canEdit: boolean
+  prefillWellId?: string
+  prefillLeaseId?: string
+  fromLabSampleNumber?: string
 }) {
   const qc = useQueryClient()
   const isEdit = !!plan
 
   const initialLeaseId = plan
     ? (wellsData.find(w => w.id === plan.wellId)?.leaseId ?? null)
-    : null
+    : (prefillLeaseId ?? null)
   const [selectedLeaseId, setSelectedLeaseId] = useState<string | null>(initialLeaseId)
 
   const leaseOptions: DropdownOption[] = leasesData.map(l => ({ value: l.id, label: l.leaseName }))
@@ -111,7 +117,7 @@ function PlanFormPanel({
   const { handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<PlanFormData>({
     resolver: zodResolver(planSchema),
     defaultValues: {
-      wellId:       plan?.wellId       ?? '',
+      wellId:       plan?.wellId       ?? prefillWellId ?? '',
       accountRepId: plan?.accountRepId ?? '',
       status:       plan?.status       ?? 'DRAFT',
       notes:        plan?.notes        ?? '',
@@ -157,7 +163,12 @@ function PlanFormPanel({
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-primary)' }}>
               <FlaskConical size={14} className="text-white" />
             </div>
-            <h2 className="text-sm font-semibold text-gray-900">{isEdit ? 'Edit Treatment Plan' : 'New Treatment Plan'}</h2>
+            <div>
+              <h2 className="text-sm font-semibold text-gray-900">{isEdit ? 'Edit Treatment Plan' : 'New Treatment Plan'}</h2>
+              {fromLabSampleNumber && (
+                <p className="text-xs text-amber-600 mt-0.5">Following lab result {fromLabSampleNumber}</p>
+              )}
+            </div>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-md hover:bg-gray-100">
             <X size={16} />
@@ -605,9 +616,12 @@ function PlanDrawer({
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function PlansPage() {
   const { user } = useAuthStore()
+  const location = useLocation()
   const role = user?.role
   const canEdit   = role === 'ADMIN' || role === 'MANAGER' || role === 'ACCOUNT_REP'
   const canDelete = role === 'ADMIN' || role === 'MANAGER'
+
+  const triggerState = location.state as { wellId?: string; triggeredByLabSampleId?: string; sampleNumber?: string } | null
 
   const [search, setSearch]             = useState('')
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
@@ -640,6 +654,18 @@ export default function PlansPage() {
   })
 
   const repOptions: DropdownOption[] = (repsData ?? []).map(u => ({ value: u.id, label: u.fullName }))
+
+  const triggerWell = triggerState?.wellId
+    ? (wellsData ?? []).find(w => w.id === triggerState.wellId)
+    : undefined
+
+  useEffect(() => {
+    if (triggerWell && !formOpen) {
+      setFormOpen(true)
+      // clear state so back-navigation doesn't re-open the form
+      window.history.replaceState({}, '')
+    }
+  }, [triggerWell?.id])
 
   const plans       = data?.data?.data?.content       ?? []
   const total       = data?.data?.data?.totalElements ?? 0
@@ -731,7 +757,7 @@ export default function PlansPage() {
                 <td className="px-4 py-3 text-gray-600">{p.clientName ?? '—'}</td>
                 <td className="px-4 py-3 text-gray-600">{p.accountRepName ?? '—'}</td>
                 <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
-                <td className="px-4 py-3 text-gray-600">{p.lines?.length ?? 0}</td>
+                <td className="px-4 py-3 text-gray-600">{p.lineCount}</td>
                 <td className="px-4 py-3 text-right"><ChevronRight size={14} className="text-gray-400 ml-auto" /></td>
               </tr>
             ))}
@@ -760,6 +786,9 @@ export default function PlansPage() {
           leasesData={leasesData ?? []}
           repOptions={repOptions}
           canEdit={canEdit}
+          prefillWellId={!editing ? triggerWell?.id : undefined}
+          prefillLeaseId={!editing ? triggerWell?.leaseId : undefined}
+          fromLabSampleNumber={!editing ? triggerState?.sampleNumber : undefined}
         />
       )}
 
