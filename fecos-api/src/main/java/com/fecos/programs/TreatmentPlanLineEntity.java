@@ -48,4 +48,13 @@ public class TreatmentPlanLineEntity extends TenantAwareEntity {
 
     @Column(name = "tank_id")
     private UUID tankId;
+
+    @Column(name = "third_party_name", length = 255)
+    private String thirdPartyName;
+
+    @Column(name = "third_party_capacity_gallons", precision = 10, scale = 2)
+    private BigDecimal thirdPartyCapacityGallons;
+
+    @Column(name = "third_party_serial", length = 100)
+    private String thirdPartySerial;
 }

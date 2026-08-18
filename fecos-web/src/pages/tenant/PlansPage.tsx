@@ -88,10 +88,13 @@ const lineSchema = z.object({
   method:             z.enum(['CONTINUOUS', 'BATCH']),
   schedule:           z.enum(['DAILY', 'WEEKLY', 'BIWEEKLY', 'MONTHLY']).optional(),
   notes:              z.string().optional().or(z.literal('')),
-  tankOwner:          z.enum(['ENDURA', 'THIRD_PARTY']).optional(),
-  tankId:             z.string().optional().or(z.literal('')),
-  tankLevelPct:       z.string().optional().or(z.literal('')),
-  tankLevelCheckedAt: z.string().optional().or(z.literal('')),
+  tankOwner:                z.enum(['OWN', 'THIRD_PARTY']).optional(),
+  tankId:                   z.string().optional().or(z.literal('')),
+  tankLevelPct:             z.string().optional().or(z.literal('')),
+  tankLevelCheckedAt:       z.string().optional().or(z.literal('')),
+  thirdPartyName:           z.string().optional().or(z.literal('')),
+  thirdPartyCapacityGallons: z.string().optional().or(z.literal('')),
+  thirdPartySerial:         z.string().optional().or(z.literal('')),
 })
 type LineFormData = z.infer<typeof lineSchema>
 
@@ -193,7 +196,7 @@ function PlanFormPanel({
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/30" />
       <div className="relative bg-white w-[440px] h-full shadow-2xl flex flex-col">
 
         <div className="flex items-center justify-between px-5 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
@@ -363,6 +366,7 @@ function PlanDrawer({
 }) {
   const qc = useQueryClient()
   const [showLineForm, setShowLineForm] = useState(false)
+  const [editingLine, setEditingLine] = useState<PlanLineRecord | null>(null)
   const [refillLineId, setRefillLineId] = useState<string | null>(null)
   const [refillAmount, setRefillAmount] = useState('')
   const [refillAt, setRefillAt] = useState(new Date().toISOString().slice(0, 16))
@@ -392,14 +396,14 @@ function PlanDrawer({
     enabled: !!historyTankId,
   })
   const tankOptions: DropdownOption[] = tanks
-    .filter(t => t.status === 'AVAILABLE')
+    .filter(t => t.status === 'AVAILABLE' || t.id === editingLine?.tankId)
     .map(t => ({ value: t.id, label: t.serialNumber ?? `Tank (${t.capacityGallons} gal)` }))
 
   const products = productsData ?? []
 
   const { handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<LineFormData>({
     resolver: zodResolver(lineSchema),
-    defaultValues: { productId: '', recRate: '', method: 'CONTINUOUS', schedule: undefined, notes: '', tankOwner: undefined, tankId: '', tankLevelPct: '', tankLevelCheckedAt: '' },
+    defaultValues: { productId: '', recRate: '', method: 'CONTINUOUS', schedule: undefined, notes: '', tankOwner: undefined, tankId: '', tankLevelPct: '', tankLevelCheckedAt: '', thirdPartyName: '', thirdPartyCapacityGallons: '', thirdPartySerial: '' },
   })
 
   const tankEventMutation = useMutation({
@@ -452,6 +456,19 @@ function PlanDrawer({
     onError: () => toast.error('Failed to add product'),
   })
 
+  const updateLineMutation = useMutation({
+    mutationFn: ({ lineId, data }: { lineId: string; data: PlanLinePayload }) =>
+      plansApi.updateLine(plan.id, lineId, data),
+    onSuccess: () => {
+      toast.success('Product updated')
+      qc.invalidateQueries({ queryKey: ['plan', plan.id] })
+      qc.invalidateQueries({ queryKey: ['plans'] })
+      qc.invalidateQueries({ queryKey: ['tank-detail'] })
+      reset(); setShowLineForm(false); setEditingLine(null)
+    },
+    onError: () => toast.error('Failed to update product'),
+  })
+
   const removeLineMutation = useMutation({
     mutationFn: ({ lineId }: { lineId: string }) => plansApi.removeLine(plan.id, lineId),
     onSuccess: () => {
@@ -481,17 +498,49 @@ function PlanDrawer({
     onError: () => toast.error('Failed to update treatment status'),
   })
 
+  function buildLinePayload(data: LineFormData): PlanLinePayload {
+    const isThirdParty = data.tankOwner === 'THIRD_PARTY'
+    return {
+      productId:                data.productId,
+      recRate:                  parseFloat(data.recRate),
+      method:                   data.method,
+      schedule:                 data.method === 'BATCH' ? data.schedule : null,
+      notes:                    data.notes || undefined,
+      tankOwner:                data.tankOwner || null,
+      tankId:                   data.tankOwner === 'OWN' && data.tankId ? data.tankId : null,
+      tankLevelPct:             isThirdParty && data.tankLevelPct ? parseFloat(data.tankLevelPct) : null,
+      tankLevelCheckedAt:       isThirdParty && data.tankLevelCheckedAt ? new Date(data.tankLevelCheckedAt).toISOString() : null,
+      thirdPartyName:           isThirdParty ? (data.thirdPartyName || null) : null,
+      thirdPartyCapacityGallons: isThirdParty && data.thirdPartyCapacityGallons ? parseFloat(data.thirdPartyCapacityGallons) : null,
+      thirdPartySerial:         isThirdParty ? (data.thirdPartySerial || null) : null,
+    }
+  }
+
   function onAddLine(data: LineFormData) {
-    addLineMutation.mutate({
-      productId:          data.productId,
-      recRate:            parseFloat(data.recRate),
-      method:             data.method,
-      schedule:           data.method === 'BATCH' ? data.schedule : null,
-      notes:              data.notes || undefined,
-      tankOwner:          data.tankOwner || null,
-      tankId:             data.tankOwner === 'ENDURA' && data.tankId ? data.tankId : null,
-      tankLevelPct:       data.tankOwner === 'THIRD_PARTY' && data.tankLevelPct ? parseFloat(data.tankLevelPct) : null,
-      tankLevelCheckedAt: data.tankOwner === 'THIRD_PARTY' && data.tankLevelCheckedAt ? new Date(data.tankLevelCheckedAt).toISOString() : null,
+    addLineMutation.mutate(buildLinePayload(data))
+  }
+
+  function onUpdateLine(data: LineFormData) {
+    if (!editingLine) return
+    updateLineMutation.mutate({ lineId: editingLine.id, data: buildLinePayload(data) })
+  }
+
+  function openEditLine(line: PlanLineRecord) {
+    setEditingLine(line)
+    setShowLineForm(true)
+    reset({
+      productId:                 line.productId,
+      recRate:                   line.recRate.toString(),
+      method:                    line.method,
+      schedule:                  line.schedule ?? undefined,
+      notes:                     line.notes ?? '',
+      tankOwner:                 line.tankOwner ?? undefined,
+      tankId:                    line.tankId ?? '',
+      tankLevelPct:              line.tankLevelPct?.toString() ?? '',
+      tankLevelCheckedAt:        line.tankLevelCheckedAt ? new Date(line.tankLevelCheckedAt).toISOString().slice(0, 16) : '',
+      thirdPartyName:            line.thirdPartyName ?? '',
+      thirdPartyCapacityGallons: line.thirdPartyCapacityGallons?.toString() ?? '',
+      thirdPartySerial:          line.thirdPartySerial ?? '',
     })
   }
 
@@ -500,11 +549,11 @@ function PlanDrawer({
   const lines = fullData?.lines ?? []
   const productOptions: DropdownOption[] = products.map(pr => ({ value: pr.id, label: pr.name }))
   const usedProductIds = new Set(lines.map(l => l.productId))
-  const availableProductOptions = productOptions.filter(opt => !usedProductIds.has(opt.value))
+  const availableProductOptions = productOptions.filter(opt => !usedProductIds.has(opt.value) || opt.value === editingLine?.productId)
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/30" />
       <div className="relative bg-white w-[580px] h-full shadow-2xl flex flex-col">
 
         {/* Header */}
@@ -669,10 +718,10 @@ function PlanDrawer({
                           {line.recRate} {line.method === 'CONTINUOUS' ? 'gal/day' : 'gal/treatment'} · {METHOD_LABELS[line.method]}{line.schedule ? ` — ${SCHEDULE_LABELS[line.schedule]}` : ''}
                           {line.notes ? ` · ${line.notes}` : ''}
                         </p>
-                        {line.tankOwner === 'ENDURA' && tank && (
+                        {line.tankOwner === 'OWN' && tank && (
                           <div className="mt-1">
                             <div className="flex items-center gap-1.5">
-                              <p className="text-xs text-gray-400">{tank.serialNumber ?? 'Endura tank'} · {tank.capacityGallons.toLocaleString()} gal</p>
+                              <p className="text-xs text-gray-400">{tank.serialNumber ?? 'Our tank'} · {tank.capacityGallons.toLocaleString()} gal</p>
                               <TankStatusBadge status={tank.status} />
                             </div>
                             {tank.status === 'INSTALLED' && (
@@ -688,12 +737,29 @@ function PlanDrawer({
                             )}
                           </div>
                         )}
-                        {line.tankOwner === 'THIRD_PARTY' && levelPct != null && (
-                          <p className="text-xs text-amber-600 mt-0.5">3rd party tank · {levelPct}% level</p>
+                        {line.tankOwner === 'THIRD_PARTY' && (
+                          <div className="mt-0.5">
+                            <p className="text-xs text-gray-400">
+                              {line.thirdPartyName ?? '3rd party tank'}
+                              {line.thirdPartyCapacityGallons ? ` · ${line.thirdPartyCapacityGallons.toLocaleString()} gal` : ''}
+                              {line.thirdPartySerial ? ` · S/N ${line.thirdPartySerial}` : ''}
+                            </p>
+                            {line.calculatedLevelPct != null && (
+                              <>
+                                <LevelBar pct={line.calculatedLevelPct} />
+                                {line.calculatedLevelPct <= 20 && (
+                                  <p className="text-xs text-orange-600 flex items-center gap-1 mt-0.5">
+                                    <AlertTriangle size={10} />
+                                    {line.calculatedLevelPct <= 10 ? 'Critical — refill urgently' : 'Refill needed soon'}
+                                  </p>
+                                )}
+                              </>
+                            )}
+                          </div>
                         )}
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        {canEdit && !isReadOnly && line.tankOwner === 'ENDURA' && tank && (
+                        {canEdit && !isReadOnly && line.tankOwner === 'OWN' && tank && (
                           <>
                             {tank.status === 'ASSIGNED' && (
                               <button
@@ -723,7 +789,7 @@ function PlanDrawer({
                             )}
                           </>
                         )}
-                        {line.tankOwner === 'ENDURA' && tank && (
+                        {line.tankOwner === 'OWN' && tank && (
                           <button
                             onClick={() => {
                               if (historyLineId === line.id) {
@@ -736,7 +802,14 @@ function PlanDrawer({
                             History
                           </button>
                         )}
-                        {canEdit && (
+                        {canEdit && !isReadOnly && (
+                          <button
+                            onClick={() => openEditLine(line)}
+                            className="w-6 h-6 rounded-md flex items-center justify-center text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors opacity-0 group-hover:opacity-100">
+                            <Pencil size={11} />
+                          </button>
+                        )}
+                        {canEdit && !isReadOnly && (
                           <button
                             onClick={() => removeLineMutation.mutate({ lineId: line.id })}
                             disabled={removeLineMutation.isPending}
@@ -823,13 +896,13 @@ function PlanDrawer({
           {canEdit && !isReadOnly && (
             <div className="mt-4">
               {!showLineForm ? (
-                <button onClick={() => setShowLineForm(true)}
+                <button onClick={() => { setEditingLine(null); setShowLineForm(true) }}
                   className="w-full h-9 flex items-center justify-center gap-2 text-xs font-medium rounded-lg border border-dashed border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors">
                   <Plus size={13} /> Add Product
                 </button>
               ) : (
                 <div className="border border-gray-200 rounded-xl p-4 space-y-3 bg-gray-50">
-                  <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Add Product</p>
+                  <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{editingLine ? 'Edit Product' : 'Add Product'}</p>
 
                   <div className="space-y-1">
                     <SearchableDropdown
@@ -884,11 +957,11 @@ function PlanDrawer({
                     className="w-full h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 bg-white"
                   />
 
-                  {/* Tank Owner */}
-                  <div className="space-y-2 pt-1" style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+                  {/* Tank Owner — only for new lines */}
+                  {!editingLine && <div className="space-y-2 pt-1" style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}>
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Tank</p>
                     <div className="flex gap-2">
-                      {(['ENDURA', 'THIRD_PARTY'] as const).map(owner => (
+                      {(['OWN', 'THIRD_PARTY'] as const).map(owner => (
                         <button
                           key={owner}
                           type="button"
@@ -899,11 +972,11 @@ function PlanDrawer({
                               : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
                           }`}
                           style={watch('tankOwner') === owner ? { backgroundColor: 'var(--color-primary)' } : {}}>
-                          {owner === 'ENDURA' ? 'Endura Tank' : '3rd Party Tank'}
+                          {owner === 'OWN' ? 'Our Tank' : '3rd Party Tank'}
                         </button>
                       ))}
                     </div>
-                    {watch('tankOwner') === 'ENDURA' && (
+                    {watch('tankOwner') === 'OWN' && (
                       <SearchableDropdown
                         value={watch('tankId') || null}
                         onChange={v => setValue('tankId', v ?? '')}
@@ -913,37 +986,65 @@ function PlanDrawer({
                       />
                     )}
                     {watch('tankOwner') === 'THIRD_PARTY' && (
-                      <div className="flex gap-2">
+                      <div className="space-y-2">
                         <input
-                          type="number"
-                          min="0" max="100" step="0.01"
-                          value={watch('tankLevelPct') ?? ''}
-                          onChange={e => setValue('tankLevelPct', e.target.value)}
-                          placeholder="Level %"
-                          className="flex-1 h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 bg-white"
+                          type="text"
+                          value={watch('thirdPartyName') ?? ''}
+                          onChange={e => setValue('thirdPartyName', e.target.value)}
+                          placeholder="Tank owner / company name"
+                          className="w-full h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 bg-white"
                         />
-                        <input
-                          type="datetime-local"
-                          value={watch('tankLevelCheckedAt') ?? ''}
-                          onChange={e => setValue('tankLevelCheckedAt', e.target.value)}
-                          className="flex-1 h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 bg-white"
-                        />
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            min="0" step="1"
+                            value={watch('thirdPartyCapacityGallons') ?? ''}
+                            onChange={e => setValue('thirdPartyCapacityGallons', e.target.value)}
+                            placeholder="Capacity (gal)"
+                            className="flex-1 h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 bg-white"
+                          />
+                          <input
+                            type="text"
+                            value={watch('thirdPartySerial') ?? ''}
+                            onChange={e => setValue('thirdPartySerial', e.target.value)}
+                            placeholder="Serial # (optional)"
+                            className="flex-1 h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 bg-white"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            min="0" max="100" step="0.01"
+                            value={watch('tankLevelPct') ?? ''}
+                            onChange={e => setValue('tankLevelPct', e.target.value)}
+                            placeholder="Current level %"
+                            className="flex-1 h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 bg-white"
+                          />
+                          <input
+                            type="datetime-local"
+                            value={watch('tankLevelCheckedAt') ?? ''}
+                            onChange={e => setValue('tankLevelCheckedAt', e.target.value)}
+                            title="When was this level checked?"
+                            className="flex-1 h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 bg-white"
+                          />
+                        </div>
+                        <p className="text-[10px] text-gray-400">Level % + check time → auto-depletes at rec rate</p>
                       </div>
                     )}
-                  </div>
+                  </div>}
 
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => { reset(); setShowLineForm(false) }}
+                    <button type="button" onClick={() => { reset(); setShowLineForm(false); setEditingLine(null) }}
                       className="flex-1 h-8 text-xs font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 transition-colors">
                       Cancel
                     </button>
                     <button
                       type="button"
-                      onClick={handleSubmit(onAddLine)}
-                      disabled={addLineMutation.isPending}
+                      onClick={editingLine ? handleSubmit(onUpdateLine) : handleSubmit(onAddLine)}
+                      disabled={addLineMutation.isPending || updateLineMutation.isPending}
                       className="flex-1 h-8 text-xs font-semibold text-white rounded-lg transition disabled:opacity-60"
                       style={{ backgroundColor: 'var(--color-primary)' }}>
-                      {addLineMutation.isPending ? 'Adding…' : 'Add'}
+                      {(addLineMutation.isPending || updateLineMutation.isPending) ? 'Saving…' : editingLine ? 'Save Changes' : 'Add'}
                     </button>
                   </div>
                 </div>

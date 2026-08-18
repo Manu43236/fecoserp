@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import toast from 'react-hot-toast'
 import { Plus, X, Cylinder, ChevronRight, Pencil, Trash2 } from 'lucide-react'
 import { tanksApi, type TankRecord, type TankPayload, type TankStatus } from '@/api/tanks'
+import { SearchableDropdown, type DropdownOption } from '@/components/ui/SearchableDropdown'
 import { useAuthStore } from '@/store/authStore'
 
 const PAGE_SIZE = 20
@@ -17,6 +18,13 @@ const STATUS_LABEL: Record<TankStatus, string> = {
   CLEANING:  'Cleaning',
 }
 
+
+const STATUS_FILTER_OPTIONS: DropdownOption[] = [
+  { value: 'AVAILABLE', label: 'Available' },
+  { value: 'ASSIGNED',  label: 'Assigned'  },
+  { value: 'INSTALLED', label: 'Installed'  },
+  { value: 'CLEANING',  label: 'Cleaning'   },
+]
 
 function StatusBadge({ status }: { status: TankStatus }) {
   const map: Record<TankStatus, { bg: string; text: string; ring: string; dot: string }> = {
@@ -77,7 +85,7 @@ function TankFormPanel({ open, onClose, tank }: {
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/30" />
       <div className="relative bg-white w-[440px] h-full shadow-2xl flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
           <div className="flex items-center gap-3">
@@ -153,7 +161,7 @@ function TankDrawer({ tank, onClose, onEdit, canDelete }: {
       qc.invalidateQueries({ queryKey: ['tanks'] })
       onClose()
     },
-    onError: () => toast.error('Failed to delete tank'),
+    onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Failed to delete tank'),
   })
 
   const markAvailableMutation = useMutation({
@@ -170,7 +178,7 @@ function TankDrawer({ tank, onClose, onEdit, canDelete }: {
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/30" />
       <div className="relative bg-white w-[440px] h-full shadow-2xl flex flex-col">
 
         <div className="px-5 pt-4 pb-3 border-b border-gray-100 shrink-0 space-y-3">
@@ -246,14 +254,15 @@ export default function TanksPage() {
   const canEdit   = role === 'ADMIN' || role === 'MANAGER' || role === 'ACCOUNT_REP'
   const canDelete = role === 'ADMIN' || role === 'MANAGER'
 
-  const [page, setPage]         = useState(0)
-  const [formOpen, setFormOpen] = useState(false)
-  const [editing, setEditing]   = useState<TankRecord | undefined>()
-  const [selected, setSelected] = useState<TankRecord | undefined>()
+  const [page, setPage]               = useState(0)
+  const [statusFilter, setStatusFilter] = useState<string>('')
+  const [formOpen, setFormOpen]       = useState(false)
+  const [editing, setEditing]         = useState<TankRecord | undefined>()
+  const [selected, setSelected]       = useState<TankRecord | undefined>()
 
   const { data, isLoading } = useQuery({
-    queryKey: ['tanks', page],
-    queryFn: () => tanksApi.list({ page, size: PAGE_SIZE }),
+    queryKey: ['tanks', page, statusFilter],
+    queryFn: () => tanksApi.list({ page, size: PAGE_SIZE, ...(statusFilter ? { status: statusFilter } : {}) }),
   })
 
   const tanks      = data?.data?.data?.content       ?? []
@@ -270,20 +279,31 @@ export default function TanksPage() {
           <h1 className="text-xl font-bold text-gray-900">Tanks</h1>
           <p className="text-sm text-gray-500 mt-0.5">{total} tank{total !== 1 ? 's' : ''} in registry</p>
         </div>
-        {canEdit && (
-          <button onClick={openCreate}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg transition"
-            style={{ backgroundColor: 'var(--color-primary)' }}>
-            <Plus size={15} /> Register Tank
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          <div className="w-40">
+            <SearchableDropdown
+              options={STATUS_FILTER_OPTIONS}
+              value={statusFilter}
+              onChange={v => { setStatusFilter(v); setPage(0) }}
+              placeholder="All Statuses"
+              showClear
+            />
+          </div>
+          {canEdit && (
+            <button onClick={openCreate}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg transition"
+              style={{ backgroundColor: 'var(--color-primary)' }}>
+              <Plus size={15} /> Register Tank
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr style={{ backgroundColor: 'var(--color-primary)' }}>
-              {['Serial No', 'Capacity', 'Status', ''].map(h => (
+              {['Serial No', 'Capacity', 'Well', 'Level', 'Status', ''].map(h => (
                 <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-white/90 uppercase tracking-wide">{h}</th>
               ))}
             </tr>
@@ -291,13 +311,13 @@ export default function TanksPage() {
           <tbody className="divide-y divide-gray-100">
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i}>{Array.from({ length: 4 }).map((_, j) => (
+                <tr key={i}>{Array.from({ length: 6 }).map((_, j) => (
                   <td key={j} className="px-4 py-3"><div className="h-4 bg-gray-100 rounded animate-pulse w-3/4" /></td>
                 ))}</tr>
               ))
             ) : tanks.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-4 py-14 text-center">
+                <td colSpan={6} className="px-4 py-14 text-center">
                   <Cylinder size={32} className="mx-auto text-gray-300 mb-3" />
                   <p className="text-sm text-gray-500 font-medium">No tanks registered</p>
                   <p className="text-xs text-gray-400 mt-1">Register Endura-owned tanks to assign them to treatment plans</p>
@@ -309,6 +329,14 @@ export default function TanksPage() {
                 className="hover:bg-gray-50 cursor-pointer transition-colors">
                 <td className="px-4 py-3 font-mono text-xs font-semibold text-gray-700">{t.serialNumber ?? '—'}</td>
                 <td className="px-4 py-3 text-gray-600">{t.capacityGallons.toLocaleString()} gal</td>
+                <td className="px-4 py-3 text-gray-600 text-xs">{t.wellName ?? '—'}</td>
+                <td className="px-4 py-3 text-xs">
+                  {t.status === 'INSTALLED'
+                    ? <span className={`font-semibold ${Math.min(t.calculatedLevelPct, 100) <= 10 ? 'text-red-600' : Math.min(t.calculatedLevelPct, 100) <= 20 ? 'text-orange-500' : 'text-gray-700'}`}>
+                        {Math.min(Math.round(t.calculatedLevelPct), 100)}%
+                      </span>
+                    : <span className="text-gray-300">—</span>}
+                </td>
                 <td className="px-4 py-3"><StatusBadge status={t.status} /></td>
                 <td className="px-4 py-3 text-right"><ChevronRight size={14} className="text-gray-400 ml-auto" /></td>
               </tr>

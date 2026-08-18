@@ -104,7 +104,7 @@ function LeaseFormPanel({
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/30" />
       <div className="relative bg-white w-[440px] h-full shadow-2xl flex flex-col">
 
         {/* Header */}
@@ -254,7 +254,7 @@ function LeaseDrawer({
 }) {
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/30" />
       <div className="relative bg-white w-96 h-full shadow-2xl flex flex-col">
 
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">

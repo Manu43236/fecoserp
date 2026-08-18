@@ -35,4 +35,10 @@ public class TreatmentPlanLineRequest {
     private Instant tankLevelCheckedAt;
 
     private UUID tankId;
+
+    private String thirdPartyName;
+
+    private BigDecimal thirdPartyCapacityGallons;
+
+    private String thirdPartySerial;
 }

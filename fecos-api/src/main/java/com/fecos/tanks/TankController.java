@@ -22,8 +22,9 @@ public class TankController {
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP','LAB_TECH')")
     public ResponseEntity<ApiResponse<Page<TankResponse>>> list(
             @RequestParam(defaultValue = "0")  int page,
-            @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(ApiResponse.ok("Tanks retrieved", tankService.list(page, size)));
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) TankStatus status) {
+        return ResponseEntity.ok(ApiResponse.ok("Tanks retrieved", tankService.list(status, page, size)));
     }
 
     @GetMapping("/{id}")

@@ -131,7 +131,7 @@ function ClientFormPanel({
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/30" />
       <div className="relative bg-white w-[440px] h-full shadow-2xl flex flex-col">
 
         {/* Header */}
@@ -298,7 +298,7 @@ function ClientDrawer({
 }) {
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/30" />
       <div className="relative bg-white w-96 h-full shadow-2xl flex flex-col">
 
         {/* Header */}

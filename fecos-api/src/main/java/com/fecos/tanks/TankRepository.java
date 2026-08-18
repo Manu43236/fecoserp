@@ -12,6 +12,8 @@ public interface TankRepository extends JpaRepository<TankEntity, UUID> {
 
     Page<TankEntity> findAllByTenantIdAndIsDeletedFalseOrderByCreatedAtDesc(UUID tenantId, Pageable pageable);
 
+    Page<TankEntity> findAllByTenantIdAndStatusAndIsDeletedFalseOrderByCreatedAtDesc(UUID tenantId, TankStatus status, Pageable pageable);
+
     List<TankEntity> findAllByTenantIdAndWellIdAndIsDeletedFalse(UUID tenantId, UUID wellId);
 
     Optional<TankEntity> findByIdAndTenantIdAndIsDeletedFalse(UUID id, UUID tenantId);

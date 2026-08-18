@@ -8,6 +8,7 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,10 +31,13 @@ public class TankService {
     private final ClientRepository clientRepository;
     private final UserRepository userRepository;
 
-    public Page<TankResponse> list(int page, int size) {
-        return tankRepository
-                .findAllByTenantIdAndIsDeletedFalseOrderByCreatedAtDesc(currentTenantId(), PageRequest.of(page, size))
-                .map(t -> toResponse(t, false));
+    public Page<TankResponse> list(TankStatus status, int page, int size) {
+        UUID tenantId = currentTenantId();
+        Pageable pageable = PageRequest.of(page, size);
+        Page<TankEntity> entities = status != null
+                ? tankRepository.findAllByTenantIdAndStatusAndIsDeletedFalseOrderByCreatedAtDesc(tenantId, status, pageable)
+                : tankRepository.findAllByTenantIdAndIsDeletedFalseOrderByCreatedAtDesc(tenantId, pageable);
+        return entities.map(t -> toResponse(t, false));
     }
 
     public TankResponse findById(UUID id) {
@@ -83,8 +87,23 @@ public class TankService {
     }
 
     @Transactional
+    public void logRateChange(UUID tankId, BigDecimal recRate) {
+        TankEventEntity event = new TankEventEntity();
+        event.setTenantId(currentTenantId());
+        event.setTankId(tankId);
+        event.setEventType(TankEventType.RATE_CHANGED);
+        event.setRecRate(recRate);
+        event.setEventAt(Instant.now());
+        event.setPerformedById(currentUserId());
+        eventRepository.save(event);
+    }
+
+    @Transactional
     public void delete(UUID id) {
         TankEntity t = findForTenant(id);
+        if (t.getStatus() == TankStatus.INSTALLED || t.getStatus() == TankStatus.ASSIGNED) {
+            throw new IllegalArgumentException("Cannot delete a tank that is currently " + t.getStatus().name().toLowerCase() + " — remove it from the treatment plan first");
+        }
         t.setDeleted(true);
         tankRepository.save(t);
     }
@@ -190,7 +209,7 @@ public class TankService {
                 .divide(capacityGallons, 2, RoundingMode.HALF_UP);
 
         BigDecimal currentPct = baselinePct.subtract(pctConsumed);
-        return currentPct.max(BigDecimal.ZERO);
+        return currentPct.max(BigDecimal.ZERO).min(BigDecimal.valueOf(100));
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────────

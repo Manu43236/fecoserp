@@ -19,7 +19,10 @@ public record TreatmentPlanLineResponse(
         BigDecimal tankLevelPct,
         Instant tankLevelCheckedAt,
         UUID tankId,
-        BigDecimal calculatedLevelPct
+        BigDecimal calculatedLevelPct,
+        String thirdPartyName,
+        BigDecimal thirdPartyCapacityGallons,
+        String thirdPartySerial
 ) {
     public static TreatmentPlanLineResponse from(TreatmentPlanLineEntity l, String productName, BigDecimal calculatedLevelPct) {
         return new TreatmentPlanLineResponse(
@@ -35,7 +38,10 @@ public record TreatmentPlanLineResponse(
                 l.getTankLevelPct(),
                 l.getTankLevelCheckedAt(),
                 l.getTankId(),
-                calculatedLevelPct
+                calculatedLevelPct,
+                l.getThirdPartyName(),
+                l.getThirdPartyCapacityGallons(),
+                l.getThirdPartySerial()
         );
     }
 }

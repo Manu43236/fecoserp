@@ -5,7 +5,7 @@ export type PlanStatus = 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'SUSPENDED' | 'COMPLETE
 export type PlanMethod = 'CONTINUOUS' | 'BATCH'
 export type PlanSchedule = 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY'
 
-export type TankOwner = 'ENDURA' | 'THIRD_PARTY'
+export type TankOwner = 'OWN' | 'THIRD_PARTY'
 
 export interface PlanLineRecord {
   id: string
@@ -21,6 +21,9 @@ export interface PlanLineRecord {
   tankLevelCheckedAt: string | null
   tankId: string | null
   calculatedLevelPct: number | null
+  thirdPartyName: string | null
+  thirdPartyCapacityGallons: number | null
+  thirdPartySerial: string | null
 }
 
 export interface PlanRecord {
@@ -62,6 +65,9 @@ export interface PlanLinePayload {
   tankLevelPct?: number | null
   tankLevelCheckedAt?: string | null
   tankId?: string | null
+  thirdPartyName?: string | null
+  thirdPartyCapacityGallons?: number | null
+  thirdPartySerial?: string | null
 }
 
 export const plansApi = {

@@ -14,7 +14,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
@@ -81,6 +84,9 @@ public class TreatmentPlanService {
 
         if (req.getTankId() != null) {
             tankService.assignToPlan(req.getTankId());
+            if (req.getRecRate() != null) {
+                tankService.logRateChange(req.getTankId(), req.getRecRate());
+            }
         }
 
         return toResponse(p, true);
@@ -93,6 +99,9 @@ public class TreatmentPlanService {
                 .orElseThrow(() -> new EntityNotFoundException("Line not found"));
         applyLine(line, req);
         lineRepository.save(line);
+        if (req.getTankId() != null && req.getRecRate() != null) {
+            tankService.logRateChange(req.getTankId(), req.getRecRate());
+        }
         return toResponse(p, true);
     }
 
@@ -128,6 +137,7 @@ public class TreatmentPlanService {
                     });
                 p.setStatus(TreatmentPlanStatus.ACTIVE);
                 p.setStartedAt(Instant.now());
+                logRateEventsForLines(p.getId());
             }
             case "pause" -> {
                 if (p.getStatus() != TreatmentPlanStatus.ACTIVE)
@@ -140,6 +150,8 @@ public class TreatmentPlanService {
                     throw new IllegalStateException("Only PAUSED or SUSPENDED plans can be resumed");
                 p.setStatus(TreatmentPlanStatus.ACTIVE);
                 p.setResumedAt(Instant.now());
+                if (p.getStartedAt() == null) p.setStartedAt(Instant.now());
+                logRateEventsForLines(p.getId());
             }
             case "suspend" -> {
                 if (p.getStatus() != TreatmentPlanStatus.ACTIVE && p.getStatus() != TreatmentPlanStatus.PAUSED)
@@ -156,6 +168,14 @@ public class TreatmentPlanService {
 
         planRepository.save(p);
         return toResponse(p, true);
+    }
+
+    private void logRateEventsForLines(UUID planId) {
+        lineRepository.findAllByProgramIdAndIsDeletedFalseOrderByCreatedAtAsc(planId).forEach(line -> {
+            if (line.getTankId() != null && line.getRecRate() != null) {
+                tankService.logRateChange(line.getTankId(), line.getRecRate());
+            }
+        });
     }
 
     private void apply(TreatmentPlanEntity p, TreatmentPlanRequest req, UUID tenantId) {
@@ -191,6 +211,33 @@ public class TreatmentPlanService {
         line.setTankLevelPct(req.getTankLevelPct());
         line.setTankLevelCheckedAt(req.getTankLevelCheckedAt());
         line.setTankId(req.getTankId());
+        line.setThirdPartyName(req.getThirdPartyName());
+        line.setThirdPartyCapacityGallons(req.getThirdPartyCapacityGallons());
+        line.setThirdPartySerial(req.getThirdPartySerial());
+    }
+
+    private BigDecimal calcThirdPartyLevel(TreatmentPlanLineEntity l) {
+        if (l.getTankOwner() != com.fecos.tanks.TankOwner.THIRD_PARTY
+                || l.getTankLevelPct() == null
+                || l.getTankLevelCheckedAt() == null
+                || l.getThirdPartyCapacityGallons() == null
+                || l.getRecRate() == null
+                || l.getThirdPartyCapacityGallons().compareTo(BigDecimal.ZERO) == 0) {
+            return null;
+        }
+        long hoursElapsed = ChronoUnit.HOURS.between(l.getTankLevelCheckedAt(), Instant.now());
+        BigDecimal gallonsConsumed = l.getRecRate()
+                .multiply(BigDecimal.valueOf(hoursElapsed))
+                .divide(BigDecimal.valueOf(24), 4, RoundingMode.HALF_UP);
+        BigDecimal baselineGallons = l.getTankLevelPct()
+                .multiply(l.getThirdPartyCapacityGallons())
+                .divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
+        BigDecimal currentGallons = baselineGallons.subtract(gallonsConsumed);
+        return currentGallons
+                .multiply(BigDecimal.valueOf(100))
+                .divide(l.getThirdPartyCapacityGallons(), 2, RoundingMode.HALF_UP)
+                .max(BigDecimal.ZERO)
+                .min(BigDecimal.valueOf(100));
     }
 
     private TreatmentPlanResponse toResponse(TreatmentPlanEntity p, boolean includeLines) {
@@ -225,7 +272,7 @@ public class TreatmentPlanService {
                     .map(l -> {
                         String productName = productRepository.findById(l.getProductId())
                                 .map(pr -> pr.getName()).orElse(l.getProductId().toString());
-                        return TreatmentPlanLineResponse.from(l, productName, null);
+                        return TreatmentPlanLineResponse.from(l, productName, calcThirdPartyLevel(l));
                     })
                     .toList();
         }
