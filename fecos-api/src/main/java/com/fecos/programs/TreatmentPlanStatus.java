@@ -1,5 +1,5 @@
 package com.fecos.programs;
 
 public enum TreatmentPlanStatus {
-    DRAFT, ACTIVE, INACTIVE, SUPERSEDED
+    DRAFT, ACTIVE, PAUSED, SUSPENDED, COMPLETED, INACTIVE, SUPERSEDED
 }

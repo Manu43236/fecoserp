@@ -75,4 +75,34 @@ public class TreatmentPlanController {
         planService.removeLine(id, lineId);
         return ResponseEntity.ok(ApiResponse.ok("Line removed", null));
     }
+
+    @PostMapping("/{id}/start")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP')")
+    public ResponseEntity<ApiResponse<TreatmentPlanResponse>> start(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok("Treatment started", planService.transition(id, "start")));
+    }
+
+    @PostMapping("/{id}/pause")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP')")
+    public ResponseEntity<ApiResponse<TreatmentPlanResponse>> pause(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok("Treatment paused", planService.transition(id, "pause")));
+    }
+
+    @PostMapping("/{id}/resume")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP')")
+    public ResponseEntity<ApiResponse<TreatmentPlanResponse>> resume(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok("Treatment resumed", planService.transition(id, "resume")));
+    }
+
+    @PostMapping("/{id}/suspend")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP')")
+    public ResponseEntity<ApiResponse<TreatmentPlanResponse>> suspend(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok("Treatment suspended", planService.transition(id, "suspend")));
+    }
+
+    @PostMapping("/{id}/complete")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP')")
+    public ResponseEntity<ApiResponse<TreatmentPlanResponse>> complete(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok("Treatment completed", planService.transition(id, "complete")));
+    }
 }

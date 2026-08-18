@@ -3,6 +3,7 @@ package com.fecos.programs;
 import com.fecos.clients.ClientRepository;
 import com.fecos.leases.LeaseRepository;
 import com.fecos.products.ProductRepository;
+import com.fecos.tanks.TankService;
 import com.fecos.users.UserRepository;
 import com.fecos.wells.WellRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -13,6 +14,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -27,6 +29,7 @@ public class TreatmentPlanService {
     private final ClientRepository clientRepository;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
+    private final TankService tankService;
 
     public Page<TreatmentPlanResponse> list(TreatmentPlanStatus status, UUID wellId, UUID accountRepId, int page, int size) {
         UUID tenantId = currentTenantId();
@@ -76,6 +79,10 @@ public class TreatmentPlanService {
         applyLine(line, req);
         lineRepository.save(line);
 
+        if (req.getTankId() != null) {
+            tankService.assignToPlan(req.getTankId());
+        }
+
         return toResponse(p, true);
     }
 
@@ -94,8 +101,60 @@ public class TreatmentPlanService {
         TreatmentPlanEntity p = findForTenant(planId);
         TreatmentPlanLineEntity line = lineRepository.findByIdAndProgramIdAndIsDeletedFalse(lineId, planId)
                 .orElseThrow(() -> new EntityNotFoundException("Line not found"));
+        if (line.getTankId() != null) {
+            tankService.releaseFromPlan(line.getTankId());
+        }
         line.setDeleted(true);
         lineRepository.save(line);
+        return toResponse(p, true);
+    }
+
+    @Transactional
+    public TreatmentPlanResponse transition(UUID planId, String action) {
+        TreatmentPlanEntity p = findForTenant(planId);
+        UUID tenantId = currentTenantId();
+
+        switch (action) {
+            case "start" -> {
+                if (p.getStatus() != TreatmentPlanStatus.DRAFT)
+                    throw new IllegalStateException("Only DRAFT plans can be started");
+                planRepository.findAllByTenantIdAndWellIdAndStatusAndIsDeletedFalse(
+                        tenantId, p.getWellId(), TreatmentPlanStatus.ACTIVE)
+                    .forEach(existing -> {
+                        if (!existing.getId().equals(p.getId())) {
+                            existing.setStatus(TreatmentPlanStatus.SUSPENDED);
+                            planRepository.save(existing);
+                        }
+                    });
+                p.setStatus(TreatmentPlanStatus.ACTIVE);
+                p.setStartedAt(Instant.now());
+            }
+            case "pause" -> {
+                if (p.getStatus() != TreatmentPlanStatus.ACTIVE)
+                    throw new IllegalStateException("Only ACTIVE plans can be paused");
+                p.setStatus(TreatmentPlanStatus.PAUSED);
+                p.setPausedAt(Instant.now());
+            }
+            case "resume" -> {
+                if (p.getStatus() != TreatmentPlanStatus.PAUSED && p.getStatus() != TreatmentPlanStatus.SUSPENDED)
+                    throw new IllegalStateException("Only PAUSED or SUSPENDED plans can be resumed");
+                p.setStatus(TreatmentPlanStatus.ACTIVE);
+                p.setResumedAt(Instant.now());
+            }
+            case "suspend" -> {
+                if (p.getStatus() != TreatmentPlanStatus.ACTIVE && p.getStatus() != TreatmentPlanStatus.PAUSED)
+                    throw new IllegalStateException("Plan cannot be suspended from its current status");
+                p.setStatus(TreatmentPlanStatus.SUSPENDED);
+            }
+            case "complete" -> {
+                if (p.getStatus() == TreatmentPlanStatus.COMPLETED)
+                    throw new IllegalStateException("Plan is already completed");
+                p.setStatus(TreatmentPlanStatus.COMPLETED);
+            }
+            default -> throw new IllegalArgumentException("Unknown action: " + action);
+        }
+
+        planRepository.save(p);
         return toResponse(p, true);
     }
 
@@ -128,6 +187,10 @@ public class TreatmentPlanService {
         line.setMethod(req.getMethod());
         line.setSchedule(req.getMethod() == TreatmentPlanMethod.BATCH ? req.getSchedule() : null);
         line.setNotes(req.getNotes());
+        line.setTankOwner(req.getTankOwner());
+        line.setTankLevelPct(req.getTankLevelPct());
+        line.setTankLevelCheckedAt(req.getTankLevelCheckedAt());
+        line.setTankId(req.getTankId());
     }
 
     private TreatmentPlanResponse toResponse(TreatmentPlanEntity p, boolean includeLines) {
@@ -162,7 +225,7 @@ public class TreatmentPlanService {
                     .map(l -> {
                         String productName = productRepository.findById(l.getProductId())
                                 .map(pr -> pr.getName()).orElse(l.getProductId().toString());
-                        return TreatmentPlanLineResponse.from(l, productName);
+                        return TreatmentPlanLineResponse.from(l, productName, null);
                     })
                     .toList();
         }

@@ -25,6 +25,9 @@ public record LabSampleResponse(
         UUID activeTreatmentPlanId,
         String activeTreatmentPlanStatus,
 
+        // Flat approval status — always present so list views can display correctly
+        ApprovalStatus approvalStatus,
+
         // Nested result (null if not yet entered)
         LabResultResponse result
 ) {

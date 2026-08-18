@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Truck, MapPin, CalendarDays, Package, Users,
   Activity, PackageCheck, Building2, Wrench, BarChart3,
   FlaskConical, ClipboardList, TestTube, CheckCircle2,
-  Briefcase, LogOut, Drill, Settings2,
+  Briefcase, LogOut, Drill, Settings2, Cylinder,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
@@ -25,6 +25,7 @@ const navByRole: Record<string, NavItem[]> = {
     { label: 'Deliveries',         path: '/deliveries',     icon: PackageCheck    },
     { label: 'Inventory',          path: '/inventory',      icon: Package         },
     { label: 'Plans',              path: '/plans',          icon: ClipboardList   },
+    { label: 'Tanks',              path: '/tanks',          icon: Cylinder        },
     { label: 'Portfolio',          path: '/rep/portfolio',  icon: Briefcase       },
     { label: 'Lab',                path: '/lab/queue',      icon: TestTube        },
     { label: 'Raw Material QC',    path: '/lab/raw-qc',     icon: FlaskConical    },
@@ -44,6 +45,7 @@ const navByRole: Record<string, NavItem[]> = {
     { label: 'Wells',          path: '/wells',          icon: Drill           },
     { label: 'Inventory',      path: '/inventory',      icon: Package         },
     { label: 'Plans',          path: '/plans',          icon: ClipboardList   },
+    { label: 'Tanks',          path: '/tanks',          icon: Cylinder        },
     { label: 'Lab',            path: '/lab/queue',      icon: TestTube        },
     { label: 'Pump Shop',      path: '/pump-shop',      icon: Wrench          },
     { label: 'Reports',        path: '/reports',        icon: BarChart3       },
@@ -56,6 +58,7 @@ const navByRole: Record<string, NavItem[]> = {
   ACCOUNT_REP: [
     { label: 'Portfolio',  path: '/rep/portfolio', icon: Briefcase   },
     { label: 'Plans',      path: '/plans',         icon: ClipboardList },
+    { label: 'Tanks',      path: '/tanks',         icon: Cylinder    },
     { label: 'Lab',        path: '/lab/queue',     icon: TestTube    },
     { label: 'Reports',    path: '/reports',       icon: BarChart3   },
   ],

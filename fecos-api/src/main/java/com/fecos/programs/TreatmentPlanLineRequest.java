@@ -1,11 +1,13 @@
 package com.fecos.programs;
 
+import com.fecos.tanks.TankOwner;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.UUID;
 
 @Getter
@@ -25,4 +27,12 @@ public class TreatmentPlanLineRequest {
     private TreatmentPlanSchedule schedule;
 
     private String notes;
+
+    private TankOwner tankOwner;
+
+    private BigDecimal tankLevelPct;
+
+    private Instant tankLevelCheckedAt;
+
+    private UUID tankId;
 }

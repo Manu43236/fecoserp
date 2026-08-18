@@ -229,10 +229,12 @@ public class LabService {
             activePlanStatus = plan.getStatus().name();
         }
 
+        var resultEntity = resultRepository.findBySampleIdAndIsDeletedFalse(s.getId());
+        ApprovalStatus approvalStatus = resultEntity.map(LabResultEntity::getApprovalStatus).orElse(null);
+
         LabSampleResponse.LabResultResponse resultResponse = null;
         if (includeResult) {
-            resultResponse = resultRepository.findBySampleIdAndIsDeletedFalse(s.getId())
-                    .map(r -> {
+            resultResponse = resultEntity.map(r -> {
                         String labTechName = r.getLabTechId() != null
                                 ? userRepository.findById(r.getLabTechId()).map(u -> u.getFullName()).orElse(null)
                                 : null;
@@ -250,6 +252,7 @@ public class LabService {
                 s.getCollectedAt(), s.getReceivedAt(),
                 s.getPriority(), s.getTestsRequested(), s.getStatus(), s.getCreatedAt(),
                 activePlanId, activePlanStatus,
+                approvalStatus,
                 resultResponse
         );
     }

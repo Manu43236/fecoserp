@@ -77,6 +77,7 @@ export interface LabSampleRecord {
   createdAt: string
   activeTreatmentPlanId: string | null
   activeTreatmentPlanStatus: string | null
+  approvalStatus: ApprovalStatus | null
   result: LabResultRecord | null
 }
 

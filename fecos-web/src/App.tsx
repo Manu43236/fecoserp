@@ -20,6 +20,7 @@ import PlansPage from '@/pages/tenant/PlansPage'
 import RoutesPage from '@/pages/tenant/RoutesPage'
 import LabPage from '@/pages/tenant/LabPage'
 import ApprovalsPage from '@/pages/tenant/ApprovalsPage'
+import TanksPage from '@/pages/tenant/TanksPage'
 
 const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -73,6 +74,7 @@ export default function App() {
               <Route path="/schedule"         element={<PlaceholderPage title="Schedule" />} />
               <Route path="/inventory"        element={<InventoryPage />} />
               <Route path="/plans"             element={<PlansPage />} />
+              <Route path="/tanks"            element={<TanksPage />} />
               <Route path="/users"            element={<UsersPage />} />
               <Route path="/masters"          element={<MastersPage />} />
               <Route path="/products"         element={<ProductsPage />} />

@@ -6,12 +6,13 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import toast from 'react-hot-toast'
 import {
-  Plus, X, Search, ChevronRight, FlaskConical, Trash2,
+  Plus, X, Search, ChevronRight, FlaskConical, Trash2, Cylinder, AlertTriangle, Pencil,
 } from 'lucide-react'
 import { plansApi, type PlanRecord, type PlanPayload, type PlanLinePayload, type PlanMethod, type PlanSchedule, type PlanStatus } from '@/api/plans'
 import { wellsApi, type WellRecord } from '@/api/wells'
 import { leasesApi, type LeaseRecord } from '@/api/leases'
 import { productsApi } from '@/api/products'
+import { tanksApi, type TankRecord, type TankStatus, type TankEventPayload } from '@/api/tanks'
 import { SearchableDropdown, type DropdownOption } from '@/components/ui/SearchableDropdown'
 import { useAuthStore } from '@/store/authStore'
 import api from '@/lib/axios'
@@ -24,9 +25,12 @@ interface UserRecord { id: string; fullName: string; role: string }
 // ── Status helpers ─────────────────────────────────────────────────────────────
 function StatusBadge({ status }: { status: PlanStatus }) {
   const map: Record<PlanStatus, { bg: string; text: string; ring: string; dot: string; label: string }> = {
-    ACTIVE:     { bg: 'bg-emerald-50', text: 'text-emerald-700', ring: 'ring-emerald-200', dot: 'bg-emerald-500', label: 'Active' },
     DRAFT:      { bg: 'bg-gray-50',    text: 'text-gray-500',    ring: 'ring-gray-200',    dot: 'bg-gray-400',    label: 'Draft' },
-    INACTIVE:   { bg: 'bg-amber-50',   text: 'text-amber-700',   ring: 'ring-amber-200',   dot: 'bg-amber-500',   label: 'Inactive' },
+    ACTIVE:     { bg: 'bg-emerald-50', text: 'text-emerald-700', ring: 'ring-emerald-200', dot: 'bg-emerald-500', label: 'Active' },
+    PAUSED:     { bg: 'bg-amber-50',   text: 'text-amber-700',   ring: 'ring-amber-200',   dot: 'bg-amber-400',   label: 'Paused' },
+    SUSPENDED:  { bg: 'bg-orange-50',  text: 'text-orange-700',  ring: 'ring-orange-200',  dot: 'bg-orange-400',  label: 'Suspended' },
+    COMPLETED:  { bg: 'bg-blue-50',    text: 'text-blue-700',    ring: 'ring-blue-200',    dot: 'bg-blue-400',    label: 'Completed' },
+    INACTIVE:   { bg: 'bg-gray-50',    text: 'text-gray-400',    ring: 'ring-gray-200',    dot: 'bg-gray-300',    label: 'Inactive' },
     SUPERSEDED: { bg: 'bg-purple-50',  text: 'text-purple-600',  ring: 'ring-purple-200',  dot: 'bg-purple-400',  label: 'Superseded' },
   }
   const s = map[status] ?? map.INACTIVE
@@ -47,9 +51,11 @@ const SCHEDULE_LABELS: Record<PlanSchedule, string> = {
 }
 
 const STATUS_OPTIONS: DropdownOption[] = [
-  { value: 'ACTIVE', label: 'Active' },
-  { value: 'DRAFT', label: 'Draft' },
-  { value: 'INACTIVE', label: 'Inactive' },
+  { value: 'ACTIVE',    label: 'Active' },
+  { value: 'DRAFT',     label: 'Draft' },
+  { value: 'PAUSED',    label: 'Paused' },
+  { value: 'SUSPENDED', label: 'Suspended' },
+  { value: 'COMPLETED', label: 'Completed' },
 ]
 
 const METHOD_OPTIONS: DropdownOption[] = [
@@ -68,7 +74,7 @@ const SCHEDULE_OPTIONS: DropdownOption[] = [
 const planSchema = z.object({
   wellId:       z.string().min(1, 'Well is required'),
   accountRepId: z.string().optional().or(z.literal('')),
-  status:       z.enum(['DRAFT', 'ACTIVE', 'INACTIVE']),
+  status:       z.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'SUSPENDED', 'COMPLETED', 'INACTIVE', 'SUPERSEDED']).optional(),
   notes:        z.string().optional().or(z.literal('')),
   startDate:    z.string().optional().or(z.literal('')),
   endDate:      z.string().optional().or(z.literal('')),
@@ -77,13 +83,45 @@ type PlanFormData = z.infer<typeof planSchema>
 
 // ── Line form schema ───────────────────────────────────────────────────────────
 const lineSchema = z.object({
-  productId: z.string().min(1, 'Product is required'),
-  recRate:   z.string().refine(v => !isNaN(Number(v)) && Number(v) > 0, 'Must be a positive number'),
-  method:    z.enum(['CONTINUOUS', 'BATCH']),
-  schedule:  z.enum(['DAILY', 'WEEKLY', 'BIWEEKLY', 'MONTHLY']).optional(),
-  notes:     z.string().optional().or(z.literal('')),
+  productId:          z.string().min(1, 'Product is required'),
+  recRate:            z.string().refine(v => !isNaN(Number(v)) && Number(v) > 0, 'Must be a positive number'),
+  method:             z.enum(['CONTINUOUS', 'BATCH']),
+  schedule:           z.enum(['DAILY', 'WEEKLY', 'BIWEEKLY', 'MONTHLY']).optional(),
+  notes:              z.string().optional().or(z.literal('')),
+  tankOwner:          z.enum(['ENDURA', 'THIRD_PARTY']).optional(),
+  tankId:             z.string().optional().or(z.literal('')),
+  tankLevelPct:       z.string().optional().or(z.literal('')),
+  tankLevelCheckedAt: z.string().optional().or(z.literal('')),
 })
 type LineFormData = z.infer<typeof lineSchema>
+
+
+function LevelBar({ pct }: { pct: number }) {
+  const color = pct <= 10 ? '#ef4444' : pct <= 20 ? '#f97316' : pct <= 40 ? '#eab308' : '#10b981'
+  return (
+    <div className="flex items-center gap-2 mt-1">
+      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div className="h-full rounded-full" style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: color }} />
+      </div>
+      <span className="text-xs font-semibold tabular-nums" style={{ color, minWidth: 36 }}>{pct.toFixed(1)}%</span>
+    </div>
+  )
+}
+
+function TankStatusBadge({ status }: { status: TankStatus }) {
+  const map: Record<TankStatus, { bg: string; text: string; label: string }> = {
+    AVAILABLE: { bg: 'bg-emerald-50', text: 'text-emerald-700', label: 'Available' },
+    ASSIGNED:  { bg: 'bg-blue-50',    text: 'text-blue-700',    label: 'Assigned' },
+    INSTALLED: { bg: 'bg-amber-50',   text: 'text-amber-700',   label: 'Installed' },
+    CLEANING:  { bg: 'bg-gray-100',   text: 'text-gray-500',    label: 'Cleaning' },
+  }
+  const s = map[status] ?? map.CLEANING
+  return (
+    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold ${s.bg} ${s.text}`}>
+      {s.label}
+    </span>
+  )
+}
 
 // ── Plan form panel (440px right slide) ───────────────────────────────────────
 function PlanFormPanel({
@@ -142,10 +180,10 @@ function PlanFormPanel({
     mutation.mutate({
       wellId:       data.wellId,
       accountRepId: data.accountRepId || null,
-      status:       data.status,
+      status:       isEdit ? (plan!.status as PlanStatus) : 'DRAFT',
       notes:        data.notes || undefined,
       startDate:    data.startDate || null,
-      endDate:      data.status === 'INACTIVE' ? (data.endDate || null) : null,
+      endDate:      null,
     })
   }
 
@@ -226,34 +264,13 @@ function PlanFormPanel({
               />
             </div>
 
-            {/* Status */}
+            {/* Status — read-only, driven by actions */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</label>
-              <div className="flex gap-2">
-                {(['DRAFT', 'ACTIVE', 'INACTIVE'] as PlanStatus[]).map(s => (
-                  <button
-                    key={s}
-                    type="button"
-                    disabled={!canEdit}
-                    onClick={() => setValue('status', s)}
-                    className={`flex-1 h-9 text-xs font-semibold rounded-lg border transition-colors disabled:opacity-60 ${
-                      selectedStatus === s
-                        ? s === 'ACTIVE'   ? 'bg-emerald-500 text-white border-emerald-500'
-                        : s === 'INACTIVE' ? 'bg-amber-500 text-white border-amber-500'
-                        : 'text-white border-gray-700'
-                        : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                    }`}
-                    style={selectedStatus === s && s === 'DRAFT' ? { backgroundColor: 'var(--color-primary)' } : {}}
-                  >
-                    {s === 'DRAFT' ? 'Draft' : s === 'ACTIVE' ? 'Active' : 'Inactive'}
-                  </button>
-                ))}
+              <div className="flex items-center h-9 px-3 rounded-lg border border-gray-100 bg-gray-50">
+                <StatusBadge status={watch('status') ?? 'DRAFT'} />
+                <span className="ml-2 text-xs text-gray-400">Use action buttons in the plan view to change status</span>
               </div>
-              {selectedStatus === 'ACTIVE' && (
-                <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
-                  Setting to Active will deactivate any existing active plan for this well.
-                </p>
-              )}
             </div>
 
             {/* Date fields */}
@@ -346,6 +363,10 @@ function PlanDrawer({
 }) {
   const qc = useQueryClient()
   const [showLineForm, setShowLineForm] = useState(false)
+  const [refillLineId, setRefillLineId] = useState<string | null>(null)
+  const [refillAmount, setRefillAmount] = useState('')
+  const [refillAt, setRefillAt] = useState(new Date().toISOString().slice(0, 16))
+  const [historyLineId, setHistoryLineId] = useState<string | null>(null)
 
   const { data: fullData, isLoading } = useQuery({
     queryKey: ['plan', plan.id],
@@ -356,12 +377,69 @@ function PlanDrawer({
     queryKey: ['products-active'],
     queryFn: () => productsApi.list({ isActive: true, size: 5000 }).then(r => r.data.data?.content ?? []),
   })
+
+  const { data: tanksData } = useQuery({
+    queryKey: ['tanks-all'],
+    queryFn: () => tanksApi.list({ size: 5000 }).then(r => r.data.data?.content ?? []),
+  })
+  const tanks = (tanksData ?? []) as TankRecord[]
+  const tankMap = new Map(tanks.map(t => [t.id, t]))
+
+  const [historyTankId, setHistoryTankId] = useState<string | null>(null)
+  const { data: historyTankData, isLoading: historyLoading } = useQuery({
+    queryKey: ['tank-detail', historyTankId],
+    queryFn: () => tanksApi.get(historyTankId!).then(r => r.data.data!),
+    enabled: !!historyTankId,
+  })
+  const tankOptions: DropdownOption[] = tanks
+    .filter(t => t.status === 'AVAILABLE')
+    .map(t => ({ value: t.id, label: t.serialNumber ?? `Tank (${t.capacityGallons} gal)` }))
+
   const products = productsData ?? []
 
   const { handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<LineFormData>({
     resolver: zodResolver(lineSchema),
-    defaultValues: { productId: '', recRate: '', method: 'CONTINUOUS', schedule: undefined, notes: '' },
+    defaultValues: { productId: '', recRate: '', method: 'CONTINUOUS', schedule: undefined, notes: '', tankOwner: undefined, tankId: '', tankLevelPct: '', tankLevelCheckedAt: '' },
   })
+
+  const tankEventMutation = useMutation({
+    mutationFn: ({ tankId, data }: { tankId: string; data: TankEventPayload }) =>
+      tanksApi.logEvent(tankId, data),
+    onSuccess: () => {
+      toast.success('Tank updated')
+      qc.invalidateQueries({ queryKey: ['tanks-all'] })
+      qc.invalidateQueries({ queryKey: ['tanks'] })
+      qc.invalidateQueries({ queryKey: ['plan', plan.id] })
+      qc.invalidateQueries({ queryKey: ['tank-detail'] })
+      setRefillLineId(null)
+      setRefillAmount('')
+      setRefillAt(new Date().toISOString().slice(0, 16))
+    },
+    onError: () => toast.error('Failed to update tank'),
+  })
+
+  function handleMarkInstalled(tankId: string) {
+    tankEventMutation.mutate({ tankId, data: { eventType: 'INSTALLED', eventAt: new Date().toISOString() } })
+  }
+
+  function handleMarkRemoved(tankId: string) {
+    if (!confirm('Mark this tank as removed from the well?')) return
+    tankEventMutation.mutate({ tankId, data: { eventType: 'REMOVED', eventAt: new Date().toISOString() } })
+  }
+
+  function handleLogRefill(tankId: string) {
+    if (!refillAmount) return toast.error('Enter gallons added')
+    const t = tankMap.get(tankId)
+    if (t) {
+      const remaining = Math.floor(t.capacityGallons * (1 - (t.calculatedLevelPct ?? 0) / 100))
+      if (parseFloat(refillAmount) > remaining)
+        return toast.error(`Max refill is ${remaining.toLocaleString()} gal (tank is ${Math.round(t.calculatedLevelPct ?? 0)}% full)`)
+    }
+    tankEventMutation.mutate({
+      tankId,
+      data: { eventType: 'REFILLED', amountGallons: parseFloat(refillAmount), eventAt: new Date(refillAt).toISOString() },
+    })
+  }
 
   const addLineMutation = useMutation({
     mutationFn: (data: PlanLinePayload) => plansApi.addLine(plan.id, data),
@@ -394,17 +472,31 @@ function PlanDrawer({
     onError: () => toast.error('Failed to delete plan'),
   })
 
+  const transitionMutation = useMutation({
+    mutationFn: (action: string) => plansApi[action as keyof typeof plansApi](plan.id) as Promise<unknown>,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['plan', plan.id] })
+      qc.invalidateQueries({ queryKey: ['plans'] })
+    },
+    onError: () => toast.error('Failed to update treatment status'),
+  })
+
   function onAddLine(data: LineFormData) {
     addLineMutation.mutate({
-      productId: data.productId,
-      recRate:   parseFloat(data.recRate),
-      method:    data.method,
-      schedule:  data.method === 'BATCH' ? data.schedule : null,
-      notes:     data.notes || undefined,
+      productId:          data.productId,
+      recRate:            parseFloat(data.recRate),
+      method:             data.method,
+      schedule:           data.method === 'BATCH' ? data.schedule : null,
+      notes:              data.notes || undefined,
+      tankOwner:          data.tankOwner || null,
+      tankId:             data.tankOwner === 'ENDURA' && data.tankId ? data.tankId : null,
+      tankLevelPct:       data.tankOwner === 'THIRD_PARTY' && data.tankLevelPct ? parseFloat(data.tankLevelPct) : null,
+      tankLevelCheckedAt: data.tankOwner === 'THIRD_PARTY' && data.tankLevelCheckedAt ? new Date(data.tankLevelCheckedAt).toISOString() : null,
     })
   }
 
   const p = fullData ?? plan
+  const isReadOnly = p.status === 'COMPLETED' || p.status === 'SUSPENDED'
   const lines = fullData?.lines ?? []
   const productOptions: DropdownOption[] = products.map(pr => ({ value: pr.id, label: pr.name }))
   const usedProductIds = new Set(lines.map(l => l.productId))
@@ -416,31 +508,67 @@ function PlanDrawer({
       <div className="relative bg-white w-[580px] h-full shadow-2xl flex flex-col">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
-          <div className="flex items-center gap-3">
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-md hover:bg-gray-100">
-              <X size={16} />
-            </button>
-            <div>
-              <p className="text-sm font-semibold text-gray-900">{p.wellName ?? 'Treatment Plan'}</p>
+        <div className="px-5 pt-4 pb-3 border-b border-gray-100 shrink-0 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-900 break-words">{p.wellName ?? 'Treatment Plan'}</p>
               <p className="text-xs text-gray-400">{p.leaseName ?? '—'} · {p.clientName ?? '—'}</p>
             </div>
+            <div className="flex items-center gap-1 shrink-0">
+              {canEdit && !isReadOnly && (
+                <button onClick={onEdit}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
+                  <Pencil size={13} />
+                </button>
+              )}
+              {canDelete && !isReadOnly && (
+                <button
+                  onClick={() => { if (confirm('Delete this treatment plan?')) deletePlanMutation.mutate() }}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg border border-red-100 text-red-500 hover:bg-red-50 transition-colors">
+                  <Trash2 size={13} />
+                </button>
+              )}
+              <button onClick={onClose} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100 transition-colors">
+                <X size={16} />
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+
+          {/* Status + transition actions */}
+          <div className="flex items-center gap-2 flex-wrap">
             <StatusBadge status={p.status} />
-            {canEdit && (
-              <button onClick={onEdit}
-                className="h-8 px-3 text-xs font-medium rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors">
-                Edit
+            {canEdit && p.status === 'DRAFT' && (
+              <button onClick={() => transitionMutation.mutate('start')} disabled={transitionMutation.isPending}
+                className="h-7 px-3 text-xs font-semibold rounded-lg text-white transition disabled:opacity-60"
+                style={{ backgroundColor: 'var(--color-primary)' }}>
+                Start Treatment
               </button>
             )}
-            {canDelete && (
-              <button
-                onClick={() => { if (confirm('Delete this treatment plan?')) deletePlanMutation.mutate() }}
-                className="h-8 px-3 text-xs font-medium rounded-lg border border-red-100 text-red-600 hover:bg-red-50 transition-colors">
-                Delete
+            {canEdit && p.status === 'ACTIVE' && (<>
+              <button onClick={() => transitionMutation.mutate('pause')} disabled={transitionMutation.isPending}
+                className="h-7 px-3 text-xs font-semibold rounded-lg border border-amber-200 text-amber-700 hover:bg-amber-50 transition disabled:opacity-60">
+                Pause Treatment
               </button>
-            )}
+              <button onClick={() => { if (confirm('Remove tanks and suspend this treatment?')) transitionMutation.mutate('suspend') }} disabled={transitionMutation.isPending}
+                className="h-7 px-3 text-xs font-semibold rounded-lg border border-orange-200 text-orange-700 hover:bg-orange-50 transition disabled:opacity-60">
+                Remove Tanks
+              </button>
+              <button onClick={() => { if (confirm('Mark this treatment as completed?')) transitionMutation.mutate('complete') }} disabled={transitionMutation.isPending}
+                className="h-7 px-3 text-xs font-semibold rounded-lg border border-blue-200 text-blue-700 hover:bg-blue-50 transition disabled:opacity-60">
+                Complete
+              </button>
+            </>)}
+            {canEdit && (p.status === 'PAUSED' || p.status === 'SUSPENDED') && (<>
+              <button onClick={() => transitionMutation.mutate('resume')} disabled={transitionMutation.isPending}
+                className="h-7 px-3 text-xs font-semibold rounded-lg text-white transition disabled:opacity-60"
+                style={{ backgroundColor: 'var(--color-primary)' }}>
+                Resume Treatment
+              </button>
+              <button onClick={() => { if (confirm('Mark this treatment as completed?')) transitionMutation.mutate('complete') }} disabled={transitionMutation.isPending}
+                className="h-7 px-3 text-xs font-semibold rounded-lg border border-blue-200 text-blue-700 hover:bg-blue-50 transition disabled:opacity-60">
+                Complete
+              </button>
+            </>)}
           </div>
         </div>
 
@@ -465,6 +593,33 @@ function PlanDrawer({
               <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold">End Date</p>
               <p className="text-sm text-gray-800 mt-0.5">
                 {new Date(p.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </p>
+            </div>
+          )}
+          {p.startedAt && (
+            <div>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold">Started At</p>
+              <p className="text-sm text-gray-800 mt-0.5">
+                {new Date(p.startedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                {' '}{new Date(p.startedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+              </p>
+            </div>
+          )}
+          {p.pausedAt && (
+            <div>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold">Paused At</p>
+              <p className="text-sm text-gray-800 mt-0.5">
+                {new Date(p.pausedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                {' '}{new Date(p.pausedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+              </p>
+            </div>
+          )}
+          {p.resumedAt && (
+            <div>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold">Resumed At</p>
+              <p className="text-sm text-gray-800 mt-0.5">
+                {new Date(p.resumedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                {' '}{new Date(p.resumedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
               </p>
             </div>
           )}
@@ -496,36 +651,176 @@ function PlanDrawer({
               <p className="text-xs text-gray-400 mt-1">Add chemical products below</p>
             </div>
           ) : (
-            <div className="space-y-1">
-              {lines.map(line => (
-                <div key={line.id}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gray-100 hover:border-gray-200 bg-white transition-colors group">
-                  <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: 'rgba(var(--color-primary-rgb, 30,58,95), 0.08)' }}>
-                    <FlaskConical size={12} style={{ color: 'var(--color-primary)' }} />
+            <div className="space-y-2">
+              {lines.map(line => {
+                const tank = line.tankId ? tankMap.get(line.tankId) : undefined
+                const levelPct = tank?.calculatedLevelPct ?? line.tankLevelPct ?? null
+
+                return (
+                  <div key={line.id} className="rounded-lg border border-gray-100 bg-white overflow-hidden">
+                    <div className="flex items-center gap-3 px-3 py-2.5 group">
+                      <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: 'rgba(var(--color-primary-rgb, 30,58,95), 0.08)' }}>
+                        <FlaskConical size={12} style={{ color: 'var(--color-primary)' }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{line.productName}</p>
+                        <p className="text-xs text-gray-500">
+                          {line.recRate} {line.method === 'CONTINUOUS' ? 'gal/day' : 'gal/treatment'} · {METHOD_LABELS[line.method]}{line.schedule ? ` — ${SCHEDULE_LABELS[line.schedule]}` : ''}
+                          {line.notes ? ` · ${line.notes}` : ''}
+                        </p>
+                        {line.tankOwner === 'ENDURA' && tank && (
+                          <div className="mt-1">
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-xs text-gray-400">{tank.serialNumber ?? 'Endura tank'} · {tank.capacityGallons.toLocaleString()} gal</p>
+                              <TankStatusBadge status={tank.status} />
+                            </div>
+                            {tank.status === 'INSTALLED' && (
+                              <>
+                                <LevelBar pct={tank.calculatedLevelPct} />
+                                {tank.calculatedLevelPct <= 20 && (
+                                  <p className="text-xs text-orange-600 flex items-center gap-1 mt-0.5">
+                                    <AlertTriangle size={10} />
+                                    {tank.calculatedLevelPct <= 10 ? 'Critical — refill urgently' : 'Refill needed soon'}
+                                  </p>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        )}
+                        {line.tankOwner === 'THIRD_PARTY' && levelPct != null && (
+                          <p className="text-xs text-amber-600 mt-0.5">3rd party tank · {levelPct}% level</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {canEdit && !isReadOnly && line.tankOwner === 'ENDURA' && tank && (
+                          <>
+                            {tank.status === 'ASSIGNED' && (
+                              <button
+                                onClick={() => handleMarkInstalled(tank.id)}
+                                disabled={tankEventMutation.isPending}
+                                className="flex items-center gap-1 h-6 px-2 text-[11px] font-medium rounded-md border border-blue-200 text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-60">
+                                Mark Installed
+                              </button>
+                            )}
+                            {tank.status === 'INSTALLED' && (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    if (refillLineId === line.id) setRefillLineId(null)
+                                    else { setRefillLineId(line.id); setRefillAmount(''); setRefillAt(new Date().toISOString().slice(0, 16)) }
+                                  }}
+                                  className="flex items-center gap-1 h-6 px-2 text-[11px] font-medium rounded-md border border-gray-200 text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors">
+                                  <Cylinder size={10} /> Refill
+                                </button>
+                                <button
+                                  onClick={() => handleMarkRemoved(tank.id)}
+                                  disabled={tankEventMutation.isPending}
+                                  className="flex items-center gap-1 h-6 px-2 text-[11px] font-medium rounded-md border border-red-100 text-red-500 hover:bg-red-50 transition-colors disabled:opacity-60">
+                                  Remove
+                                </button>
+                              </>
+                            )}
+                          </>
+                        )}
+                        {line.tankOwner === 'ENDURA' && tank && (
+                          <button
+                            onClick={() => {
+                              if (historyLineId === line.id) {
+                                setHistoryLineId(null); setHistoryTankId(null)
+                              } else {
+                                setHistoryLineId(line.id); setHistoryTankId(tank.id)
+                              }
+                            }}
+                            className={`flex items-center gap-1 h-6 px-2 text-[11px] font-medium rounded-md border transition-colors ${historyLineId === line.id ? 'border-gray-300 bg-gray-100 text-gray-700' : 'border-gray-200 text-gray-400 hover:text-gray-600'}`}>
+                            History
+                          </button>
+                        )}
+                        {canEdit && (
+                          <button
+                            onClick={() => removeLineMutation.mutate({ lineId: line.id })}
+                            disabled={removeLineMutation.isPending}
+                            className="w-6 h-6 rounded-md flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100">
+                            <Trash2 size={12} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {historyLineId === line.id && line.tankId && (
+                      <div className="px-3 pb-3 border-t border-gray-100 bg-gray-50 pt-2.5 space-y-1.5">
+                        <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Event History</p>
+                        {historyLoading ? (
+                          <p className="text-xs text-gray-400">Loading…</p>
+                        ) : (() => {
+                          const evts = historyTankData?.events ?? []
+                          return evts.length === 0 ? (
+                          <p className="text-xs text-gray-400">No events yet</p>
+                        ) : (
+                          evts.map(e => (
+                            <div key={e.id} className="flex items-start gap-2 py-1.5 border-b border-gray-100 last:border-0">
+                              <div className="w-1 h-1 rounded-full bg-gray-300 mt-1.5 shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <span className="text-xs font-medium text-gray-700">
+                                  {e.eventType === 'INSTALLED' ? 'Installed at well'
+                                    : e.eventType === 'REFILLED' ? 'Refilled'
+                                    : e.eventType === 'FILLED' ? 'Initial fill'
+                                    : e.eventType === 'REMOVED' ? 'Removed from well'
+                                    : 'Rate changed'}
+                                </span>
+                                {e.amountGallons != null && <span className="text-xs text-gray-500"> · {e.amountGallons.toLocaleString()} gal</span>}
+                                {e.levelPct != null && <span className="text-xs text-gray-500"> · {e.levelPct}%</span>}
+                              </div>
+                              <p className="text-[10px] text-gray-400 shrink-0">
+                                {new Date(e.eventAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                {' '}{new Date(e.eventAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                              </p>
+                            </div>
+                          ))
+                        )})()}
+                      </div>
+                    )}
+
+                    {refillLineId === line.id && line.tankId && (
+                      <div className="px-3 pb-3 space-y-2 border-t border-gray-100 bg-gray-50 pt-2.5">
+                        <div className="flex items-center justify-between">
+                          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Log Refill</p>
+                          {tank && (tank.calculatedLevelPct ?? 100) < 100 && (
+                            <p className="text-[10px] text-gray-400">
+                              {Math.floor(tank.capacityGallons * (1 - (tank.calculatedLevelPct ?? 0) / 100)).toLocaleString()} gal can be filled
+                            </p>
+                          )}
+                        </div>
+                        <input type="number" min="0" step="0.01"
+                          max={tank ? Math.floor(tank.capacityGallons * (1 - (tank.calculatedLevelPct ?? 0) / 100)) : undefined}
+                          value={refillAmount}
+                          onChange={e => setRefillAmount(e.target.value)}
+                          placeholder="Gallons added"
+                          className="w-full h-8 px-3 text-xs rounded-lg border border-gray-200 outline-none bg-white" />
+                        <input type="datetime-local" value={refillAt}
+                          onChange={e => setRefillAt(e.target.value)}
+                          className="w-full h-8 px-3 text-xs rounded-lg border border-gray-200 outline-none bg-white" />
+                        <div className="flex gap-2">
+                          <button onClick={() => setRefillLineId(null)}
+                            className="flex-1 h-7 text-xs font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-white transition-colors">
+                            Cancel
+                          </button>
+                          <button onClick={() => handleLogRefill(line.tankId!)} disabled={tankEventMutation.isPending}
+                            className="flex-1 h-7 text-xs font-semibold text-white rounded-lg transition disabled:opacity-60"
+                            style={{ backgroundColor: 'var(--color-primary)' }}>
+                            {tankEventMutation.isPending ? 'Saving…' : 'Save Refill'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{line.productName}</p>
-                    <p className="text-xs text-gray-500">
-                      {line.recRate} {line.method === 'CONTINUOUS' ? 'gal/day' : 'gal/treatment'} · {METHOD_LABELS[line.method]}{line.schedule ? ` — ${SCHEDULE_LABELS[line.schedule]}` : ''}
-                      {line.notes ? ` · ${line.notes}` : ''}
-                    </p>
-                  </div>
-                  {canEdit && (
-                    <button
-                      onClick={() => removeLineMutation.mutate({ lineId: line.id })}
-                      disabled={removeLineMutation.isPending}
-                      className="w-7 h-7 rounded-md flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 shrink-0">
-                      <Trash2 size={13} />
-                    </button>
-                  )}
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
 
           {/* Add product form */}
-          {canEdit && (
+          {canEdit && !isReadOnly && (
             <div className="mt-4">
               {!showLineForm ? (
                 <button onClick={() => setShowLineForm(true)}
@@ -588,6 +883,54 @@ function PlanDrawer({
                     placeholder="Notes (optional)"
                     className="w-full h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 bg-white"
                   />
+
+                  {/* Tank Owner */}
+                  <div className="space-y-2 pt-1" style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Tank</p>
+                    <div className="flex gap-2">
+                      {(['ENDURA', 'THIRD_PARTY'] as const).map(owner => (
+                        <button
+                          key={owner}
+                          type="button"
+                          onClick={() => setValue('tankOwner', watch('tankOwner') === owner ? undefined : owner)}
+                          className={`flex-1 h-8 text-xs font-semibold rounded-lg border transition-colors ${
+                            watch('tankOwner') === owner
+                              ? 'text-white border-transparent'
+                              : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                          }`}
+                          style={watch('tankOwner') === owner ? { backgroundColor: 'var(--color-primary)' } : {}}>
+                          {owner === 'ENDURA' ? 'Endura Tank' : '3rd Party Tank'}
+                        </button>
+                      ))}
+                    </div>
+                    {watch('tankOwner') === 'ENDURA' && (
+                      <SearchableDropdown
+                        value={watch('tankId') || null}
+                        onChange={v => setValue('tankId', v ?? '')}
+                        options={tankOptions}
+                        placeholder="Select tank from registry…"
+                        searchPlaceholder="Search tanks…"
+                      />
+                    )}
+                    {watch('tankOwner') === 'THIRD_PARTY' && (
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          min="0" max="100" step="0.01"
+                          value={watch('tankLevelPct') ?? ''}
+                          onChange={e => setValue('tankLevelPct', e.target.value)}
+                          placeholder="Level %"
+                          className="flex-1 h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 bg-white"
+                        />
+                        <input
+                          type="datetime-local"
+                          value={watch('tankLevelCheckedAt') ?? ''}
+                          onChange={e => setValue('tankLevelCheckedAt', e.target.value)}
+                          className="flex-1 h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 bg-white"
+                        />
+                      </div>
+                    )}
+                  </div>
 
                   <div className="flex gap-2">
                     <button type="button" onClick={() => { reset(); setShowLineForm(false) }}

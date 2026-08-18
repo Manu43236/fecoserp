@@ -1,11 +1,13 @@
 package com.fecos.programs;
 
 import com.fecos.common.TenantAwareEntity;
+import com.fecos.tanks.TankOwner;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.UUID;
 
 @Getter
@@ -33,4 +35,17 @@ public class TreatmentPlanLineEntity extends TenantAwareEntity {
 
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tank_owner", length = 20)
+    private TankOwner tankOwner;
+
+    @Column(name = "tank_level_pct", precision = 5, scale = 2)
+    private BigDecimal tankLevelPct;
+
+    @Column(name = "tank_level_checked_at")
+    private Instant tankLevelCheckedAt;
+
+    @Column(name = "tank_id")
+    private UUID tankId;
 }

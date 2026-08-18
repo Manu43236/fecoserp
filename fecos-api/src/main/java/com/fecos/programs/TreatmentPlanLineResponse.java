@@ -1,6 +1,9 @@
 package com.fecos.programs;
 
+import com.fecos.tanks.TankOwner;
+
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.UUID;
 
 public record TreatmentPlanLineResponse(
@@ -11,9 +14,14 @@ public record TreatmentPlanLineResponse(
         BigDecimal recRate,
         TreatmentPlanMethod method,
         TreatmentPlanSchedule schedule,
-        String notes
+        String notes,
+        TankOwner tankOwner,
+        BigDecimal tankLevelPct,
+        Instant tankLevelCheckedAt,
+        UUID tankId,
+        BigDecimal calculatedLevelPct
 ) {
-    public static TreatmentPlanLineResponse from(TreatmentPlanLineEntity l, String productName) {
+    public static TreatmentPlanLineResponse from(TreatmentPlanLineEntity l, String productName, BigDecimal calculatedLevelPct) {
         return new TreatmentPlanLineResponse(
                 l.getId(),
                 l.getProgramId(),
@@ -22,7 +30,12 @@ public record TreatmentPlanLineResponse(
                 l.getRecRate(),
                 l.getMethod(),
                 l.getSchedule(),
-                l.getNotes()
+                l.getNotes(),
+                l.getTankOwner(),
+                l.getTankLevelPct(),
+                l.getTankLevelCheckedAt(),
+                l.getTankId(),
+                calculatedLevelPct
         );
     }
 }

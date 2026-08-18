@@ -37,6 +37,15 @@ public class TreatmentPlanEntity extends TenantAwareEntity {
     @Column(name = "end_date")
     private LocalDate endDate;
 
+    @Column(name = "started_at")
+    private Instant startedAt;
+
+    @Column(name = "paused_at")
+    private Instant pausedAt;
+
+    @Column(name = "resumed_at")
+    private Instant resumedAt;
+
     @Column(name = "superseded_at")
     private Instant supersededAt;
 }

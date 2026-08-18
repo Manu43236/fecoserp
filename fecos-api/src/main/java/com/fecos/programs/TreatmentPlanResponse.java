@@ -17,6 +17,9 @@ public record TreatmentPlanResponse(
         String notes,
         LocalDate startDate,
         LocalDate endDate,
+        Instant startedAt,
+        Instant pausedAt,
+        Instant resumedAt,
         List<TreatmentPlanLineResponse> lines,
         long lineCount,
         Instant createdAt
@@ -41,6 +44,9 @@ public record TreatmentPlanResponse(
                 p.getNotes(),
                 p.getStartDate(),
                 p.getEndDate(),
+                p.getStartedAt(),
+                p.getPausedAt(),
+                p.getResumedAt(),
                 lines,
                 lineCount,
                 p.getCreatedAt()

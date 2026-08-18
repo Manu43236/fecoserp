@@ -1,9 +1,11 @@
 import api from '@/lib/axios'
 import type { ApiResponse, PageResponse } from '@/types'
 
-export type PlanStatus = 'DRAFT' | 'ACTIVE' | 'INACTIVE' | 'SUPERSEDED'
+export type PlanStatus = 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'SUSPENDED' | 'COMPLETED' | 'INACTIVE' | 'SUPERSEDED'
 export type PlanMethod = 'CONTINUOUS' | 'BATCH'
 export type PlanSchedule = 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY'
+
+export type TankOwner = 'ENDURA' | 'THIRD_PARTY'
 
 export interface PlanLineRecord {
   id: string
@@ -14,6 +16,11 @@ export interface PlanLineRecord {
   method: PlanMethod
   schedule: PlanSchedule | null
   notes: string | null
+  tankOwner: TankOwner | null
+  tankLevelPct: number | null
+  tankLevelCheckedAt: string | null
+  tankId: string | null
+  calculatedLevelPct: number | null
 }
 
 export interface PlanRecord {
@@ -28,6 +35,9 @@ export interface PlanRecord {
   notes: string | null
   startDate: string | null
   endDate: string | null
+  startedAt: string | null
+  pausedAt: string | null
+  resumedAt: string | null
   lines: PlanLineRecord[]
   lineCount: number
   createdAt: string
@@ -48,6 +58,10 @@ export interface PlanLinePayload {
   method: PlanMethod
   schedule?: PlanSchedule | null
   notes?: string
+  tankOwner?: TankOwner | null
+  tankLevelPct?: number | null
+  tankLevelCheckedAt?: string | null
+  tankId?: string | null
 }
 
 export const plansApi = {
@@ -58,5 +72,10 @@ export const plansApi = {
   delete:     (id: string) => api.delete<ApiResponse<void>>(`/api/v1/plans/${id}`),
   addLine:    (id: string, data: PlanLinePayload) => api.post<ApiResponse<PlanRecord>>(`/api/v1/plans/${id}/lines`, data),
   updateLine: (id: string, lineId: string, data: PlanLinePayload) => api.put<ApiResponse<PlanRecord>>(`/api/v1/plans/${id}/lines/${lineId}`, data),
-  removeLine: (id: string, lineId: string) => api.delete<ApiResponse<void>>(`/api/v1/plans/${id}/lines/${lineId}`),
+  removeLine:  (id: string, lineId: string) => api.delete<ApiResponse<void>>(`/api/v1/plans/${id}/lines/${lineId}`),
+  start:       (id: string) => api.post<ApiResponse<PlanRecord>>(`/api/v1/plans/${id}/start`),
+  pause:       (id: string) => api.post<ApiResponse<PlanRecord>>(`/api/v1/plans/${id}/pause`),
+  resume:      (id: string) => api.post<ApiResponse<PlanRecord>>(`/api/v1/plans/${id}/resume`),
+  suspend:     (id: string) => api.post<ApiResponse<PlanRecord>>(`/api/v1/plans/${id}/suspend`),
+  complete:    (id: string) => api.post<ApiResponse<PlanRecord>>(`/api/v1/plans/${id}/complete`),
 }

@@ -569,7 +569,9 @@ function LabReportDrawer({ sample, onClose, onEnterResults, onStartTesting }: {
           {row('Collected At', s.collectedAt ? new Date(s.collectedAt).toLocaleString() : '—')}
           {row('Received At', new Date(s.receivedAt).toLocaleString())}
           {row('Priority', <PriorityBadge priority={s.priority} />)}
-          {row('Status', <StatusBadge status={s.status} />)}
+          {row('Status', s.status === 'COMPLETED' && s.approvalStatus === 'PENDING_REVIEW'
+            ? <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ring-1 bg-amber-50 text-amber-700 ring-amber-200"><span className="w-1.5 h-1.5 rounded-full bg-amber-400" />Pending Approval</span>
+            : <StatusBadge status={s.status} />)}
           {s.testsRequested && row('Tests Requested', s.testsRequested)}
 
           {r && (<>
@@ -848,7 +850,11 @@ export default function LabPage() {
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-500">{new Date(s.receivedAt).toLocaleDateString()}</td>
                   <td className="px-4 py-3"><PriorityBadge priority={s.priority} /></td>
-                  <td className="px-4 py-3"><StatusBadge status={s.status} /></td>
+                  <td className="px-4 py-3">
+                    {s.status === 'COMPLETED' && s.approvalStatus === 'PENDING_REVIEW'
+                      ? <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ring-1 bg-amber-50 text-amber-700 ring-amber-200"><span className="w-1.5 h-1.5 rounded-full bg-amber-400" />Pending Approval</span>
+                      : <StatusBadge status={s.status} />}
+                  </td>
                   {isAlertsTab ? (
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
