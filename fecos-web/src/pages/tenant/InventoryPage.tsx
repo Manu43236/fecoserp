@@ -240,11 +240,15 @@ function WarehousesSection({ canEdit }: { canEdit: boolean }) {
   function openEdit(w: WarehouseRecord) { setEditing(w); setViewing(undefined); setPanelOpen(true) }
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="px-6 py-5 flex items-center justify-between shrink-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Warehouses</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{total} location{total !== 1 ? 's' : ''}</p>
+    <div className="p-6 space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="relative w-56">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input value={search} onChange={e => { setSearch(e.target.value); setPage(0) }}
+              placeholder="Search warehouses…"
+              className="w-full h-9 pl-9 pr-3 text-sm rounded-lg border border-gray-200 bg-white outline-none focus:ring-2 transition" />
+          </div>
         </div>
         {canEdit && (
           <button onClick={() => { setEditing(undefined); setPanelOpen(true) }}
@@ -255,69 +259,50 @@ function WarehousesSection({ canEdit }: { canEdit: boolean }) {
         )}
       </div>
 
-      <div className="px-6 py-3 flex items-center gap-3 shrink-0 bg-gray-50" style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-        <div className="relative w-64">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            value={search}
-            onChange={e => { setSearch(e.target.value); setPage(0) }}
-            placeholder="Search warehouses…"
-            className="w-full h-9 pl-9 pr-3 text-sm rounded-lg border border-gray-200 bg-white outline-none focus:ring-2 focus:ring-red-100 transition"
-          />
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-auto">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr style={{ backgroundColor: 'var(--color-primary)' }}>
               {['Warehouse', 'Location', 'Status', ''].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-white/80 uppercase tracking-wide">{h}</th>
+                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-white/90 uppercase tracking-wide">{h}</th>
               ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-gray-100">
             {warehouses.length === 0 ? (
-              <tr><td colSpan={4} className="px-4 py-16 text-center text-gray-400 text-sm">
+              <tr><td colSpan={4} className="px-4 py-14 text-center text-gray-400 text-sm">
                 No warehouses found. {canEdit && 'Add your first warehouse to get started.'}
               </td></tr>
-            ) : warehouses.map((w: WarehouseRecord, i: number) => (
-              <tr key={w.id} onClick={() => setViewing(w)}
-                className="cursor-pointer hover:bg-gray-50 transition-colors"
-                style={i > 0 ? { borderTop: '1px solid rgba(0,0,0,0.05)' } : {}}>
+            ) : warehouses.map((w: WarehouseRecord) => (
+              <tr key={w.id} onClick={() => setViewing(w)} className="cursor-pointer hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
-                      style={{ backgroundColor: 'var(--color-primary)' }}>
-                      <Warehouse size={14} className="text-white" />
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--color-primary)' }}>
+                      <Warehouse size={13} className="text-white" />
                     </div>
                     <span className="font-medium text-gray-900">{w.name}</span>
                   </div>
                 </td>
                 <td className="px-4 py-3 text-gray-500">{w.location ?? <span className="text-gray-300">—</span>}</td>
                 <td className="px-4 py-3"><StatusBadge active={w.isActive} /></td>
-                <td className="px-4 py-3">
-                  <button onClick={e => { e.stopPropagation(); setViewing(w) }} className="text-gray-400 hover:text-gray-600 transition-colors">
-                    <ChevronRight size={16} />
-                  </button>
-                </td>
+                <td className="px-4 py-3 text-right"><ChevronRight size={14} className="text-gray-400 ml-auto" /></td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
 
-      {totalPages > 1 && (
-        <div className="px-6 py-3 flex items-center justify-between shrink-0 bg-white" style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}>
-          <p className="text-xs text-gray-500">Page {page + 1} of {totalPages}</p>
-          <div className="flex gap-2">
-            <button disabled={page === 0} onClick={() => setPage(p => p - 1)}
-              className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-colors">Previous</button>
-            <button disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}
-              className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-colors">Next</button>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+            <p className="text-xs text-gray-500">Page {page + 1} of {totalPages} · {total} total</p>
+            <div className="flex gap-2">
+              <button disabled={page === 0} onClick={() => setPage(p => p - 1)}
+                className="px-3 py-1.5 text-xs font-medium rounded-md border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-colors">Previous</button>
+              <button disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}
+                className="px-3 py-1.5 text-xs font-medium rounded-md border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-colors">Next</button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <WarehouseFormPanel open={panelOpen} onClose={() => { setPanelOpen(false); setEditing(undefined) }} warehouse={editing} />
       {viewing && !panelOpen && (
@@ -352,52 +337,35 @@ function StockSection() {
   )
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="px-6 py-5 flex items-center justify-between shrink-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Stock</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{filtered.length} item{filtered.length !== 1 ? 's' : ''} on hand</p>
-        </div>
-      </div>
-
-      <div className="px-6 py-3 flex items-center gap-3 shrink-0 bg-gray-50" style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-        <div className="relative w-64">
+    <div className="p-6 space-y-4">
+      <div className="flex items-center gap-3">
+        <div className="relative w-56">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
+          <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search product or warehouse…"
-            className="w-full h-9 pl-9 pr-3 text-sm rounded-lg border border-gray-200 bg-white outline-none focus:ring-2 focus:ring-red-100 transition"
-          />
+            className="w-full h-9 pl-9 pr-3 text-sm rounded-lg border border-gray-200 bg-white outline-none focus:ring-2 transition" />
         </div>
-        <div className="w-56">
-          <SearchableDropdown
-            options={warehouseOptions}
-            value={warehouseFilter}
-            onChange={v => setWarehouseFilter(v)}
-            placeholder="All Warehouses"
-          />
+        <div className="w-48">
+          <SearchableDropdown options={warehouseOptions} value={warehouseFilter} onChange={v => setWarehouseFilter(v)} placeholder="All Warehouses" showClear />
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr style={{ backgroundColor: 'var(--color-primary)' }}>
               {['Product', 'Warehouse', 'Unit', 'Qty on Hand'].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-white/80 uppercase tracking-wide">{h}</th>
+                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-white/90 uppercase tracking-wide">{h}</th>
               ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-gray-100">
             {filtered.length === 0 ? (
-              <tr><td colSpan={4} className="px-4 py-16 text-center text-gray-400 text-sm">
+              <tr><td colSpan={4} className="px-4 py-14 text-center text-gray-400 text-sm">
                 {stock.length === 0 ? 'No stock on hand. Record a receipt transaction to get started.' : 'No results match your search.'}
               </td></tr>
-            ) : filtered.map((s, i) => (
-              <tr key={`${s.warehouseId}-${s.productId}`}
-                className="hover:bg-gray-50 transition-colors"
-                style={i > 0 ? { borderTop: '1px solid rgba(0,0,0,0.05)' } : {}}>
+            ) : filtered.map(s => (
+              <tr key={`${s.warehouseId}-${s.productId}`} className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3 font-medium text-gray-900">{s.productName}</td>
                 <td className="px-4 py-3 text-gray-600">{s.warehouseName}</td>
                 <td className="px-4 py-3 text-gray-500">{s.unit}</td>
@@ -676,56 +644,47 @@ function TransactionsSection({ canEdit }: { canEdit: boolean }) {
   ]
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="px-6 py-5 flex items-center justify-between shrink-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Transactions</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{total} transaction{total !== 1 ? 's' : ''} total</p>
+    <div className="p-6 space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="relative w-48">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Search…"
+              className="w-full h-9 pl-9 pr-3 text-sm rounded-lg border border-gray-200 bg-white outline-none focus:ring-2 transition" />
+          </div>
+          <div className="w-44">
+            <SearchableDropdown options={warehouseOptions} value={warehouseFilter} onChange={v => { setWarehouseFilter(v); setPage(0) }} placeholder="All Warehouses" showClear />
+          </div>
+          <div className="w-36">
+            <SearchableDropdown options={typeOptions} value={typeFilter} onChange={v => { setTypeFilter(v); setPage(0) }} placeholder="All Types" showClear />
+          </div>
         </div>
         {canEdit && (
           <button onClick={() => setPanelOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg transition"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg transition shrink-0"
             style={{ backgroundColor: 'var(--color-primary)' }}>
             <Plus size={15} /> Record Transaction
           </button>
         )}
       </div>
 
-      <div className="px-6 py-3 flex items-center gap-3 shrink-0 bg-gray-50" style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-        <div className="relative w-56">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search product, user…"
-            className="w-full h-9 pl-9 pr-3 text-sm rounded-lg border border-gray-200 bg-white outline-none focus:ring-2 focus:ring-red-100 transition"
-          />
-        </div>
-        <div className="w-48">
-          <SearchableDropdown options={warehouseOptions} value={warehouseFilter} onChange={v => { setWarehouseFilter(v); setPage(0) }} placeholder="All Warehouses" />
-        </div>
-        <div className="w-40">
-          <SearchableDropdown options={typeOptions} value={typeFilter} onChange={v => { setTypeFilter(v); setPage(0) }} placeholder="All Types" />
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-auto">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr style={{ backgroundColor: 'var(--color-primary)' }}>
-              {['Date & Time', 'Type', 'Product', 'Warehouse', 'Qty', 'Unit', 'Supplier', 'Recorded By', 'Notes'].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-white/80 uppercase tracking-wide">{h}</th>
+              {['Date', 'Type', 'Product', 'Warehouse', 'Qty', 'Unit', 'Supplier', 'Recorded By', 'Notes'].map(h => (
+                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-white/90 uppercase tracking-wide">{h}</th>
               ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-gray-100">
             {transactions.length === 0 ? (
-              <tr><td colSpan={9} className="px-4 py-16 text-center text-gray-400 text-sm">
+              <tr><td colSpan={9} className="px-4 py-14 text-center text-gray-400 text-sm">
                 No transactions yet. {canEdit && 'Record your first receipt to get started.'}
               </td></tr>
-            ) : transactions.map((t, i) => (
-              <tr key={t.id} className="hover:bg-gray-50 transition-colors"
-                style={i > 0 ? { borderTop: '1px solid rgba(0,0,0,0.05)' } : {}}>
+            ) : transactions.map(t => (
+              <tr key={t.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3 whitespace-nowrap">
                   <p className="text-gray-800 text-xs font-medium">{t.transactionDate}</p>
                   <p className="text-gray-400 text-xs mt-0.5">{fmtDateTime(t.createdAt)}</p>
@@ -750,19 +709,19 @@ function TransactionsSection({ canEdit }: { canEdit: boolean }) {
             ))}
           </tbody>
         </table>
-      </div>
 
-      {totalPages > 1 && (
-        <div className="px-6 py-3 flex items-center justify-between shrink-0 bg-white" style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}>
-          <p className="text-xs text-gray-500">Page {page + 1} of {totalPages}</p>
-          <div className="flex gap-2">
-            <button disabled={page === 0} onClick={() => setPage(p => p - 1)}
-              className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-colors">Previous</button>
-            <button disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}
-              className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-colors">Next</button>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+            <p className="text-xs text-gray-500">Page {page + 1} of {totalPages} · {total} total</p>
+            <div className="flex gap-2">
+              <button disabled={page === 0} onClick={() => setPage(p => p - 1)}
+                className="px-3 py-1.5 text-xs font-medium rounded-md border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-colors">Previous</button>
+              <button disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}
+                className="px-3 py-1.5 text-xs font-medium rounded-md border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-colors">Next</button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <TransactionFormPanel open={panelOpen} onClose={() => setPanelOpen(false)} />
     </div>
@@ -776,33 +735,30 @@ export default function InventoryPage() {
   const [active, setActive] = useState<SectionId>('warehouses')
 
   return (
-    <div className="flex h-full min-h-screen">
-      <aside className="w-[240px] shrink-0 bg-white border-r border-gray-100 py-4">
-        <p className="px-5 text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-2">Inventory</p>
-        <nav className="space-y-0.5 px-2">
-          {SECTIONS.map(s => {
-            const Icon = s.icon
-            const isActive = s.id === active
-            return (
-              <button key={s.id} onClick={() => setActive(s.id)}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all"
-                style={isActive ? { backgroundColor: 'var(--color-primary)', color: '#fff' } : {}}>
-                <Icon size={15} className={isActive ? 'text-white' : 'text-gray-400'} />
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-medium ${isActive ? 'text-white' : 'text-gray-700'}`}>{s.label}</p>
-                </div>
-                {isActive && <ChevronRight size={13} className="text-white/70 shrink-0" />}
-              </button>
-            )
-          })}
-        </nav>
-      </aside>
+    <div className="flex flex-col h-full min-h-screen">
+      <div className="bg-white border-b border-gray-200 px-6 flex items-center gap-1">
+        {SECTIONS.map(s => {
+          const Icon = s.icon
+          const isActive = s.id === active
+          return (
+            <button key={s.id} onClick={() => setActive(s.id)}
+              className="flex items-center gap-2 px-4 py-3.5 text-sm font-medium border-b-2 transition-all -mb-px"
+              style={{
+                borderBottomColor: isActive ? 'var(--color-primary)' : 'transparent',
+                color: isActive ? 'var(--color-primary)' : '#6B7280',
+              }}>
+              <Icon size={14} />
+              {s.label}
+            </button>
+          )
+        })}
+      </div>
 
-      <main className="flex-1 overflow-hidden flex flex-col">
+      <div className="flex-1 overflow-hidden flex flex-col">
         {active === 'warehouses'   && <WarehousesSection  canEdit={canEdit} />}
         {active === 'stock'        && <StockSection />}
         {active === 'transactions' && <TransactionsSection canEdit={canEdit} />}
-      </main>
+      </div>
     </div>
   )
 }

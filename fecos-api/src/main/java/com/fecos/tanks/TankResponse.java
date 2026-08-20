@@ -18,6 +18,7 @@ public record TankResponse(
         Instant removedAt,
         BigDecimal calculatedLevelPct,
         BigDecimal calculatedLevelGallons,
+        Instant lastRefilledAt,
         List<TankEventResponse> events,
         Instant createdAt
 ) {

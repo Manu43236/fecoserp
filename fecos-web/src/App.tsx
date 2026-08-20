@@ -21,8 +21,8 @@ import RoutesPage from '@/pages/tenant/RoutesPage'
 import LabPage from '@/pages/tenant/LabPage'
 import ApprovalsPage from '@/pages/tenant/ApprovalsPage'
 import TanksPage from '@/pages/tenant/TanksPage'
-import RawMaterialQcPage from '@/pages/tenant/RawMaterialQcPage'
-import FinishedProductQcPage from '@/pages/tenant/FinishedProductQcPage'
+import QCPage from '@/pages/tenant/QCPage'
+import PumpShopPage from '@/pages/tenant/PumpShopPage'
 
 const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -62,14 +62,15 @@ export default function App() {
               <Route path="/clients"          element={<ClientsPage />} />
               <Route path="/leases"           element={<LeasesPage />} />
               <Route path="/wells"            element={<WellsPage />} />
-              <Route path="/pump-shop"        element={<PlaceholderPage title="Pump Shop" />} />
+              <Route path="/pump-shop"        element={<PumpShopPage />} />
               <Route path="/reports"          element={<PlaceholderPage title="Reports" />} />
 
               {/* Lab */}
               <Route path="/lab/queue"        element={<LabPage />} />
               <Route path="/lab/results"      element={<LabPage />} />
-              <Route path="/lab/raw-qc"       element={<RawMaterialQcPage />} />
-              <Route path="/lab/prod-qc"      element={<FinishedProductQcPage />} />
+              <Route path="/qc"               element={<QCPage />} />
+              <Route path="/lab/raw-qc"       element={<Navigate to="/qc" replace />} />
+              <Route path="/lab/prod-qc"      element={<Navigate to="/qc" replace />} />
 
               {/* Admin/Dispatcher */}
               <Route path="/routes"           element={<RoutesPage />} />

@@ -3,6 +3,8 @@ package com.fecos.programs;
 import com.fecos.clients.ClientRepository;
 import com.fecos.leases.LeaseRepository;
 import com.fecos.products.ProductRepository;
+import com.fecos.pumpshop.PumpRepository;
+import com.fecos.pumpshop.PumpStatus;
 import com.fecos.tanks.TankService;
 import com.fecos.users.UserRepository;
 import com.fecos.wells.WellRepository;
@@ -33,6 +35,7 @@ public class TreatmentPlanService {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final TankService tankService;
+    private final PumpRepository pumpRepository;
 
     public Page<TreatmentPlanResponse> list(TreatmentPlanStatus status, UUID wellId, UUID accountRepId, int page, int size) {
         UUID tenantId = currentTenantId();
@@ -84,7 +87,7 @@ public class TreatmentPlanService {
 
         if (req.getTankId() != null) {
             tankService.assignToPlan(req.getTankId());
-            if (req.getRecRate() != null) {
+            if (req.getRecRate() != null && p.getStatus() == TreatmentPlanStatus.ACTIVE) {
                 tankService.logRateChange(req.getTankId(), req.getRecRate());
             }
         }
@@ -99,7 +102,7 @@ public class TreatmentPlanService {
                 .orElseThrow(() -> new EntityNotFoundException("Line not found"));
         applyLine(line, req);
         lineRepository.save(line);
-        if (req.getTankId() != null && req.getRecRate() != null) {
+        if (req.getTankId() != null && req.getRecRate() != null && p.getStatus() == TreatmentPlanStatus.ACTIVE) {
             tankService.logRateChange(req.getTankId(), req.getRecRate());
         }
         return toResponse(p, true);
@@ -127,6 +130,18 @@ public class TreatmentPlanService {
             case "start" -> {
                 if (p.getStatus() != TreatmentPlanStatus.DRAFT)
                     throw new IllegalStateException("Only DRAFT plans can be started");
+                List<TreatmentPlanLineEntity> lines =
+                        lineRepository.findAllByProgramIdAndIsDeletedFalseOrderByCreatedAtAsc(p.getId());
+                if (lines.isEmpty())
+                    throw new IllegalStateException("Add at least one product before starting");
+                for (TreatmentPlanLineEntity line : lines) {
+                    String name = productRepository.findById(line.getProductId())
+                            .map(pr -> pr.getName()).orElse("Unknown product");
+                    if (line.getTankId() == null)
+                        throw new IllegalStateException("Tank not assigned for: " + name);
+                    if (pumpRepository.findDeployedPumpForTank(line.getTankId(), PumpStatus.DEPLOYED).isEmpty())
+                        throw new IllegalStateException("No pump deployed for: " + name);
+                }
                 planRepository.findAllByTenantIdAndWellIdAndStatusAndIsDeletedFalse(
                         tenantId, p.getWellId(), TreatmentPlanStatus.ACTIVE)
                     .forEach(existing -> {
@@ -142,6 +157,10 @@ public class TreatmentPlanService {
             case "pause" -> {
                 if (p.getStatus() != TreatmentPlanStatus.ACTIVE)
                     throw new IllegalStateException("Only ACTIVE plans can be paused");
+                lineRepository.findAllByProgramIdAndIsDeletedFalseOrderByCreatedAtAsc(p.getId())
+                        .forEach(line -> {
+                            if (line.getTankId() != null) tankService.logLevelSnapshot(line.getTankId());
+                        });
                 p.setStatus(TreatmentPlanStatus.PAUSED);
                 p.setPausedAt(Instant.now());
             }
@@ -151,6 +170,10 @@ public class TreatmentPlanService {
                 p.setStatus(TreatmentPlanStatus.ACTIVE);
                 p.setResumedAt(Instant.now());
                 if (p.getStartedAt() == null) p.setStartedAt(Instant.now());
+                lineRepository.findAllByProgramIdAndIsDeletedFalseOrderByCreatedAtAsc(p.getId())
+                        .forEach(line -> {
+                            if (line.getTankId() != null) tankService.logResumeEvent(line.getTankId());
+                        });
                 logRateEventsForLines(p.getId());
             }
             case "suspend" -> {
@@ -225,10 +248,10 @@ public class TreatmentPlanService {
                 || l.getThirdPartyCapacityGallons().compareTo(BigDecimal.ZERO) == 0) {
             return null;
         }
-        long hoursElapsed = ChronoUnit.HOURS.between(l.getTankLevelCheckedAt(), Instant.now());
+        long minutesElapsed = ChronoUnit.MINUTES.between(l.getTankLevelCheckedAt(), Instant.now());
         BigDecimal gallonsConsumed = l.getRecRate()
-                .multiply(BigDecimal.valueOf(hoursElapsed))
-                .divide(BigDecimal.valueOf(24), 4, RoundingMode.HALF_UP);
+                .multiply(BigDecimal.valueOf(minutesElapsed))
+                .divide(BigDecimal.valueOf(24 * 60), 4, RoundingMode.HALF_UP);
         BigDecimal baselineGallons = l.getTankLevelPct()
                 .multiply(l.getThirdPartyCapacityGallons())
                 .divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
@@ -272,7 +295,18 @@ public class TreatmentPlanService {
                     .map(l -> {
                         String productName = productRepository.findById(l.getProductId())
                                 .map(pr -> pr.getName()).orElse(l.getProductId().toString());
-                        return TreatmentPlanLineResponse.from(l, productName, calcThirdPartyLevel(l));
+                        boolean pumpDeployed = false;
+                        UUID pumpId = null;
+                        String pumpSerial = null;
+                        if (l.getTankId() != null) {
+                            var pump = pumpRepository.findDeployedPumpForTank(l.getTankId(), PumpStatus.DEPLOYED);
+                            if (pump.isPresent()) {
+                                pumpDeployed = true;
+                                pumpId = pump.get().getId();
+                                pumpSerial = pump.get().getSerialNumber();
+                            }
+                        }
+                        return TreatmentPlanLineResponse.from(l, productName, calcThirdPartyLevel(l), pumpDeployed, pumpId, pumpSerial);
                     })
                     .toList();
         }

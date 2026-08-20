@@ -2,7 +2,7 @@ import api from '@/lib/axios'
 import type { ApiResponse, PageResponse } from '@/types'
 
 export type TankStatus = 'AVAILABLE' | 'ASSIGNED' | 'INSTALLED' | 'CLEANING'
-export type TankEventType = 'INSTALLED' | 'FILLED' | 'RATE_CHANGED' | 'REFILLED' | 'REMOVED'
+export type TankEventType = 'INSTALLED' | 'FILLED' | 'RATE_CHANGED' | 'REFILLED' | 'REMOVED' | 'EMPTIED' | 'PAUSED' | 'RESUMED'
 
 export interface TankEventRecord {
   id: string
@@ -28,6 +28,7 @@ export interface TankRecord {
   removedAt: string | null
   calculatedLevelPct: number
   calculatedLevelGallons: number
+  lastRefilledAt: string | null
   events: TankEventRecord[]
   createdAt: string
 }

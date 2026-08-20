@@ -17,50 +17,48 @@ const navByRole: Record<string, NavItem[]> = {
   ADMIN: [
     { label: 'Dashboard',          path: '/dashboard',      icon: LayoutDashboard },
     { label: 'Clients',            path: '/clients',        icon: Building2       },
+    { label: 'Deliveries',         path: '/deliveries',     icon: PackageCheck    },
+    { label: 'Field Activity',     path: '/field-activity', icon: Activity        },
+    { label: 'Inventory',          path: '/inventory',      icon: Package         },
+    { label: 'Lab',                path: '/lab/queue',      icon: TestTube        },
     { label: 'Leases',             path: '/leases',         icon: MapPin          },
-    { label: 'Wells',              path: '/wells',          icon: Drill           },
+    { label: 'Masters',            path: '/masters',        icon: Settings2       },
+    { label: 'Portfolio',          path: '/rep/portfolio',  icon: Briefcase       },
+    { label: 'Products',           path: '/products',       icon: FlaskConical    },
+    { label: 'Programs',           path: '/plans',          icon: ClipboardList   },
+    { label: 'Pumps',              path: '/pump-shop',      icon: Wrench          },
+    { label: 'QC',                 path: '/qc',             icon: CheckCircle2    },
+    { label: 'Reports',            path: '/reports',        icon: BarChart3       },
     { label: 'Routes',             path: '/routes',         icon: Truck           },
     { label: 'Schedule',           path: '/schedule',       icon: CalendarDays    },
-    { label: 'Field Activity',     path: '/field-activity', icon: Activity        },
-    { label: 'Deliveries',         path: '/deliveries',     icon: PackageCheck    },
-    { label: 'Inventory',          path: '/inventory',      icon: Package         },
-    { label: 'Programs',            path: '/plans',          icon: ClipboardList   },
     { label: 'Tanks',              path: '/tanks',          icon: Cylinder        },
-    { label: 'Portfolio',          path: '/rep/portfolio',  icon: Briefcase       },
-    { label: 'Lab',                path: '/lab/queue',      icon: TestTube        },
-    { label: 'Raw Material QC',    path: '/lab/raw-qc',     icon: FlaskConical    },
-    { label: 'Finished Product QC',path: '/lab/prod-qc',    icon: CheckCircle2    },
-    { label: 'Pump Shop',          path: '/pump-shop',      icon: Wrench          },
-    { label: 'Reports',            path: '/reports',        icon: BarChart3       },
     { label: 'Users',              path: '/users',          icon: Users           },
-    { label: 'Products',           path: '/products',       icon: FlaskConical    },
-    { label: 'Masters',            path: '/masters',        icon: Settings2       },
+    { label: 'Wells',              path: '/wells',          icon: Drill           },
   ],
   MANAGER: [
     { label: 'Dashboard',      path: '/dashboard',      icon: LayoutDashboard },
-    { label: 'Field Activity', path: '/field-activity', icon: Activity        },
-    { label: 'Deliveries',     path: '/deliveries',     icon: PackageCheck    },
     { label: 'Clients',        path: '/clients',        icon: Building2       },
-    { label: 'Leases',         path: '/leases',         icon: MapPin          },
-    { label: 'Wells',          path: '/wells',          icon: Drill           },
+    { label: 'Deliveries',     path: '/deliveries',     icon: PackageCheck    },
+    { label: 'Field Activity', path: '/field-activity', icon: Activity        },
     { label: 'Inventory',      path: '/inventory',      icon: Package         },
-    { label: 'Programs',        path: '/plans',          icon: ClipboardList   },
-    { label: 'Tanks',          path: '/tanks',          icon: Cylinder        },
     { label: 'Lab',            path: '/lab/queue',      icon: TestTube        },
-    { label: 'Pump Shop',      path: '/pump-shop',      icon: Wrench          },
+    { label: 'Leases',         path: '/leases',         icon: MapPin          },
+    { label: 'Programs',       path: '/plans',          icon: ClipboardList   },
+    { label: 'Pumps',          path: '/pump-shop',      icon: Wrench          },
     { label: 'Reports',        path: '/reports',        icon: BarChart3       },
+    { label: 'Tanks',          path: '/tanks',          icon: Cylinder        },
+    { label: 'Wells',          path: '/wells',          icon: Drill           },
   ],
   LAB_TECH: [
-    { label: 'Lab',                 path: '/lab/queue',   icon: TestTube      },
-    { label: 'Raw Material QC',     path: '/lab/raw-qc',  icon: FlaskConical  },
-    { label: 'Finished Product QC', path: '/lab/prod-qc', icon: CheckCircle2  },
+    { label: 'Lab', path: '/lab/queue', icon: TestTube     },
+    { label: 'QC',  path: '/qc',        icon: CheckCircle2 },
   ],
   ACCOUNT_REP: [
-    { label: 'Portfolio',  path: '/rep/portfolio', icon: Briefcase   },
-    { label: 'Programs',    path: '/plans',         icon: ClipboardList },
-    { label: 'Tanks',      path: '/tanks',         icon: Cylinder    },
-    { label: 'Lab',        path: '/lab/queue',     icon: TestTube    },
-    { label: 'Reports',    path: '/reports',       icon: BarChart3   },
+    { label: 'Lab',       path: '/lab/queue',     icon: TestTube      },
+    { label: 'Portfolio', path: '/rep/portfolio', icon: Briefcase     },
+    { label: 'Programs',  path: '/plans',         icon: ClipboardList },
+    { label: 'Reports',   path: '/reports',       icon: BarChart3     },
+    { label: 'Tanks',     path: '/tanks',         icon: Cylinder      },
   ],
 }
 
@@ -136,15 +134,12 @@ export function AppLayout() {
         {/* User footer */}
         <div className="px-2.5 py-3 shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
           <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg">
-            {/* Avatar */}
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold"
               style={{ backgroundColor: 'rgba(255,255,255,0.12)', color: 'var(--color-accent)' }}
             >
               {userInitials(user?.fullName)}
             </div>
-
-            {/* Name + role */}
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold truncate leading-tight" style={{ color: 'var(--color-accent)' }}>
                 {user?.fullName}
@@ -153,8 +148,6 @@ export function AppLayout() {
                 {user?.role?.replace(/_/g, ' ')}
               </p>
             </div>
-
-            {/* Sign out */}
             <button
               onClick={logout}
               title="Sign out"

@@ -22,9 +22,12 @@ public record TreatmentPlanLineResponse(
         BigDecimal calculatedLevelPct,
         String thirdPartyName,
         BigDecimal thirdPartyCapacityGallons,
-        String thirdPartySerial
+        String thirdPartySerial,
+        boolean pumpDeployed,
+        UUID pumpId,
+        String pumpSerial
 ) {
-    public static TreatmentPlanLineResponse from(TreatmentPlanLineEntity l, String productName, BigDecimal calculatedLevelPct) {
+    public static TreatmentPlanLineResponse from(TreatmentPlanLineEntity l, String productName, BigDecimal calculatedLevelPct, boolean pumpDeployed, UUID pumpId, String pumpSerial) {
         return new TreatmentPlanLineResponse(
                 l.getId(),
                 l.getProgramId(),
@@ -41,7 +44,10 @@ public record TreatmentPlanLineResponse(
                 calculatedLevelPct,
                 l.getThirdPartyName(),
                 l.getThirdPartyCapacityGallons(),
-                l.getThirdPartySerial()
+                l.getThirdPartySerial(),
+                pumpDeployed,
+                pumpId,
+                pumpSerial
         );
     }
 }

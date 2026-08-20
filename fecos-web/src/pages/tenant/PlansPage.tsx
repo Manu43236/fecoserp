@@ -8,7 +8,8 @@ import toast from 'react-hot-toast'
 import {
   Plus, X, Search, ChevronRight, FlaskConical, Trash2, Cylinder, AlertTriangle, Pencil,
 } from 'lucide-react'
-import { plansApi, type PlanRecord, type PlanPayload, type PlanLinePayload, type PlanMethod, type PlanSchedule, type PlanStatus } from '@/api/plans'
+import { plansApi, type PlanRecord, type PlanLineRecord, type PlanPayload, type PlanLinePayload, type PlanMethod, type PlanSchedule, type PlanStatus } from '@/api/plans'
+import { pumpsApi } from '@/api/pumps'
 import { wellsApi, type WellRecord } from '@/api/wells'
 import { leasesApi, type LeaseRecord } from '@/api/leases'
 import { productsApi } from '@/api/products'
@@ -106,7 +107,7 @@ function LevelBar({ pct }: { pct: number }) {
       <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
         <div className="h-full rounded-full" style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: color }} />
       </div>
-      <span className="text-xs font-semibold tabular-nums" style={{ color, minWidth: 36 }}>{pct.toFixed(1)}%</span>
+      <span className="text-xs font-semibold tabular-nums" style={{ color, minWidth: 40 }}>{pct.toFixed(2)}%</span>
     </div>
   )
 }
@@ -367,9 +368,14 @@ function PlanDrawer({
   const qc = useQueryClient()
   const [showLineForm, setShowLineForm] = useState(false)
   const [editingLine, setEditingLine] = useState<PlanLineRecord | null>(null)
+  const [deployPumpLine, setDeployPumpLine] = useState<PlanLineRecord | null>(null)
+  const [selectedPumpId, setSelectedPumpId] = useState('')
   const [refillLineId, setRefillLineId] = useState<string | null>(null)
   const [refillAmount, setRefillAmount] = useState('')
-  const [refillAt, setRefillAt] = useState(new Date().toISOString().slice(0, 16))
+  const [refillAt, setRefillAt] = useState(() => {
+    const now = new Date()
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+  })
   const [historyLineId, setHistoryLineId] = useState<string | null>(null)
 
   const { data: fullData, isLoading } = useQuery({
@@ -398,6 +404,26 @@ function PlanDrawer({
   const tankOptions: DropdownOption[] = tanks
     .filter(t => t.status === 'AVAILABLE' || t.id === editingLine?.tankId)
     .map(t => ({ value: t.id, label: t.serialNumber ?? `Tank (${t.capacityGallons} gal)` }))
+
+  const { data: inShopPumps = [] } = useQuery({
+    queryKey: ['pumps-in-shop'],
+    queryFn: () => pumpsApi.list({ status: 'IN_SHOP', size: 200 }).then(r => r.data.data?.content ?? []),
+    enabled: !!deployPumpLine,
+  })
+
+  const deployPumpMutation = useMutation({
+    mutationFn: ({ pumpId, tankId }: { pumpId: string; tankId: string }) =>
+      pumpsApi.deploy(pumpId, { tankId }),
+    onSuccess: () => {
+      toast.success('Pump deployed')
+      qc.invalidateQueries({ queryKey: ['plan', plan.id] })
+      qc.invalidateQueries({ queryKey: ['pumps-in-shop'] })
+      qc.invalidateQueries({ queryKey: ['pumps'] })
+      setDeployPumpLine(null)
+      setSelectedPumpId('')
+    },
+    onError: () => toast.error('Failed to deploy pump'),
+  })
 
   const products = productsData ?? []
 
@@ -435,9 +461,11 @@ function PlanDrawer({
     if (!refillAmount) return toast.error('Enter gallons added')
     const t = tankMap.get(tankId)
     if (t) {
-      const remaining = Math.floor(t.capacityGallons * (1 - (t.calculatedLevelPct ?? 0) / 100))
+      const remaining = Math.ceil(t.capacityGallons - (t.calculatedLevelGallons ?? 0))
+      if (parseFloat(refillAmount) > t.capacityGallons)
+        return toast.error(`Cannot exceed tank capacity (${t.capacityGallons.toLocaleString()} gal)`)
       if (parseFloat(refillAmount) > remaining)
-        return toast.error(`Max refill is ${remaining.toLocaleString()} gal (tank is ${Math.round(t.calculatedLevelPct ?? 0)}% full)`)
+        return toast.error(`Max refill is ${remaining.toLocaleString()} gal (tank has ${Math.round(t.calculatedLevelGallons ?? 0).toLocaleString()} gal)`)
     }
     tankEventMutation.mutate({
       tankId,
@@ -552,6 +580,7 @@ function PlanDrawer({
   const availableProductOptions = productOptions.filter(opt => !usedProductIds.has(opt.value) || opt.value === editingLine?.productId)
 
   return (
+    <>
     <div className="fixed inset-0 z-40 flex justify-end">
       <div className="absolute inset-0 bg-black/30" />
       <div className="relative bg-white w-[580px] h-full shadow-2xl flex flex-col">
@@ -586,13 +615,21 @@ function PlanDrawer({
           {/* Status + transition actions */}
           <div className="flex items-center gap-2 flex-wrap">
             <StatusBadge status={p.status} />
-            {canEdit && p.status === 'DRAFT' && (
-              <button onClick={() => transitionMutation.mutate('start')} disabled={transitionMutation.isPending}
-                className="h-7 px-3 text-xs font-semibold rounded-lg text-white transition disabled:opacity-60"
-                style={{ backgroundColor: 'var(--color-primary)' }}>
-                Start Treatment
-              </button>
-            )}
+            {canEdit && p.status === 'DRAFT' && (() => {
+              const tankReady   = lines.length > 0 && lines.every(l => !!l.tankId)
+              const pumpReady   = lines.length > 0 && lines.every(l => l.pumpDeployed)
+              const isReady     = tankReady && pumpReady
+              return (
+                <button
+                  onClick={() => transitionMutation.mutate('start')}
+                  disabled={!isReady || transitionMutation.isPending}
+                  title={!isReady ? (!tankReady ? 'Assign tanks to all products first' : 'Deploy pumps to all tanks first') : undefined}
+                  className="h-7 px-3 text-xs font-semibold rounded-lg text-white transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: 'var(--color-primary)' }}>
+                  Start Treatment
+                </button>
+              )
+            })()}
             {canEdit && p.status === 'ACTIVE' && (<>
               <button onClick={() => transitionMutation.mutate('pause')} disabled={transitionMutation.isPending}
                 className="h-7 px-3 text-xs font-semibold rounded-lg border border-amber-200 text-amber-700 hover:bg-amber-50 transition disabled:opacity-60">
@@ -619,6 +656,38 @@ function PlanDrawer({
               </button>
             </>)}
           </div>
+
+          {/* Readiness checklist — DRAFT only */}
+          {p.status === 'DRAFT' && lines.length > 0 && (() => {
+            const tankReady = lines.every(l => !!l.tankId)
+            const pumpReady = lines.every(l => l.pumpDeployed)
+            if (tankReady && pumpReady) return null
+            return (
+              <div className="mt-2 space-y-1.5">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Required before start</p>
+                <div className="flex items-center gap-1.5 text-xs">
+                  <span className={tankReady ? 'text-emerald-500' : 'text-red-400'}>{tankReady ? '✓' : '✗'}</span>
+                  <span className={tankReady ? 'text-gray-500' : 'text-red-500'}>Tank assigned to all products</span>
+                </div>
+                {lines.map(l => {
+                  if (l.pumpDeployed) return null
+                  if (!l.tankId) return null
+                  return (
+                    <div key={l.id} className="flex items-center gap-1.5 text-xs">
+                      <span className="text-red-400">✗</span>
+                      <span className="text-red-500 flex-1">{l.productName}: no pump deployed</span>
+                      <button
+                        onClick={() => { setDeployPumpLine(l); setSelectedPumpId('') }}
+                        className="px-2 py-0.5 text-[10px] font-semibold rounded text-white"
+                        style={{ backgroundColor: 'var(--color-primary)' }}>
+                        Deploy Pump
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })()}
         </div>
 
         {/* Meta */}
@@ -700,125 +769,234 @@ function PlanDrawer({
               <p className="text-xs text-gray-400 mt-1">Add chemical products below</p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {lines.map(line => {
                 const tank = line.tankId ? tankMap.get(line.tankId) : undefined
-                const levelPct = tank?.calculatedLevelPct ?? line.tankLevelPct ?? null
 
                 return (
-                  <div key={line.id} className="rounded-lg border border-gray-100 bg-white overflow-hidden">
-                    <div className="flex items-center gap-3 px-3 py-2.5 group">
-                      <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0"
-                        style={{ backgroundColor: 'rgba(var(--color-primary-rgb, 30,58,95), 0.08)' }}>
-                        <FlaskConical size={12} style={{ color: 'var(--color-primary)' }} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{line.productName}</p>
-                        <p className="text-xs text-gray-500">
-                          {line.recRate} {line.method === 'CONTINUOUS' ? 'gal/day' : 'gal/treatment'} · {METHOD_LABELS[line.method]}{line.schedule ? ` — ${SCHEDULE_LABELS[line.schedule]}` : ''}
-                          {line.notes ? ` · ${line.notes}` : ''}
-                        </p>
-                        {line.tankOwner === 'OWN' && tank && (
-                          <div className="mt-1">
-                            <div className="flex items-center gap-1.5">
-                              <p className="text-xs text-gray-400">{tank.serialNumber ?? 'Our tank'} · {tank.capacityGallons.toLocaleString()} gal</p>
-                              <TankStatusBadge status={tank.status} />
-                            </div>
-                            {tank.status === 'INSTALLED' && (
-                              <>
-                                <LevelBar pct={tank.calculatedLevelPct} />
-                                {tank.calculatedLevelPct <= 20 && (
-                                  <p className="text-xs text-orange-600 flex items-center gap-1 mt-0.5">
-                                    <AlertTriangle size={10} />
-                                    {tank.calculatedLevelPct <= 10 ? 'Critical — refill urgently' : 'Refill needed soon'}
-                                  </p>
-                                )}
-                              </>
-                            )}
+                  <div key={line.id} className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+
+                    {/* ── Section 1: Chemical Product ──────────────────────── */}
+                    <div className="px-4 pt-3 pb-3 flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-2.5 flex-1 min-w-0">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+                          style={{ backgroundColor: 'rgba(var(--color-primary-rgb, 30,58,95), 0.08)' }}>
+                          <FlaskConical size={14} style={{ color: 'var(--color-primary)' }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-gray-900">{line.productName}</p>
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                            <span className="text-xs font-semibold text-gray-700">
+                              {line.recRate} <span className="font-normal text-gray-500">{line.method === 'CONTINUOUS' ? 'gal / day' : 'gal / treatment'}</span>
+                            </span>
+                            <span className="text-gray-300">·</span>
+                            <span className="text-xs text-gray-500">{METHOD_LABELS[line.method]}{line.schedule ? ` — ${SCHEDULE_LABELS[line.schedule]}` : ''}</span>
                           </div>
-                        )}
-                        {line.tankOwner === 'THIRD_PARTY' && (
-                          <div className="mt-0.5">
-                            <p className="text-xs text-gray-400">
-                              {line.thirdPartyName ?? '3rd party tank'}
-                              {line.thirdPartyCapacityGallons ? ` · ${line.thirdPartyCapacityGallons.toLocaleString()} gal` : ''}
-                              {line.thirdPartySerial ? ` · S/N ${line.thirdPartySerial}` : ''}
-                            </p>
-                            {line.calculatedLevelPct != null && (
-                              <>
-                                <LevelBar pct={line.calculatedLevelPct} />
-                                {line.calculatedLevelPct <= 20 && (
-                                  <p className="text-xs text-orange-600 flex items-center gap-1 mt-0.5">
-                                    <AlertTriangle size={10} />
-                                    {line.calculatedLevelPct <= 10 ? 'Critical — refill urgently' : 'Refill needed soon'}
-                                  </p>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        )}
+                          {line.notes && <p className="text-xs text-gray-400 mt-1 italic">{line.notes}</p>}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {canEdit && !isReadOnly && line.tankOwner === 'OWN' && tank && (
-                          <>
-                            {tank.status === 'ASSIGNED' && (
-                              <button
-                                onClick={() => handleMarkInstalled(tank.id)}
-                                disabled={tankEventMutation.isPending}
-                                className="flex items-center gap-1 h-6 px-2 text-[11px] font-medium rounded-md border border-blue-200 text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-60">
-                                Mark Installed
-                              </button>
-                            )}
-                            {tank.status === 'INSTALLED' && (
-                              <>
-                                <button
-                                  onClick={() => {
-                                    if (refillLineId === line.id) setRefillLineId(null)
-                                    else { setRefillLineId(line.id); setRefillAmount(''); setRefillAt(new Date().toISOString().slice(0, 16)) }
-                                  }}
-                                  className="flex items-center gap-1 h-6 px-2 text-[11px] font-medium rounded-md border border-gray-200 text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors">
-                                  <Cylinder size={10} /> Refill
-                                </button>
-                                <button
-                                  onClick={() => handleMarkRemoved(tank.id)}
-                                  disabled={tankEventMutation.isPending}
-                                  className="flex items-center gap-1 h-6 px-2 text-[11px] font-medium rounded-md border border-red-100 text-red-500 hover:bg-red-50 transition-colors disabled:opacity-60">
-                                  Remove
-                                </button>
-                              </>
-                            )}
-                          </>
-                        )}
-                        {line.tankOwner === 'OWN' && tank && (
-                          <button
-                            onClick={() => {
-                              if (historyLineId === line.id) {
-                                setHistoryLineId(null); setHistoryTankId(null)
-                              } else {
-                                setHistoryLineId(line.id); setHistoryTankId(tank.id)
-                              }
-                            }}
-                            className={`flex items-center gap-1 h-6 px-2 text-[11px] font-medium rounded-md border transition-colors ${historyLineId === line.id ? 'border-gray-300 bg-gray-100 text-gray-700' : 'border-gray-200 text-gray-400 hover:text-gray-600'}`}>
-                            History
+                      {canEdit && !isReadOnly && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button onClick={() => openEditLine(line)}
+                            className="w-7 h-7 rounded-md flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+                            <Pencil size={12} />
                           </button>
-                        )}
-                        {canEdit && !isReadOnly && (
-                          <button
-                            onClick={() => openEditLine(line)}
-                            className="w-6 h-6 rounded-md flex items-center justify-center text-gray-300 hover:text-gray-600 hover:bg-gray-100 transition-colors opacity-0 group-hover:opacity-100">
-                            <Pencil size={11} />
-                          </button>
-                        )}
-                        {canEdit && !isReadOnly && (
-                          <button
-                            onClick={() => removeLineMutation.mutate({ lineId: line.id })}
-                            disabled={removeLineMutation.isPending}
-                            className="w-6 h-6 rounded-md flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100">
+                          <button onClick={() => removeLineMutation.mutate({ lineId: line.id })} disabled={removeLineMutation.isPending}
+                            className="w-7 h-7 rounded-md flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-60">
                             <Trash2 size={12} />
                           </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* ── Section 2: Tank ──────────────────────────────────── */}
+                    <div className="border-t border-gray-100 px-4 py-3">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Tank</p>
+                      {line.tankOwner === 'OWN' && tank ? (
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                            <div>
+                              <p className="text-[10px] text-gray-400 font-medium">Serial #</p>
+                              <p className="text-sm font-semibold text-gray-800">{tank.serialNumber ?? '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-gray-400 font-medium">Type</p>
+                              <p className="text-sm font-semibold text-gray-800">Own</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-gray-400 font-medium">Capacity</p>
+                              <p className="text-sm font-semibold text-gray-800">{tank.capacityGallons.toLocaleString()} gal</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-gray-400 font-medium">Status</p>
+                              <TankStatusBadge status={tank.status} />
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-gray-400 font-medium">Last Refilled</p>
+                              <p className="text-sm font-semibold text-gray-800">
+                                {tank.lastRefilledAt ? (() => {
+                                  const d = new Date(tank.lastRefilledAt)
+                                  return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`
+                                })() : 'Not yet refilled'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-gray-400 font-medium">Chemical in Tank</p>
+                              <p className="text-sm font-semibold text-gray-800">
+                                {tank.status === 'INSTALLED'
+                                  ? `${tank.calculatedLevelGallons.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} gal`
+                                  : '—'}
+                              </p>
+                            </div>
+                          </div>
+                          {tank.status === 'INSTALLED' && (
+                            <div className="pt-1">
+                              <div className="flex items-center justify-between mb-1">
+                                <p className="text-[10px] text-gray-400 font-medium">Current Level</p>
+                                <p className="text-sm font-bold tabular-nums"
+                                  style={{ color: tank.calculatedLevelPct <= 10 ? '#ef4444' : tank.calculatedLevelPct <= 20 ? '#f97316' : tank.calculatedLevelPct <= 40 ? '#eab308' : '#10b981' }}>
+                                  {tank.calculatedLevelPct.toFixed(2)}%
+                                </p>
+                              </div>
+                              <LevelBar pct={tank.calculatedLevelPct} />
+                              {tank.calculatedLevelPct <= 20 && (
+                                <p className="text-xs font-semibold text-orange-600 flex items-center gap-1.5 mt-1.5">
+                                  <AlertTriangle size={11} />
+                                  {tank.calculatedLevelPct <= 10 ? 'Critical — refill urgently' : 'Refill needed soon'}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ) : line.tankOwner === 'THIRD_PARTY' ? (
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                            <div>
+                              <p className="text-[10px] text-gray-400 font-medium">Type</p>
+                              <p className="text-sm font-semibold text-gray-800">3rd Party</p>
+                            </div>
+                            {line.thirdPartyName && (
+                              <div>
+                                <p className="text-[10px] text-gray-400 font-medium">Owner</p>
+                                <p className="text-sm font-semibold text-gray-800">{line.thirdPartyName}</p>
+                              </div>
+                            )}
+                            {line.thirdPartyCapacityGallons != null && (
+                              <div>
+                                <p className="text-[10px] text-gray-400 font-medium">Capacity</p>
+                                <p className="text-sm font-semibold text-gray-800">{line.thirdPartyCapacityGallons.toLocaleString()} gal</p>
+                              </div>
+                            )}
+                            {line.thirdPartySerial && (
+                              <div>
+                                <p className="text-[10px] text-gray-400 font-medium">Serial #</p>
+                                <p className="text-sm font-semibold text-gray-800">{line.thirdPartySerial}</p>
+                              </div>
+                            )}
+                          </div>
+                          {line.calculatedLevelPct != null && (
+                            <div className="pt-1">
+                              <div className="flex items-center justify-between mb-1">
+                                <p className="text-[10px] text-gray-400 font-medium">Est. Level</p>
+                                <p className="text-sm font-bold tabular-nums"
+                                  style={{ color: line.calculatedLevelPct <= 10 ? '#ef4444' : line.calculatedLevelPct <= 20 ? '#f97316' : line.calculatedLevelPct <= 40 ? '#eab308' : '#10b981' }}>
+                                  {line.calculatedLevelPct.toFixed(2)}%
+                                </p>
+                              </div>
+                              <LevelBar pct={line.calculatedLevelPct} />
+                              {line.calculatedLevelPct <= 20 && (
+                                <p className="text-xs font-semibold text-orange-600 flex items-center gap-1.5 mt-1.5">
+                                  <AlertTriangle size={11} />
+                                  {line.calculatedLevelPct <= 10 ? 'Critical — refill urgently' : 'Refill needed soon'}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-400">No tank assigned</p>
+                      )}
+                    </div>
+
+                    {/* ── Section 3: Pump ──────────────────────────────────── */}
+                    {line.tankOwner === 'OWN' && (
+                      <div className="border-t border-gray-100 px-4 py-3">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Pump</p>
+                        {line.pumpDeployed ? (
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                            <div>
+                              <p className="text-[10px] text-gray-400 font-medium">Serial #</p>
+                              <p className="text-sm font-semibold text-gray-800">{line.pumpSerial ?? '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-gray-400 font-medium">Status</p>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                Deployed
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-sm font-semibold text-amber-600 flex items-center gap-2">
+                              <AlertTriangle size={14} />
+                              No pump deployed to this tank
+                            </p>
+                            {canEdit && line.tankId && (
+                              <button
+                                onClick={() => { setDeployPumpLine(line); setSelectedPumpId('') }}
+                                className="shrink-0 h-7 px-3 text-[11px] font-semibold rounded-lg text-white"
+                                style={{ backgroundColor: 'var(--color-primary)' }}>
+                                Deploy Pump
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
-                    </div>
+                    )}
+
+                    {/* ── Section 4: Actions ───────────────────────────────── */}
+                    {(canEdit && !isReadOnly && line.tankOwner === 'OWN' && tank) || (line.tankOwner === 'OWN' && tank) ? (
+                      <div className="border-t border-gray-100 px-4 py-2.5 flex items-center gap-2 flex-wrap bg-gray-50">
+                        {canEdit && !isReadOnly && tank.status === 'ASSIGNED' && (
+                          <button onClick={() => handleMarkInstalled(tank.id)} disabled={tankEventMutation.isPending}
+                            className="flex items-center gap-1.5 h-7 px-3 text-xs font-semibold rounded-lg border border-blue-200 text-blue-700 hover:bg-blue-50 transition-colors disabled:opacity-60">
+                            Mark Installed
+                          </button>
+                        )}
+                        {canEdit && !isReadOnly && tank.status === 'INSTALLED' && (<>
+                          <button
+                            onClick={() => {
+                              if (refillLineId === line.id) setRefillLineId(null)
+                              else { setRefillLineId(line.id); setRefillAmount(''); const _n = new Date(); setRefillAt(new Date(_n.getTime() - _n.getTimezoneOffset() * 60000).toISOString().slice(0, 16)) }
+                            }}
+                            className="flex items-center gap-1.5 h-7 px-3 text-xs font-semibold rounded-lg border border-gray-200 text-gray-600 hover:bg-white transition-colors">
+                            <Cylinder size={11} /> Log Refill
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (!confirm('Mark this tank as empty? This will set the chemical level to 0%.')) return
+                              tankEventMutation.mutate({ tankId: tank.id, data: { eventType: 'EMPTIED', eventAt: new Date().toISOString() } })
+                            }}
+                            disabled={tankEventMutation.isPending}
+                            className="flex items-center gap-1.5 h-7 px-3 text-xs font-semibold rounded-lg border border-orange-100 text-orange-600 hover:bg-orange-50 transition-colors disabled:opacity-60">
+                            Empty Tank
+                          </button>
+                          <button onClick={() => handleMarkRemoved(tank.id)} disabled={tankEventMutation.isPending}
+                            className="flex items-center gap-1.5 h-7 px-3 text-xs font-semibold rounded-lg border border-red-100 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-60">
+                            Remove Tank
+                          </button>
+                        </>)}
+                        <button
+                          onClick={() => {
+                            if (historyLineId === line.id) { setHistoryLineId(null); setHistoryTankId(null) }
+                            else { setHistoryLineId(line.id); setHistoryTankId(tank.id) }
+                          }}
+                          className={`flex items-center gap-1.5 h-7 px-3 text-xs font-semibold rounded-lg border transition-colors ${historyLineId === line.id ? 'border-gray-300 bg-white text-gray-700' : 'border-gray-200 text-gray-500 hover:bg-white'}`}>
+                          History
+                        </button>
+                      </div>
+                    ) : null}
 
                     {historyLineId === line.id && line.tankId && (
                       <div className="px-3 pb-3 border-t border-gray-100 bg-gray-50 pt-2.5 space-y-1.5">
@@ -826,7 +1004,8 @@ function PlanDrawer({
                         {historyLoading ? (
                           <p className="text-xs text-gray-400">Loading…</p>
                         ) : (() => {
-                          const evts = historyTankData?.events ?? []
+                          const planStart = new Date(plan.createdAt).getTime()
+                          const evts = (historyTankData?.events ?? []).filter(e => new Date(e.eventAt).getTime() >= planStart && e.eventType !== 'PAUSED' && e.eventType !== 'RESUMED' && e.eventType !== 'RATE_CHANGED')
                           return evts.length === 0 ? (
                           <p className="text-xs text-gray-400">No events yet</p>
                         ) : (
@@ -839,9 +1018,12 @@ function PlanDrawer({
                                     : e.eventType === 'REFILLED' ? 'Refilled'
                                     : e.eventType === 'FILLED' ? 'Initial fill'
                                     : e.eventType === 'REMOVED' ? 'Removed from well'
+                                    : e.eventType === 'EMPTIED' ? 'Tank emptied'
+                                    : e.eventType === 'PAUSED' ? 'Treatment paused'
+                                    : e.eventType === 'RESUMED' ? 'Treatment resumed'
                                     : 'Rate changed'}
                                 </span>
-                                {e.amountGallons != null && <span className="text-xs text-gray-500"> · {e.amountGallons.toLocaleString()} gal</span>}
+                                {e.amountGallons != null && e.eventType !== 'PAUSED' && <span className="text-xs text-gray-500"> · {e.amountGallons.toLocaleString()} gal</span>}
                                 {e.levelPct != null && <span className="text-xs text-gray-500"> · {e.levelPct}%</span>}
                               </div>
                               <p className="text-[10px] text-gray-400 shrink-0">
@@ -1066,6 +1248,70 @@ function PlanDrawer({
         </div>
       </div>
     </div>
+
+    {/* Deploy Pump mini panel */}
+    {deployPumpLine && (
+      <div className="fixed inset-0 z-60 flex justify-end">
+        <div className="absolute inset-0 bg-black/40" />
+        <div className="relative bg-white w-[440px] h-full shadow-2xl flex flex-col">
+          <div className="flex items-center justify-between px-5 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-primary)' }}>
+                <Cylinder size={14} className="text-white" />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900">Deploy Pump</h2>
+                <p className="text-xs text-gray-400">{deployPumpLine.productName}</p>
+              </div>
+            </div>
+            <button onClick={() => setDeployPumpLine(null)} className="text-gray-400 hover:text-gray-600 p-1 rounded-md hover:bg-gray-100 transition-colors">
+              <X size={16} />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+            <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2.5">
+              Select an available pump from the shop to deploy to this tank.
+            </p>
+            {inShopPumps.length === 0 ? (
+              <div className="text-center py-10">
+                <p className="text-sm text-gray-400 font-medium">No pumps available in shop</p>
+                <p className="text-xs text-gray-400 mt-1">Register a pump in Pump Shop first</p>
+              </div>
+            ) : inShopPumps.map(pump => (
+              <button
+                key={pump.id}
+                onClick={() => setSelectedPumpId(pump.id)}
+                className={`w-full text-left px-4 py-3 rounded-xl border transition-all ${
+                  selectedPumpId === pump.id
+                    ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5'
+                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                }`}>
+                <p className="text-sm font-semibold text-gray-800">{pump.serialNumber}</p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {pump.make ?? ''}{pump.model ? ` · ${pump.model}` : ''}{pump.pumpType ? ` · ${pump.pumpType}` : ''}
+                </p>
+              </button>
+            ))}
+          </div>
+
+          <div className="px-5 py-4 flex gap-3 shrink-0" style={{ borderTop: '1px solid rgba(0,0,0,0.07)' }}>
+            <button onClick={() => setDeployPumpLine(null)}
+              className="flex-1 h-10 text-sm font-medium rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors">
+              Cancel
+            </button>
+            <button
+              onClick={() => deployPumpMutation.mutate({ pumpId: selectedPumpId, tankId: deployPumpLine.tankId! })}
+              disabled={!selectedPumpId || deployPumpMutation.isPending}
+              className="flex-1 h-10 text-sm font-semibold text-white rounded-lg transition disabled:opacity-50"
+              style={{ backgroundColor: 'var(--color-primary)' }}>
+              {deployPumpMutation.isPending ? 'Deploying…' : 'Deploy'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }
 

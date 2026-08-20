@@ -24,6 +24,9 @@ export interface PlanLineRecord {
   thirdPartyName: string | null
   thirdPartyCapacityGallons: number | null
   thirdPartySerial: string | null
+  pumpDeployed: boolean
+  pumpId: string | null
+  pumpSerial: string | null
 }
 
 export interface PlanRecord {

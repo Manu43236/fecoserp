@@ -87,6 +87,32 @@ public class TankService {
     }
 
     @Transactional
+    public void logLevelSnapshot(UUID tankId) {
+        TankEntity tank = tankRepository.findById(tankId)
+                .orElseThrow(() -> new EntityNotFoundException("Tank not found"));
+        BigDecimal currentLevel = calculateCurrentLevel(tankId, tank.getCapacityGallons());
+        TankEventEntity event = new TankEventEntity();
+        event.setTenantId(currentTenantId());
+        event.setTankId(tankId);
+        event.setEventType(TankEventType.PAUSED);
+        event.setLevelPct(currentLevel);
+        event.setEventAt(Instant.now());
+        event.setPerformedById(currentUserId());
+        eventRepository.save(event);
+    }
+
+    @Transactional
+    public void logResumeEvent(UUID tankId) {
+        TankEventEntity event = new TankEventEntity();
+        event.setTenantId(currentTenantId());
+        event.setTankId(tankId);
+        event.setEventType(TankEventType.RESUMED);
+        event.setEventAt(Instant.now());
+        event.setPerformedById(currentUserId());
+        eventRepository.save(event);
+    }
+
+    @Transactional
     public void logRateChange(UUID tankId, BigDecimal recRate) {
         TankEventEntity event = new TankEventEntity();
         event.setTenantId(currentTenantId());
@@ -161,15 +187,30 @@ public class TankService {
         // Find the most recent fill event — that's our baseline
         List<TankEventEntity> fillEvents = eventRepository
                 .findAllByTankIdAndEventTypeInOrderByEventAtDesc(
-                        tankId, List.of(TankEventType.FILLED, TankEventType.REFILLED));
+                        tankId, List.of(TankEventType.FILLED, TankEventType.REFILLED, TankEventType.PAUSED));
 
         if (fillEvents.isEmpty()) return BigDecimal.ZERO;
 
-        // If tank was removed after the last fill, it starts empty at next install
         List<TankEventEntity> removedEvents = eventRepository
                 .findAllByTankIdAndEventTypeInOrderByEventAtDesc(
                         tankId, List.of(TankEventType.REMOVED));
         if (!removedEvents.isEmpty() && removedEvents.get(0).getEventAt().isAfter(fillEvents.get(0).getEventAt())) {
+            // Tank removed after last fill — only return 0 if not re-installed since the removal
+            var installedEvents = eventRepository
+                    .findAllByTankIdAndEventTypeInOrderByEventAtDesc(tankId, List.of(TankEventType.INSTALLED));
+            boolean reinstalledSinceRemoval = !installedEvents.isEmpty()
+                    && installedEvents.get(0).getEventAt().isAfter(removedEvents.get(0).getEventAt());
+            if (!reinstalledSinceRemoval) {
+                return BigDecimal.ZERO;
+            }
+            // Re-installed after removal: carry over the fill level
+        }
+
+        // If tank was manually emptied after the last fill, level is 0
+        var latestEmptied = eventRepository
+                .findFirstByTankIdAndEventTypeInOrderByEventAtDesc(
+                        tankId, List.of(TankEventType.EMPTIED));
+        if (latestEmptied.isPresent() && latestEmptied.get().getEventAt().isAfter(fillEvents.get(0).getEventAt())) {
             return BigDecimal.ZERO;
         }
 
@@ -177,15 +218,20 @@ public class TankService {
         BigDecimal baselinePct = baseline.getLevelPct() != null ? baseline.getLevelPct() : BigDecimal.ZERO;
         Instant baselineTime = baseline.getEventAt();
 
-        // Find the most recent rate change after the baseline fill
+        // Cycle start = most recent REMOVED event (prevents old rates from prior cycles bleeding in)
+        Instant cycleStart = removedEvents.isEmpty() ? Instant.EPOCH : removedEvents.get(0).getEventAt();
+
+        // Find most recent RATE_CHANGED within this install cycle
         List<TankEventEntity> rateEvents = eventRepository
                 .findAllByTankIdAndEventTypeInOrderByEventAtDesc(
                         tankId, List.of(TankEventType.RATE_CHANGED));
 
         BigDecimal recRate = BigDecimal.ZERO;
+        Instant rateTime = null;
         for (TankEventEntity rateEvent : rateEvents) {
-            if (!rateEvent.getEventAt().isBefore(baselineTime) && rateEvent.getRecRate() != null) {
+            if (!rateEvent.getEventAt().isBefore(cycleStart) && rateEvent.getRecRate() != null) {
                 recRate = rateEvent.getRecRate();
+                rateTime = rateEvent.getEventAt();
                 break;
             }
         }
@@ -195,13 +241,16 @@ public class TankService {
             return baselinePct;
         }
 
-        // Hours elapsed since baseline
-        long hoursElapsed = ChronoUnit.HOURS.between(baselineTime, Instant.now());
+        // Depletion starts from whichever happened later: the fill/refill, or the rate change
+        // This handles refills during active treatment (rate event predates the refill baseline)
+        Instant depletionStart = (rateTime != null && rateTime.isAfter(baselineTime)) ? rateTime : baselineTime;
+        long minutesElapsed = ChronoUnit.MINUTES.between(depletionStart, Instant.now());
+        if (minutesElapsed <= 0) return baselinePct;
 
-        // Gallons consumed = recRate (gal/day) × hours / 24
+        // Gallons consumed = recRate (gal/day) × minutes / (24 × 60)
         BigDecimal gallonsConsumed = recRate
-                .multiply(BigDecimal.valueOf(hoursElapsed))
-                .divide(BigDecimal.valueOf(24), 4, RoundingMode.HALF_UP);
+                .multiply(BigDecimal.valueOf(minutesElapsed))
+                .divide(BigDecimal.valueOf(24 * 60), 4, RoundingMode.HALF_UP);
 
         // Convert to percentage consumed
         BigDecimal pctConsumed = gallonsConsumed
@@ -246,6 +295,12 @@ public class TankService {
                 .multiply(t.getCapacityGallons())
                 .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
 
+        Instant lastRefilledAt = eventRepository
+                .findFirstByTankIdAndEventTypeInOrderByEventAtDesc(
+                        t.getId(), List.of(TankEventType.FILLED, TankEventType.REFILLED))
+                .map(TankEventEntity::getEventAt)
+                .orElse(null);
+
         List<TankResponse.TankEventResponse> events = List.of();
         if (includeEvents) {
             events = eventRepository.findAllByTankIdOrderByEventAtDesc(t.getId())
@@ -266,7 +321,7 @@ public class TankService {
                 t.getId(), t.getSerialNumber(), t.getCapacityGallons(),
                 t.getWellId(), wellName, leaseName, clientName,
                 t.getStatus(), t.getInstalledAt(), t.getRemovedAt(),
-                levelPct, levelGallons, events, t.getCreatedAt());
+                levelPct, levelGallons, lastRefilledAt, events, t.getCreatedAt());
     }
 
     private TankEntity findForTenant(UUID id) {

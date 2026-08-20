@@ -18,14 +18,6 @@ const PAGE_SIZE = 20
 
 type TabId = 'all' | 'RECEIVED' | 'IN_PROGRESS' | 'COMPLETED' | 'alerts' | 'pending_approval'
 
-const TABS: { id: TabId; label: string; critical?: boolean; approverOnly?: boolean }[] = [
-  { id: 'all',              label: 'All'              },
-  { id: 'RECEIVED',         label: 'Received'         },
-  { id: 'IN_PROGRESS',      label: 'In Progress'      },
-  { id: 'COMPLETED',        label: 'Completed'        },
-  { id: 'alerts',           label: 'Alerts',           critical: true },
-  { id: 'pending_approval', label: 'Pending Approval', approverOnly: true },
-]
 
 const SAMPLE_TYPE_LABEL: Record<SampleType, string> = {
   PRODUCED_WATER:   'Produced Water',
@@ -718,23 +710,32 @@ function LabReportDrawer({ sample, onClose, onEnterResults, onStartTesting }: {
 }
 
 // ── Main LabPage ──────────────────────────────────────────────────────────────
+
+const FILTER_OPTIONS: DropdownOption[] = [
+  { value: 'RECEIVED',         label: 'Received'         },
+  { value: 'IN_PROGRESS',      label: 'In Progress'      },
+  { value: 'COMPLETED',        label: 'Completed'        },
+  { value: 'alerts',           label: '🔴 Alerts'        },
+  { value: 'pending_approval', label: 'Pending Approval' },
+]
+
 export default function LabPage() {
   const qc = useQueryClient()
   const { user } = useAuthStore()
   const canEdit    = user?.role === 'LAB_TECH'    || user?.role === 'ADMIN'
   const canApprove = user?.role === 'ACCOUNT_REP' || user?.role === 'ADMIN'
 
-  const [activeTab, setActiveTab]           = useState<TabId>('all')
-  const [page, setPage]                     = useState(0)
-  const [logOpen, setLogOpen]               = useState(false)
-  const [selected, setSelected]             = useState<LabSampleRecord | undefined>()
-  const [enterResults, setEnterResults]     = useState<LabSampleRecord | undefined>()
+  const [activeTab, setActiveTab]       = useState<TabId>('all')
+  const [page, setPage]                 = useState(0)
+  const [logOpen, setLogOpen]           = useState(false)
+  const [selected, setSelected]         = useState<LabSampleRecord | undefined>()
+  const [enterResults, setEnterResults] = useState<LabSampleRecord | undefined>()
 
-  const isAlertsTab   = activeTab === 'alerts'
-  const isPendingTab  = activeTab === 'pending_approval'
-  const statusParam   = activeTab === 'all' || isAlertsTab || isPendingTab ? undefined : activeTab as LabSampleStatus
+  const isAlertsTab  = activeTab === 'alerts'
+  const isPendingTab = activeTab === 'pending_approval'
+  const statusParam  = activeTab === 'all' || isAlertsTab || isPendingTab ? undefined : activeTab as LabSampleStatus
 
-  const { data } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['lab', activeTab, page],
     queryFn: () => {
       if (isAlertsTab)  return labApi.alerts({ page, size: PAGE_SIZE }).then(r => r.data.data)
@@ -753,7 +754,7 @@ export default function LabPage() {
     queryFn: () => usersApi.list().then(r => r.data.data ?? []),
   })
 
-  const samples    = data?.content      ?? []
+  const samples    = data?.content       ?? []
   const total      = data?.totalElements ?? 0
   const totalPages = data?.totalPages    ?? 0
 
@@ -764,88 +765,87 @@ export default function LabPage() {
 
   const startTestingMutation = useMutation({
     mutationFn: (s: LabSampleRecord) => labApi.update(s.id, {
-      sampleType:    s.sampleType,
-      wellId:        s.wellId,
-      collectedById: s.collectedById ?? undefined,
-      collectedAt:   s.collectedAt   ?? undefined,
-      receivedAt:    s.receivedAt,
-      priority:      s.priority,
+      sampleType:     s.sampleType,
+      wellId:         s.wellId,
+      collectedById:  s.collectedById ?? undefined,
+      collectedAt:    s.collectedAt   ?? undefined,
+      receivedAt:     s.receivedAt,
+      priority:       s.priority,
       testsRequested: s.testsRequested ?? undefined,
-      status:        'IN_PROGRESS',
+      status:         'IN_PROGRESS',
     }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['lab'] }),
-    onError: () => toast.error('Failed to update status'),
+    onError:   () => toast.error('Failed to update status'),
   })
 
-  return (
-    <div className="flex flex-col h-full bg-white">
+  const visibleFilterOptions = canApprove
+    ? FILTER_OPTIONS
+    : FILTER_OPTIONS.filter(o => o.value !== 'pending_approval')
 
-      {/* Header */}
-      <div className="px-6 py-5 flex items-center justify-between shrink-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+  return (
+    <div className="p-6 space-y-5">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Lab</h1>
           <p className="text-sm text-gray-500 mt-0.5">{total} sample{total !== 1 ? 's' : ''}</p>
         </div>
-        {canEdit && (
-          <button onClick={() => setLogOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg transition"
-            style={{ backgroundColor: 'var(--color-primary)' }}>
-            <Plus size={15} /> Log Sample
-          </button>
-        )}
-      </div>
-
-      {/* Tab bar */}
-      <div className="px-6 flex items-center gap-1 shrink-0 bg-gray-50" style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-        {TABS.filter(tab => !tab.approverOnly || canApprove).map(tab => {
-          const active = activeTab === tab.id
-          return (
-            <button
-              key={tab.id}
-              onClick={() => { setActiveTab(tab.id); setPage(0) }}
-              className={`flex items-center gap-1.5 px-4 py-3 text-xs font-semibold border-b-2 transition-colors ${
-                active
-                  ? 'border-current'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-              style={active ? { borderColor: 'var(--color-primary)', color: 'var(--color-primary)' } : {}}>
-              {tab.critical && <AlertTriangle size={12} className={active ? '' : 'text-red-400'} />}
-              <span className={tab.critical && !active ? 'text-red-500' : ''}>{tab.label}</span>
+        <div className="flex items-center gap-3">
+          <div className="w-48">
+            <SearchableDropdown
+              options={visibleFilterOptions}
+              value={activeTab === 'all' ? '' : activeTab}
+              onChange={v => { setActiveTab((v ?? 'all') as TabId); setPage(0) }}
+              placeholder="All Samples"
+              showClear
+            />
+          </div>
+          {canEdit && (
+            <button onClick={() => setLogOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg transition"
+              style={{ backgroundColor: 'var(--color-primary)' }}>
+              <Plus size={15} /> Log Sample
             </button>
-          )
-        })}
+          )}
+        </div>
       </div>
 
-      {/* Table */}
-      <div className="flex-1 overflow-auto">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr style={{ backgroundColor: 'var(--color-primary)' }}>
               {['Sample #', 'Type', 'Well / Lease', 'Received', 'Priority', 'Status',
                 ...(isAlertsTab ? ['Critical Flags'] : ['']),
               ].map(h => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-white/80 uppercase tracking-wide">{h}</th>
+                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-white/90 uppercase tracking-wide">{h}</th>
               ))}
             </tr>
           </thead>
-          <tbody>
-            {samples.length === 0 ? (
+          <tbody className="divide-y divide-gray-100">
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <tr key={i}>{Array.from({ length: 7 }).map((_, j) => (
+                  <td key={j} className="px-4 py-3"><div className="h-4 bg-gray-100 rounded animate-pulse w-3/4" /></td>
+                ))}</tr>
+              ))
+            ) : samples.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-16 text-center text-gray-400 text-sm">
-                  {isAlertsTab ? '✅ No critical alerts — all samples within normal thresholds.' : 'No samples found.'}
+                <td colSpan={7} className="px-4 py-14 text-center">
+                  <AlertTriangle size={32} className="mx-auto text-gray-300 mb-3" />
+                  <p className="text-sm text-gray-500 font-medium">
+                    {isAlertsTab ? 'No critical alerts — all samples within normal thresholds' : 'No samples found'}
+                  </p>
                 </td>
               </tr>
-            ) : samples.map((s: LabSampleRecord, i: number) => {
+            ) : samples.map((s: LabSampleRecord) => {
               const flags = isAlertsTab ? criticalFlags(s.result) : []
               return (
                 <tr key={s.id}
                   onClick={() => setSelected(s)}
-                  className="cursor-pointer hover:bg-gray-50 transition-colors"
-                  style={i > 0 ? { borderTop: '1px solid rgba(0,0,0,0.05)' } : {}}>
+                  className="cursor-pointer hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3 font-mono text-xs font-semibold text-gray-700">{s.sampleNumber}</td>
                   <td className="px-4 py-3 text-xs text-gray-500">{SAMPLE_TYPE_LABEL[s.sampleType]}</td>
                   <td className="px-4 py-3">
-                    <p className="font-medium text-gray-900">{s.wellName ?? '—'}</p>
+                    <p className="font-medium text-gray-900 text-xs">{s.wellName ?? '—'}</p>
                     {s.leaseName && <p className="text-xs text-gray-400">{s.leaseName}</p>}
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-500">{new Date(s.receivedAt).toLocaleDateString()}</td>
@@ -862,10 +862,8 @@ export default function LabPage() {
                       </div>
                     </td>
                   ) : (
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <ChevronRight size={16} className="text-gray-400" />
-                      </div>
+                    <td className="px-4 py-3 text-right">
+                      <ChevronRight size={14} className="text-gray-400 ml-auto" />
                     </td>
                   )}
                 </tr>
@@ -873,22 +871,20 @@ export default function LabPage() {
             })}
           </tbody>
         </table>
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+            <p className="text-xs text-gray-500">Page {page + 1} of {totalPages} · {total} total</p>
+            <div className="flex gap-2">
+              <button disabled={page === 0} onClick={() => setPage(p => p - 1)}
+                className="px-3 py-1.5 text-xs font-medium rounded-md border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-colors">Previous</button>
+              <button disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}
+                className="px-3 py-1.5 text-xs font-medium rounded-md border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-colors">Next</button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="px-6 py-3 flex items-center justify-between shrink-0" style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}>
-          <p className="text-xs text-gray-500">Page {page + 1} of {totalPages}</p>
-          <div className="flex gap-2">
-            <button disabled={page === 0} onClick={() => setPage(p => p - 1)}
-              className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-colors">Previous</button>
-            <button disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}
-              className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 disabled:opacity-40 hover:bg-gray-50 transition-colors">Next</button>
-          </div>
-        </div>
-      )}
-
-      {/* Panels */}
       <LogSamplePanel open={logOpen} onClose={() => setLogOpen(false)} wells={wells} users={users} />
       {enterResults && <ResultsPanel sample={enterResults} onClose={() => setEnterResults(undefined)} />}
       {selected && !enterResults && (
