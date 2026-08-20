@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -74,6 +74,16 @@ function WarehouseFormPanel({ open, onClose, warehouse }: {
       isActive: warehouse?.isActive ?? true,
     },
   })
+
+  useEffect(() => {
+    if (open) {
+      reset({
+        name:     warehouse?.name     ?? '',
+        location: warehouse?.location ?? '',
+        isActive: warehouse?.isActive ?? true,
+      })
+    }
+  }, [open, warehouse])
 
   const mutation = useMutation({
     mutationFn: (data: WarehousePayload) =>

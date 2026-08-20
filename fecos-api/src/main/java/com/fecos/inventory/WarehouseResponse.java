@@ -1,5 +1,6 @@
 package com.fecos.inventory;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -13,6 +14,7 @@ public class WarehouseResponse {
     private UUID id;
     private String name;
     private String location;
+    @JsonProperty("isActive")
     private boolean isActive;
     private Instant createdAt;
 

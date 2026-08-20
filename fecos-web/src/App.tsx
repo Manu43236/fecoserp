@@ -21,6 +21,8 @@ import RoutesPage from '@/pages/tenant/RoutesPage'
 import LabPage from '@/pages/tenant/LabPage'
 import ApprovalsPage from '@/pages/tenant/ApprovalsPage'
 import TanksPage from '@/pages/tenant/TanksPage'
+import RawMaterialQcPage from '@/pages/tenant/RawMaterialQcPage'
+import FinishedProductQcPage from '@/pages/tenant/FinishedProductQcPage'
 
 const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -66,8 +68,8 @@ export default function App() {
               {/* Lab */}
               <Route path="/lab/queue"        element={<LabPage />} />
               <Route path="/lab/results"      element={<LabPage />} />
-              <Route path="/lab/raw-qc"       element={<PlaceholderPage title="Raw Material QC" />} />
-              <Route path="/lab/prod-qc"      element={<PlaceholderPage title="Finished Product QC" />} />
+              <Route path="/lab/raw-qc"       element={<RawMaterialQcPage />} />
+              <Route path="/lab/prod-qc"      element={<FinishedProductQcPage />} />
 
               {/* Admin/Dispatcher */}
               <Route path="/routes"           element={<RoutesPage />} />
