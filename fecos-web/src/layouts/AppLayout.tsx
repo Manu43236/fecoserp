@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Truck, MapPin, CalendarDays, Package, Users,
   Activity, PackageCheck, Building2, Wrench, BarChart3,
   FlaskConical, ClipboardList, TestTube, CheckCircle2,
-  Briefcase, LogOut, Drill, Settings2, Cylinder,
+  Briefcase, LogOut, Drill, Settings2, Cylinder, Car,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
@@ -33,6 +33,7 @@ const navByRole: Record<string, NavItem[]> = {
     { label: 'Schedule',           path: '/schedule',       icon: CalendarDays    },
     { label: 'Tanks',              path: '/tanks',          icon: Cylinder        },
     { label: 'Users',              path: '/users',          icon: Users           },
+    { label: 'Vehicles',           path: '/vehicles',       icon: Car             },
     { label: 'Wells',              path: '/wells',          icon: Drill           },
   ],
   MANAGER: [
