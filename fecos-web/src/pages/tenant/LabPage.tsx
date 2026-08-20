@@ -508,7 +508,7 @@ function LabReportDrawer({ sample, onClose, onEnterResults, onStartTesting }: {
       qc.invalidateQueries({ queryKey: ['lab-sample', sample.id] })
       qc.invalidateQueries({ queryKey: ['plans'] })
       if (variables.requiresTreatmentChange) {
-        toast.success('Approved — active plan superseded. Create new treatment plan.')
+        toast.success('Approved — active program superseded. Create new program.')
         navigate('/plans', { state: { wellId: sample.wellId, triggeredByLabSampleId: sample.id, sampleNumber: sample.sampleNumber } })
       } else {
         toast.success('Approved — current plan continues.')

@@ -68,7 +68,7 @@ function ApprovalDrawer({ sample, onClose }: { sample: LabSampleRecord; onClose:
       qc.invalidateQueries({ queryKey: ['lab'] })
       qc.invalidateQueries({ queryKey: ['plans'] })
       if (variables.requiresTreatmentChange) {
-        toast.success('Approved — active plan superseded. Create new treatment plan.')
+        toast.success('Approved — active program superseded. Create new program.')
         navigate('/plans', { state: { wellId: sample.wellId, triggeredByLabSampleId: sample.id } })
       } else {
         toast.success('Approved — current plan continues.')
@@ -170,7 +170,7 @@ function ApprovalDrawer({ sample, onClose }: { sample: LabSampleRecord; onClose:
           {sample.activeTreatmentPlanId && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-100">
               <ExternalLink size={13} className="text-blue-500 shrink-0" />
-              <p className="text-xs text-blue-700">This well has an active treatment plan. "Approve — Update Treatment" will supersede it.</p>
+              <p className="text-xs text-blue-700">This well has an active program. "Approve — Update Treatment" will supersede it.</p>
             </div>
           )}
           <textarea
@@ -233,7 +233,7 @@ export default function ApprovalsPage() {
         <div className="px-6 py-3 flex items-center gap-2 bg-amber-50 border-b border-amber-100 shrink-0">
           <AlertTriangle size={14} className="text-amber-600 shrink-0" />
           <p className="text-xs text-amber-700">
-            These lab results have been completed by the lab tech and are waiting for your approval before treatment plans are updated.
+            These lab results have been completed by the lab tech and are waiting for your approval before programs are updated.
           </p>
         </div>
       )}

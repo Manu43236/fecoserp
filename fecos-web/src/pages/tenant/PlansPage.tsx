@@ -205,7 +205,7 @@ function PlanFormPanel({
               <FlaskConical size={14} className="text-white" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-gray-900">{isEdit ? 'Edit Treatment Plan' : 'New Treatment Plan'}</h2>
+              <h2 className="text-sm font-semibold text-gray-900">{isEdit ? 'Edit Program' : 'New Program'}</h2>
               {fromLabSampleNumber && (
                 <p className="text-xs text-amber-600 mt-0.5">Following lab result {fromLabSampleNumber}</p>
               )}
@@ -560,7 +560,7 @@ function PlanDrawer({
         <div className="px-5 pt-4 pb-3 border-b border-gray-100 shrink-0 space-y-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-gray-900 break-words">{p.wellName ?? 'Treatment Plan'}</p>
+              <p className="text-sm font-semibold text-gray-900 break-words">{p.wellName ?? 'Program'}</p>
               <p className="text-xs text-gray-400">{p.leaseName ?? '—'} · {p.clientName ?? '—'}</p>
             </div>
             <div className="flex items-center gap-1 shrink-0">
@@ -572,7 +572,7 @@ function PlanDrawer({
               )}
               {canDelete && !isReadOnly && (
                 <button
-                  onClick={() => { if (confirm('Delete this treatment plan?')) deletePlanMutation.mutate() }}
+                  onClick={() => { if (confirm('Delete this program?')) deletePlanMutation.mutate() }}
                   className="w-8 h-8 flex items-center justify-center rounded-lg border border-red-100 text-red-500 hover:bg-red-50 transition-colors">
                   <Trash2 size={13} />
                 </button>
@@ -957,81 +957,93 @@ function PlanDrawer({
                     className="w-full h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 bg-white"
                   />
 
-                  {/* Tank Owner — only for new lines */}
-                  {!editingLine && <div className="space-y-2 pt-1" style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}>
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Tank</p>
-                    <div className="flex gap-2">
-                      {(['OWN', 'THIRD_PARTY'] as const).map(owner => (
-                        <button
-                          key={owner}
-                          type="button"
-                          onClick={() => setValue('tankOwner', watch('tankOwner') === owner ? undefined : owner)}
-                          className={`flex-1 h-8 text-xs font-semibold rounded-lg border transition-colors ${
-                            watch('tankOwner') === owner
-                              ? 'text-white border-transparent'
-                              : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                          }`}
-                          style={watch('tankOwner') === owner ? { backgroundColor: 'var(--color-primary)' } : {}}>
-                          {owner === 'OWN' ? 'Our Tank' : '3rd Party Tank'}
-                        </button>
-                      ))}
-                    </div>
-                    {watch('tankOwner') === 'OWN' && (
-                      <SearchableDropdown
-                        value={watch('tankId') || null}
-                        onChange={v => setValue('tankId', v ?? '')}
-                        options={tankOptions}
-                        placeholder="Select tank from registry…"
-                        searchPlaceholder="Search tanks…"
-                      />
-                    )}
-                    {watch('tankOwner') === 'THIRD_PARTY' && (
-                      <div className="space-y-2">
-                        <input
-                          type="text"
-                          value={watch('thirdPartyName') ?? ''}
-                          onChange={e => setValue('thirdPartyName', e.target.value)}
-                          placeholder="Tank owner / company name"
-                          className="w-full h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 bg-white"
-                        />
-                        <div className="flex gap-2">
-                          <input
-                            type="number"
-                            min="0" step="1"
-                            value={watch('thirdPartyCapacityGallons') ?? ''}
-                            onChange={e => setValue('thirdPartyCapacityGallons', e.target.value)}
-                            placeholder="Capacity (gal)"
-                            className="flex-1 h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 bg-white"
-                          />
+                  {/* Tank section — toggle for new lines; 3rd party fields also shown when editing a 3rd party line */}
+                  {(!editingLine || editingLine.tankOwner === 'THIRD_PARTY') && (
+                    <div className="space-y-2 pt-1" style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        {editingLine ? 'Update Level Check' : 'Tank'}
+                      </p>
+
+                      {/* Toggle + OWN picker: new lines only */}
+                      {!editingLine && (
+                        <>
+                          <div className="flex gap-2">
+                            {(['OWN', 'THIRD_PARTY'] as const).map(owner => (
+                              <button
+                                key={owner}
+                                type="button"
+                                onClick={() => setValue('tankOwner', watch('tankOwner') === owner ? undefined : owner)}
+                                className={`flex-1 h-8 text-xs font-semibold rounded-lg border transition-colors ${
+                                  watch('tankOwner') === owner
+                                    ? 'text-white border-transparent'
+                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                }`}
+                                style={watch('tankOwner') === owner ? { backgroundColor: 'var(--color-primary)' } : {}}>
+                                {owner === 'OWN' ? 'Our Tank' : '3rd Party Tank'}
+                              </button>
+                            ))}
+                          </div>
+                          {watch('tankOwner') === 'OWN' && (
+                            <SearchableDropdown
+                              value={watch('tankId') || null}
+                              onChange={v => setValue('tankId', v ?? '')}
+                              options={tankOptions}
+                              placeholder="Select tank from registry…"
+                              searchPlaceholder="Search tanks…"
+                            />
+                          )}
+                        </>
+                      )}
+
+                      {/* 3rd party fields: new lines AND editing a 3rd party line */}
+                      {watch('tankOwner') === 'THIRD_PARTY' && (
+                        <div className="space-y-2">
                           <input
                             type="text"
-                            value={watch('thirdPartySerial') ?? ''}
-                            onChange={e => setValue('thirdPartySerial', e.target.value)}
-                            placeholder="Serial # (optional)"
-                            className="flex-1 h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 bg-white"
+                            value={watch('thirdPartyName') ?? ''}
+                            onChange={e => setValue('thirdPartyName', e.target.value)}
+                            placeholder="Tank owner / company name"
+                            className="w-full h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 bg-white"
                           />
+                          <div className="flex gap-2">
+                            <input
+                              type="number"
+                              min="0" step="1"
+                              value={watch('thirdPartyCapacityGallons') ?? ''}
+                              onChange={e => setValue('thirdPartyCapacityGallons', e.target.value)}
+                              placeholder="Capacity (gal)"
+                              className="flex-1 h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 bg-white"
+                            />
+                            <input
+                              type="text"
+                              value={watch('thirdPartySerial') ?? ''}
+                              onChange={e => setValue('thirdPartySerial', e.target.value)}
+                              placeholder="Serial # (optional)"
+                              className="flex-1 h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 bg-white"
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <input
+                              type="number"
+                              min="0" max="100" step="0.01"
+                              value={watch('tankLevelPct') ?? ''}
+                              onChange={e => setValue('tankLevelPct', e.target.value)}
+                              placeholder="Current level %"
+                              className="flex-1 h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 bg-white"
+                            />
+                            <input
+                              type="datetime-local"
+                              value={watch('tankLevelCheckedAt') ?? ''}
+                              onChange={e => setValue('tankLevelCheckedAt', e.target.value)}
+                              title="When was this level checked?"
+                              className="flex-1 h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 bg-white"
+                            />
+                          </div>
+                          <p className="text-[10px] text-gray-400">Level % + check time → auto-depletes at rec rate</p>
                         </div>
-                        <div className="flex gap-2">
-                          <input
-                            type="number"
-                            min="0" max="100" step="0.01"
-                            value={watch('tankLevelPct') ?? ''}
-                            onChange={e => setValue('tankLevelPct', e.target.value)}
-                            placeholder="Current level %"
-                            className="flex-1 h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 bg-white"
-                          />
-                          <input
-                            type="datetime-local"
-                            value={watch('tankLevelCheckedAt') ?? ''}
-                            onChange={e => setValue('tankLevelCheckedAt', e.target.value)}
-                            title="When was this level checked?"
-                            className="flex-1 h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 bg-white"
-                          />
-                        </div>
-                        <p className="text-[10px] text-gray-400">Level % + check time → auto-depletes at rec rate</p>
-                      </div>
-                    )}
-                  </div>}
+                      )}
+                    </div>
+                  )}
 
                   <div className="flex gap-2">
                     <button type="button" onClick={() => { reset(); setShowLineForm(false); setEditingLine(null) }}
@@ -1132,7 +1144,7 @@ export default function PlansPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Treatment Plans</h1>
+          <h1 className="text-xl font-bold text-gray-900">Programs</h1>
           <p className="text-sm text-gray-500 mt-0.5">{total} plan{total !== 1 ? 's' : ''} total</p>
         </div>
         {canEdit && (
@@ -1186,9 +1198,9 @@ export default function PlansPage() {
               <tr>
                 <td colSpan={7} className="px-4 py-14 text-center">
                   <FlaskConical size={32} className="mx-auto text-gray-300 mb-3" />
-                  <p className="text-sm text-gray-500 font-medium">No treatment plans found</p>
+                  <p className="text-sm text-gray-500 font-medium">No programs found</p>
                   <p className="text-xs text-gray-400 mt-1">
-                    {search || statusFilter ? 'Try adjusting your filters' : 'Create the first treatment plan to get started'}
+                    {search || statusFilter ? 'Try adjusting your filters' : 'Create the first program to get started'}
                   </p>
                 </td>
               </tr>

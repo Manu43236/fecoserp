@@ -127,7 +127,7 @@ function TankFormPanel({ open, onClose, tank }: {
             </div>
 
             <p className="text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-2.5">
-              Tank assignment and level tracking happen at the treatment plan level, per line item.
+              Tank assignment and level tracking happen at the program level, per line item.
             </p>
           </div>
 
@@ -239,7 +239,7 @@ function TankDrawer({ tank, onClose, onEdit, canDelete }: {
             )}
           </div>
           <div className="rounded-lg bg-gray-50 px-4 py-3">
-            <p className="text-xs text-gray-500">Tank assignment and event history are managed from the <span className="font-semibold text-gray-700">Treatment Plan</span> line items.</p>
+            <p className="text-xs text-gray-500">Tank assignment and event history are managed from the <span className="font-semibold text-gray-700">Program</span> line items.</p>
           </div>
         </div>
       </div>
@@ -320,7 +320,7 @@ export default function TanksPage() {
                 <td colSpan={6} className="px-4 py-14 text-center">
                   <Cylinder size={32} className="mx-auto text-gray-300 mb-3" />
                   <p className="text-sm text-gray-500 font-medium">No tanks registered</p>
-                  <p className="text-xs text-gray-400 mt-1">Register Endura-owned tanks to assign them to treatment plans</p>
+                  <p className="text-xs text-gray-400 mt-1">Register Endura-owned tanks to assign them to programs</p>
                 </td>
               </tr>
             ) : tanks.map(t => (
