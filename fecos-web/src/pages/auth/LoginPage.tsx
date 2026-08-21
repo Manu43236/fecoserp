@@ -6,7 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import toast from 'react-hot-toast'
 import { FlaskConical, Truck, ClipboardList, BarChart3, Users, Beaker } from 'lucide-react'
 import fecosLogo from '@/assets/fecos_logo.png'
-import { useAuthStore, applyTenantTheme } from '@/store/authStore'
+import { useAuthStore } from '@/store/authStore'
+import { useTenantStore } from '@/store/tenantStore'
 import { authApi } from '@/api/auth'
 import { roleHomeMap, webRoles } from '@/lib/roleRoutes'
 import type { Role } from '@/types'
@@ -121,13 +122,12 @@ type FormData = z.infer<typeof schema>
 
 export function LoginPage() {
   const [loading, setLoading] = useState(false)
-  const [colors] = useState(DEFAULT_COLORS)
+  const tenantConfig = useTenantStore((s) => s.config)
+  const colors = tenantConfig
+    ? { primaryColor: tenantConfig.primaryColor, darkColor: tenantConfig.darkColor, accentColor: tenantConfig.accentColor }
+    : DEFAULT_COLORS
   const login = useAuthStore((s) => s.login)
   const navigate = useNavigate()
-
-  useEffect(() => {
-    applyTenantTheme(null) // reset to FECOS defaults; subdomain theming handled in prod only
-  }, [])
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
