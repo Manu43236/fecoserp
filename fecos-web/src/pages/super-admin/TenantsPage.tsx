@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import toast from 'react-hot-toast'
@@ -48,7 +48,7 @@ function TenantDialog({ open, onClose, tenant }: { open: boolean; onClose: () =>
   const qc = useQueryClient()
   const isEdit = !!tenant
 
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<FormData>({
+  const { register, handleSubmit, formState: { errors }, reset, control } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: EMPTY,
   })
@@ -72,6 +72,55 @@ function TenantDialog({ open, onClose, tenant }: { open: boolean; onClose: () =>
   })
 
   if (!open) return null
+
+  function SubdomainField({ disabled }: { disabled: boolean }) {
+    const value = useWatch({ control, name: 'subdomain' })
+    const [status, setStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle')
+    const timer = useRef<ReturnType<typeof setTimeout>>()
+
+    useEffect(() => {
+      if (disabled || !value || !/^[a-z0-9-]+$/.test(value)) { setStatus('idle'); return }
+      setStatus('checking')
+      clearTimeout(timer.current)
+      timer.current = setTimeout(async () => {
+        try {
+          const res = await saApi.checkSubdomain(value)
+          setStatus(res.data.data?.available ? 'available' : 'taken')
+        } catch { setStatus('idle') }
+      }, 500)
+      return () => clearTimeout(timer.current)
+    }, [value, disabled])
+
+    return (
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">
+          Subdomain<span className="text-red-500 ml-0.5">*</span>
+        </label>
+        <div className="relative">
+          <input
+            {...register('subdomain')}
+            disabled={disabled}
+            placeholder="e.g. endura"
+            className={`w-full h-9 px-3 pr-24 text-sm rounded-md border outline-none transition focus:ring-2 focus:ring-red-100
+              ${errors.subdomain ? 'border-red-400' : 'border-gray-200'} ${disabled ? 'bg-gray-50 text-gray-400' : ''}`}
+          />
+          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-medium pointer-events-none text-gray-400">
+            .fecoserp.com
+          </span>
+        </div>
+        {errors.subdomain && <p className="text-red-500 text-xs mt-1">{errors.subdomain.message}</p>}
+        {!errors.subdomain && !disabled && status === 'checking' && (
+          <p className="text-gray-400 text-xs mt-1">Checking…</p>
+        )}
+        {!errors.subdomain && !disabled && status === 'available' && (
+          <p className="text-green-600 text-xs mt-1">✓ Available</p>
+        )}
+        {!errors.subdomain && !disabled && status === 'taken' && (
+          <p className="text-red-500 text-xs mt-1">✗ Already taken</p>
+        )}
+      </div>
+    )
+  }
 
   function Field({ label, name, required, type = 'text' }: {
     label: string; name: keyof FormData; required?: boolean; type?: string
@@ -104,7 +153,7 @@ function TenantDialog({ open, onClose, tenant }: { open: boolean; onClose: () =>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Company</p>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Company Name" name="companyName" required />
-              <Field label="Subdomain" name="subdomain" required />
+              <SubdomainField disabled={isEdit} />
               <Field label="Owner Name" name="ownerName" />
               <Field label="Contact Phone" name="contactPhone" />
               <div className="col-span-2"><Field label="Contact Email" name="contactEmail" type="email" /></div>

@@ -39,6 +39,9 @@ export const saApi = {
   deleteTenant: (id: string) =>
     api.delete<ApiResponse<void>>(`/api/v1/sa/tenants/${id}`),
 
+  checkSubdomain: (value: string) =>
+    api.get<ApiResponse<{ available: boolean }>>('/api/v1/tenant/check-subdomain', { params: { value } }),
+
   impersonate: (id: string) =>
     api.post<ApiResponse<ImpersonateResponse>>(`/api/v1/sa/tenants/${id}/impersonate`),
 }

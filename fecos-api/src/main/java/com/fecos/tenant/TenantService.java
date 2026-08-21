@@ -20,6 +20,10 @@ public class TenantService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
+    public boolean subdomainExists(String subdomain) {
+        return tenantRepository.existsBySubdomainAndIsDeletedFalse(subdomain);
+    }
+
     public TenantEntity findBySubdomain(String subdomain) {
         return tenantRepository.findBySubdomainAndIsDeletedFalse(subdomain)
                 .orElseThrow(() -> new EntityNotFoundException("Tenant not found: " + subdomain));
