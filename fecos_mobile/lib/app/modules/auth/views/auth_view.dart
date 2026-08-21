@@ -157,23 +157,7 @@ class _AuthViewState extends State<AuthView> {
                         onSubmitted: (_) => _submit(controller),
                       ),
 
-                      // Error message
-                      Obx(() {
-                        final err = controller.errorMessage.value;
-                        if (err == null) return const SizedBox(height: 16);
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 10, bottom: 6),
-                          child: Text(
-                            err,
-                            style: const TextStyle(
-                              color: AppColors.danger,
-                              fontSize: 13,
-                            ),
-                          ),
-                        );
-                      }),
-
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 20),
 
                       // Sign in button
                       Obx(() => SizedBox(
