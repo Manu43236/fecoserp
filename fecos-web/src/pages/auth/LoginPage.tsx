@@ -174,7 +174,13 @@ export function LoginPage() {
   return (
     <div
       className="min-h-screen flex"
-      style={{ background: `linear-gradient(135deg, ${colors.primaryColor} 0%, ${colors.darkColor} 100%)` }}
+      style={{
+        background: `linear-gradient(to right,
+          ${DEFAULT_COLORS.darkColor} 0%,
+          ${DEFAULT_COLORS.primaryColor} 55%,
+          ${colors.primaryColor} 65%,
+          ${colors.darkColor} 100%)`
+      }}
     >
       {/* Left panel — FECOS brand over tenant background */}
       <div className="hidden lg:flex lg:w-[52%] flex-col">
