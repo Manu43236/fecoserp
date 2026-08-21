@@ -7,7 +7,7 @@ abstract final class AppConfig {
 
   static final apiBaseUrl = const String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://100.25.151.4/api/v1',
+    defaultValue: 'https://api.fecoserp.com/api/v1',
   );
 
   static final appName = switch (flavor) {
