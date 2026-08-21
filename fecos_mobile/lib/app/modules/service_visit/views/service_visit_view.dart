@@ -10,11 +10,9 @@ class ServiceVisitView extends GetView<ServiceVisitController> {
 
   @override
   Widget build(BuildContext context) {
-    final id = Get.parameters['id'] ?? 'list';
-
-    // If navigated to a specific visit, show stops for that visit
-    if (id != 'list') {
-      return _VisitDetailView(visitId: id);
+    final argVisit = Get.arguments is MyVisit ? Get.arguments as MyVisit : null;
+    if (argVisit != null) {
+      return _VisitDetailView(visit: argVisit);
     }
 
     return Scaffold(
@@ -84,6 +82,7 @@ class _VisitCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         onTap: () => Get.toNamed(
           Routes.serviceVisit.replaceFirst(':id', visit.id),
+          arguments: visit,
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -162,48 +161,28 @@ class _StatusChip extends StatelessWidget {
 // ── Visit Detail (stop list) ───────────────────────────────────────────────────
 
 class _VisitDetailView extends StatelessWidget {
-  const _VisitDetailView({required this.visitId});
-  final String visitId;
+  const _VisitDetailView({required this.visit});
+  final MyVisit visit;
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.find<ServiceVisitController>();
-
-    return Obx(() {
-      final state = controller.state.value;
-      if (state is! AsyncSuccess<List<MyVisit>>) {
-        return Scaffold(
-          appBar: AppBar(title: const Text('Visit')),
-          body: const FecosLoader(),
-        );
-      }
-
-      final visit = state.data.firstWhereOrNull((v) => v.id == visitId);
-      if (visit == null) {
-        return Scaffold(
-          appBar: AppBar(title: const Text('Visit')),
-          body: const Center(child: Text('Visit not found')),
-        );
-      }
-
-      return Scaffold(
-        appBar: AppBar(
-          title: Text(_formatDate(visit.visitDate)),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: _StatusChip(status: visit.status),
-            ),
-          ],
-        ),
-        body: ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: visit.stops.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 10),
-          itemBuilder: (_, i) => _StopCard(stop: visit.stops[i], visitId: visitId),
-        ),
-      );
-    });
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_formatDate(visit.visitDate)),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: _StatusChip(status: visit.status),
+          ),
+        ],
+      ),
+      body: ListView.separated(
+        padding: const EdgeInsets.all(16),
+        itemCount: visit.stops.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        itemBuilder: (_, i) => _StopCard(stop: visit.stops[i], visitId: visit.id),
+      ),
+    );
   }
 
   String _formatDate(String date) {

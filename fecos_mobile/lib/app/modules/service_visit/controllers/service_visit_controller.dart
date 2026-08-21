@@ -71,7 +71,7 @@ class ServiceVisitController extends GetxController {
     state.value = const AsyncLoading();
     try {
       final today = DateTime.now().toIso8601String().split('T').first;
-      final res = await _dio.get('/api/v1/my-visits', queryParameters: {'date': today});
+      final res = await _dio.get('/my-visits', queryParameters: {'date': today});
       final list = (res.data['data'] as List).map((v) => MyVisit.fromJson(v)).toList();
       state.value = AsyncSuccess(list);
     } on Exception catch (e) {

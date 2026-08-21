@@ -68,7 +68,7 @@ class ServiceReportController extends GetxController {
 
   Future<void> _loadExisting() async {
     try {
-      final res = await _dio.get('/api/v1/service-visits/$visitId/stops/$stopId/report');
+      final res = await _dio.get('/service-visits/$visitId/stops/$stopId/report');
       final d = res.data['data'];
       if (d == null) return;
       pumpRunning.value     = d['pumpRunning'] ?? false;
@@ -117,7 +117,7 @@ class ServiceReportController extends GetxController {
         'notes':           notes.text.trim(),
         'chemicals':       chemicals.map((c) => c.toJson()).toList(),
       };
-      await _dio.post('/api/v1/service-visits/$visitId/stops/$stopId/report', data: body);
+      await _dio.post('/service-visits/$visitId/stops/$stopId/report', data: body);
       submitState.value = const AsyncSuccess(true);
       Get.back();
       Get.snackbar('Submitted', 'Service report saved.',
