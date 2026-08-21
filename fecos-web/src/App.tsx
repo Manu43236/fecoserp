@@ -1,9 +1,11 @@
-import React from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import React, { useEffect } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
 import { authApi } from '@/api/auth'
 import { useTenantStore } from '@/store/tenantStore'
+import { useAuthStore } from '@/store/authStore'
+import type { Role } from '@/types'
 
 import { AuthGuard, SuperAdminGuard, GuestGuard } from '@/layouts/AuthGuard'
 import { AppLayout } from '@/layouts/AppLayout'
@@ -99,10 +101,47 @@ function TenantValidator({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+function ImpersonatePage() {
+  const login = useAuthStore(s => s.login)
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get('token')
+    if (!token) { navigate('/login', { replace: true }); return }
+    localStorage.setItem('fecos_token', token)
+    authApi.me().then(res => {
+      const d = res.data.data!
+      login({
+        id: d.id,
+        fullName: d.fullName,
+        mobileNumber: '',
+        email: d.email,
+        role: d.role as Role,
+        tenantId: d.tenantId,
+        tenantName: d.tenantName,
+        primaryColor: d.primaryColor,
+        darkColor: d.darkColor,
+        accentColor: d.accentColor,
+      }, token)
+      navigate('/dashboard', { replace: true })
+    }).catch(() => {
+      localStorage.removeItem('fecos_token')
+      navigate('/login', { replace: true })
+    })
+  }, [])
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="w-8 h-8 rounded-full border-2 border-gray-200 border-t-gray-600 animate-spin" />
+    </div>
+  )
+}
+
 function TenantRoutes() {
   return (
     <TenantValidator>
       <Routes>
+        <Route path="/auth/impersonate" element={<ImpersonatePage />} />
         <Route element={<GuestGuard />}>
           <Route path="/login" element={<LoginPage />} />
         </Route>

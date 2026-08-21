@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
@@ -7,8 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import toast from 'react-hot-toast'
 import { Building2, Plus, LogIn, Pencil, Trash2, CheckCircle, XCircle, ChevronRight, ChevronDown } from 'lucide-react'
 import { saApi, type CreateTenantPayload } from '@/api/superadmin'
-import { useAuthStore } from '@/store/authStore'
-import type { Tenant, Role } from '@/types'
+import type { Tenant } from '@/types'
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 const schema = z.object({
@@ -288,8 +286,6 @@ function TenantRow({ tenant, onEdit, onDelete, onImpersonate }: {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export function TenantsPage() {
   const qc = useQueryClient()
-  const navigate = useNavigate()
-  const impersonate = useAuthStore(s => s.impersonate)
 
   const [createOpen, setCreateOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Tenant | undefined>()
@@ -311,24 +307,9 @@ export function TenantsPage() {
   })
 
   const impersonateMutation = useMutation({
-    mutationFn: (id: string) => saApi.impersonate(id).then(r => r.data.data),
-    onSuccess: (res) => {
-      impersonate(
-        {
-          id: res.id,
-          fullName: res.fullName,
-          mobileNumber: '',
-          email: res.email,
-          role: res.role as Role,
-          tenantId: res.tenantId,
-          tenantName: res.tenantName,
-          primaryColor: res.primaryColor,
-          darkColor: res.darkColor,
-          accentColor: res.accentColor,
-        },
-        res.token,
-      )
-      navigate('/dashboard', { replace: true })
+    mutationFn: (tenant: Tenant) => saApi.impersonate(tenant.id).then(r => ({ token: r.data.data!.token, subdomain: tenant.subdomain })),
+    onSuccess: ({ token, subdomain }) => {
+      window.location.href = `https://${subdomain}.fecoserp.com/auth/impersonate?token=${token}`
     },
     onError: (e: unknown) =>
       toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed'),
@@ -414,7 +395,7 @@ export function TenantsPage() {
                   tenant={t}
                   onEdit={setEditTarget}
                   onDelete={setDeleteTarget}
-                  onImpersonate={tr => impersonateMutation.mutate(tr.id)}
+                  onImpersonate={tr => impersonateMutation.mutate(tr)}
                 />
               ))}
             </tbody>
