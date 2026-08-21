@@ -1,6 +1,9 @@
+import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
+import { authApi } from '@/api/auth'
+import { useTenantStore } from '@/store/tenantStore'
 
 import { AuthGuard, SuperAdminGuard, GuestGuard } from '@/layouts/AuthGuard'
 import { AppLayout } from '@/layouts/AppLayout'
@@ -58,51 +61,90 @@ function ConsoleRoutes() {
   )
 }
 
+function TenantValidator({ children }: { children: React.ReactNode }) {
+  const applyTheme = useTenantStore(s => s.applyTheme)
+
+  const { isLoading, isError } = useQuery({
+    queryKey: ['tenant-config'],
+    queryFn: async () => {
+      const res = await authApi.tenantConfig()
+      applyTheme(res.data.data!)
+      return res.data.data
+    },
+    retry: false,
+  })
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="w-8 h-8 rounded-full border-2 border-gray-200 border-t-gray-600 animate-spin" />
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 gap-3">
+        <p className="text-2xl font-bold text-gray-800">Workspace not found</p>
+        <p className="text-sm text-gray-500">
+          <strong>{window.location.hostname}</strong> is not a registered workspace.
+        </p>
+        <a href="https://console.fecoserp.com" className="mt-2 text-sm text-blue-600 hover:underline">
+          Go to FECOS Console
+        </a>
+      </div>
+    )
+  }
+
+  return <>{children}</>
+}
+
 function TenantRoutes() {
   return (
-    <Routes>
-      <Route element={<GuestGuard />}>
-        <Route path="/login" element={<LoginPage />} />
-      </Route>
-      <Route element={<AuthGuard />}>
-        <Route element={<AppLayout />}>
-          <Route path="/dashboard"        element={<PlaceholderPage title="Dashboard" />} />
-          <Route path="/field-activity"   element={<PlaceholderPage title="Field Activity" />} />
-          <Route path="/deliveries"       element={<PlaceholderPage title="Deliveries" />} />
-          <Route path="/clients"          element={<ClientsPage />} />
-          <Route path="/leases"           element={<LeasesPage />} />
-          <Route path="/wells"            element={<WellsPage />} />
-          <Route path="/pump-shop"        element={<PumpShopPage />} />
-          <Route path="/reports"          element={<PlaceholderPage title="Reports" />} />
-          <Route path="/lab/queue"        element={<LabPage />} />
-          <Route path="/lab/results"      element={<LabPage />} />
-          <Route path="/qc"               element={<QCPage />} />
-          <Route path="/lab/raw-qc"       element={<Navigate to="/qc" replace />} />
-          <Route path="/lab/prod-qc"      element={<Navigate to="/qc" replace />} />
-          <Route path="/routes"           element={<RoutesPage />} />
-          <Route path="/schedule"         element={<ServiceVisitsPage />} />
-          <Route path="/inventory"        element={<InventoryPage />} />
-          <Route path="/plans"            element={<PlansPage />} />
-          <Route path="/tanks"            element={<TanksPage />} />
-          <Route path="/vehicles"         element={<VehiclesPage />} />
-          <Route path="/users"            element={<UsersPage />} />
-          <Route path="/masters"          element={<MastersPage />} />
-          <Route path="/products"         element={<ProductsPage />} />
-          <Route path="/rep/portfolio"    element={<PlaceholderPage title="Portfolio" />} />
-          <Route path="/rep/approvals"    element={<ApprovalsPage />} />
+    <TenantValidator>
+      <Routes>
+        <Route element={<GuestGuard />}>
+          <Route path="/login" element={<LoginPage />} />
         </Route>
-      </Route>
-      <Route path="*" element={<Navigate to="/login" replace />} />
-    </Routes>
+        <Route element={<AuthGuard />}>
+          <Route element={<AppLayout />}>
+            <Route path="/dashboard"        element={<PlaceholderPage title="Dashboard" />} />
+            <Route path="/field-activity"   element={<PlaceholderPage title="Field Activity" />} />
+            <Route path="/deliveries"       element={<PlaceholderPage title="Deliveries" />} />
+            <Route path="/clients"          element={<ClientsPage />} />
+            <Route path="/leases"           element={<LeasesPage />} />
+            <Route path="/wells"            element={<WellsPage />} />
+            <Route path="/pump-shop"        element={<PumpShopPage />} />
+            <Route path="/reports"          element={<PlaceholderPage title="Reports" />} />
+            <Route path="/lab/queue"        element={<LabPage />} />
+            <Route path="/lab/results"      element={<LabPage />} />
+            <Route path="/qc"               element={<QCPage />} />
+            <Route path="/lab/raw-qc"       element={<Navigate to="/qc" replace />} />
+            <Route path="/lab/prod-qc"      element={<Navigate to="/qc" replace />} />
+            <Route path="/routes"           element={<RoutesPage />} />
+            <Route path="/schedule"         element={<ServiceVisitsPage />} />
+            <Route path="/inventory"        element={<InventoryPage />} />
+            <Route path="/plans"            element={<PlansPage />} />
+            <Route path="/tanks"            element={<TanksPage />} />
+            <Route path="/vehicles"         element={<VehiclesPage />} />
+            <Route path="/users"            element={<UsersPage />} />
+            <Route path="/masters"          element={<MastersPage />} />
+            <Route path="/products"         element={<ProductsPage />} />
+            <Route path="/rep/portfolio"    element={<PlaceholderPage title="Portfolio" />} />
+            <Route path="/rep/approvals"    element={<ApprovalsPage />} />
+          </Route>
+        </Route>
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </TenantValidator>
   )
 }
 
 export default function App() {
-  const portal = getPortal()
   return (
     <QueryClientProvider client={qc}>
       <BrowserRouter>
-        {portal === 'console' ? <ConsoleRoutes /> : <TenantRoutes />}
+        {getPortal() === 'console' ? <ConsoleRoutes /> : <TenantRoutes />}
       </BrowserRouter>
       <Toaster position="top-right" />
     </QueryClientProvider>
