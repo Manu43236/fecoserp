@@ -1,8 +1,8 @@
 -- Add password_hash for email+password auth (IF NOT EXISTS = safe to re-run)
 ALTER TABLE users MODIFY COLUMN mobile_number VARCHAR(15) NULL;
 ALTER TABLE users MODIFY COLUMN pin_hash      VARCHAR(255) NULL;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash  VARCHAR(255) NULL          AFTER pin_hash;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified TINYINT(1) NOT NULL DEFAULT 0 AFTER password_hash;
+ALTER TABLE users ADD COLUMN password_hash  VARCHAR(255) NULL          AFTER pin_hash;
+ALTER TABLE users ADD COLUMN email_verified TINYINT(1) NOT NULL DEFAULT 0 AFTER password_hash;
 
 -- Drop FK only if it exists, then re-add allowing NULL tenant_id (SUPER_ADMIN)
 SET @fk := (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
