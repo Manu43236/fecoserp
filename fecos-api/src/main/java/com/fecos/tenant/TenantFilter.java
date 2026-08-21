@@ -24,10 +24,10 @@ public class TenantFilter extends OncePerRequestFilter {
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain chain) throws ServletException, IOException {
         try {
-            String subdomain = extractSubdomain(request.getServerName());
+            // Header takes priority — web app sends its subdomain since Host is api.fecoserp.com
+            String subdomain = request.getHeader("X-Tenant-Subdomain");
             if (subdomain == null) {
-                // ponytail: dev fallback — header lets Postman/local callers specify tenant
-                subdomain = request.getHeader("X-Tenant-Subdomain");
+                subdomain = extractSubdomain(request.getServerName());
             }
             if (subdomain != null) {
                 tenantRepository.findBySubdomainAndIsDeletedFalse(subdomain)

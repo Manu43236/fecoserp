@@ -17,7 +17,8 @@ public class TenantController {
 
     @GetMapping("/config")
     public ResponseEntity<ApiResponse<TenantConfigResponse>> getConfig(HttpServletRequest request) {
-        String subdomain = extractSubdomain(request.getServerName());
+        String subdomain = request.getHeader("X-Tenant-Subdomain");
+        if (subdomain == null) subdomain = extractSubdomain(request.getServerName());
         TenantEntity tenant = tenantService.findBySubdomain(subdomain != null ? subdomain : "endura");
 
         TenantConfigResponse config = TenantConfigResponse.builder()
