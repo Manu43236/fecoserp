@@ -11,6 +11,8 @@ import 'package:fecos_mobile/app/modules/service_visit/bindings/service_visit_bi
 import 'package:fecos_mobile/app/modules/service_visit/views/service_visit_view.dart';
 import 'package:fecos_mobile/app/modules/pre_trip/bindings/pre_trip_binding.dart';
 import 'package:fecos_mobile/app/modules/pre_trip/views/pre_trip_view.dart';
+import 'package:fecos_mobile/app/modules/service_report/bindings/service_report_binding.dart';
+import 'package:fecos_mobile/app/modules/service_report/views/service_report_view.dart';
 
 part 'app_routes.dart';
 
@@ -47,6 +49,11 @@ class AppPages {
       name: _Paths.preTrip,
       page: () => const PreTripView(),
       binding: PreTripBinding(),
+    ),
+    GetPage(
+      name: _Paths.serviceReport,
+      page: () => const ServiceReportView(),
+      binding: ServiceReportBinding(),
     ),
   ];
 }

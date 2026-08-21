@@ -1,0 +1,20 @@
+CREATE TABLE service_reports (
+    id                    CHAR(36)       NOT NULL PRIMARY KEY,
+    tenant_id             CHAR(36)       NOT NULL,
+    service_visit_stop_id CHAR(36)       NOT NULL,
+    pump_running          BOOLEAN        NOT NULL DEFAULT FALSE,
+    tank_level_before     DECIMAL(5,2),
+    tank_level_after      DECIMAL(5,2),
+    actual_rate           DECIMAL(10,4),
+    soar                  BOOLEAN        NOT NULL DEFAULT FALSE,
+    special_treat         TEXT,
+    notes                 TEXT,
+    submitted_at          DATETIME(6),
+    is_deleted            BOOLEAN        NOT NULL DEFAULT FALSE,
+    created_at            DATETIME(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at            DATETIME(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    created_by            CHAR(36),
+    UNIQUE KEY uq_sr_stop (service_visit_stop_id),
+    INDEX idx_sr_tenant (tenant_id),
+    INDEX idx_sr_stop (service_visit_stop_id)
+);

@@ -32,4 +32,7 @@ public interface TreatmentPlanRepository extends JpaRepository<TreatmentPlanEnti
 
     List<TreatmentPlanEntity> findAllByTenantIdAndWellIdAndStatusAndIsDeletedFalse(
             UUID tenantId, UUID wellId, TreatmentPlanStatus status);
+
+    List<TreatmentPlanEntity> findAllByTenantIdAndStatusAndIsDeletedFalse(
+            UUID tenantId, TreatmentPlanStatus status);
 }

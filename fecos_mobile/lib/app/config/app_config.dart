@@ -7,7 +7,7 @@ abstract final class AppConfig {
 
   static final apiBaseUrl = const String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://localhost:8080/api/v1',
+    defaultValue: 'http://192.168.1.21:8080',
   );
 
   static final appName = switch (flavor) {

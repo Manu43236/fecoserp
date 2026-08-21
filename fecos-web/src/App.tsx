@@ -24,6 +24,7 @@ import TanksPage from '@/pages/tenant/TanksPage'
 import QCPage from '@/pages/tenant/QCPage'
 import PumpShopPage from '@/pages/tenant/PumpShopPage'
 import VehiclesPage from '@/pages/tenant/VehiclesPage'
+import ServiceVisitsPage from '@/pages/tenant/ServiceVisitsPage'
 
 const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -75,7 +76,7 @@ export default function App() {
 
               {/* Admin/Dispatcher */}
               <Route path="/routes"           element={<RoutesPage />} />
-              <Route path="/schedule"         element={<PlaceholderPage title="Schedule" />} />
+              <Route path="/schedule"         element={<ServiceVisitsPage />} />
               <Route path="/inventory"        element={<InventoryPage />} />
               <Route path="/plans"             element={<PlansPage />} />
               <Route path="/tanks"            element={<TanksPage />} />

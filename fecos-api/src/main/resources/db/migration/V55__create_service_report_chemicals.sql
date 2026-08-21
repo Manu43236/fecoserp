@@ -1,0 +1,21 @@
+CREATE TABLE service_report_chemicals (
+    id                CHAR(36)       NOT NULL PRIMARY KEY,
+    tenant_id         CHAR(36)       NOT NULL,
+    service_report_id CHAR(36)       NOT NULL,
+    product_id        CHAR(36),
+    product_name      VARCHAR(255)   NOT NULL,
+    gallons_delivered DECIMAL(10,4),
+    gallons_on_hand   DECIMAL(10,4),
+    rec_rate          DECIMAL(10,4),
+    actual_rate       DECIMAL(10,4),
+    on_rate           BOOLEAN        NOT NULL DEFAULT FALSE,
+    soar              BOOLEAN        NOT NULL DEFAULT FALSE,
+    comments          TEXT,
+    sort_order        INT            NOT NULL DEFAULT 1,
+    is_deleted        BOOLEAN        NOT NULL DEFAULT FALSE,
+    created_at        DATETIME(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at        DATETIME(6)    NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    created_by        CHAR(36),
+    INDEX idx_src_report (service_report_id),
+    INDEX idx_src_tenant (tenant_id)
+);

@@ -4,6 +4,24 @@ import 'package:get/get.dart';
 import '../controllers/auth_controller.dart';
 import 'package:fecos_mobile/app/theme/app_theme.dart';
 
+class _UsPhoneFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue old, TextEditingValue next) {
+    final digits = next.text.replaceAll(RegExp(r'\D'), '');
+    if (digits.length > 10) return old;
+    final formatted = switch (digits.length) {
+      0 => '',
+      <= 3 => digits,
+      <= 6 => '(${digits.substring(0, 3)}) ${digits.substring(3)}',
+      _ => '(${digits.substring(0, 3)}) ${digits.substring(3, 6)}-${digits.substring(6)}',
+    };
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
+
 class AuthView extends StatefulWidget {
   const AuthView({super.key});
 
@@ -114,12 +132,9 @@ class _AuthViewState extends State<AuthView> {
                           Expanded(
                             child: _Field(
                               controller: _mobileCtrl,
-                              hint: '10-digit number',
+                              hint: '(XXX) XXX-XXXX',
                               keyboardType: TextInputType.number,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                                LengthLimitingTextInputFormatter(10),
-                              ],
+                              inputFormatters: [_UsPhoneFormatter()],
                             ),
                           ),
                         ],
@@ -203,10 +218,8 @@ class _AuthViewState extends State<AuthView> {
   }
 
   void _submit(AuthController controller) {
-    controller.login(
-      _mobileCtrl.text.trim(),
-      _pinCtrl.text.trim(),
-    );
+    final rawDigits = _mobileCtrl.text.replaceAll(RegExp(r'\D'), '');
+    controller.login(rawDigits, _pinCtrl.text.trim());
   }
 }
 

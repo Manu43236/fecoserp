@@ -7,6 +7,12 @@ final _dateFmt = DateFormat('MMM d, yyyy');
 final _dateTimeFmt = DateFormat('MMM d, yyyy h:mm a');
 
 abstract final class FormatUtils {
+  static String usPhone(String digits) {
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return '(${digits.substring(0, 3)}) ${digits.substring(3)}';
+    return '(${digits.substring(0, 3)}) ${digits.substring(3, 6)}-${digits.substring(6)}';
+  }
+
   static String gallons(num? v) =>
       v == null ? '--' : '${_gallonsFmt.format(v)} gal';
   static String rate(num? v) => v == null ? '--' : _rateFmt.format(v);
