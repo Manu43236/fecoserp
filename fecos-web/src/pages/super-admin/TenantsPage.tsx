@@ -13,7 +13,7 @@ import type { Tenant, Role } from '@/types'
 // ── Schema ────────────────────────────────────────────────────────────────────
 const schema = z.object({
   companyName:       z.string().min(1, 'Required'),
-  subdomain:         z.string().min(1, 'Required').regex(/^[a-z0-9-]+$/, 'Lowercase, numbers and hyphens only'),
+  subdomain:         z.string().min(3, 'Minimum 3 characters').regex(/^[a-z0-9-]+$/, 'Lowercase, numbers and hyphens only'),
   ownerName:         z.string().optional(),
   contactPhone:      z.string().optional(),
   contactEmail:      z.string().email('Invalid email').optional().or(z.literal('')),
@@ -79,7 +79,7 @@ function TenantDialog({ open, onClose, tenant }: { open: boolean; onClose: () =>
     const timer = useRef<ReturnType<typeof setTimeout>>()
 
     useEffect(() => {
-      if (disabled || !value || !/^[a-z0-9-]+$/.test(value)) { setStatus('idle'); return }
+      if (disabled || !value || value.length < 3 || !/^[a-z0-9-]+$/.test(value)) { setStatus('idle'); return }
       setStatus('checking')
       clearTimeout(timer.current)
       timer.current = setTimeout(async () => {
@@ -116,7 +116,7 @@ function TenantDialog({ open, onClose, tenant }: { open: boolean; onClose: () =>
           <p className="text-green-600 text-xs mt-1">✓ Available</p>
         )}
         {!errors.subdomain && !disabled && status === 'taken' && (
-          <p className="text-red-500 text-xs mt-1">✗ Already taken</p>
+          <p className="text-red-500 text-xs mt-1">✗ Already taken — please choose a different subdomain name</p>
         )}
       </div>
     )
