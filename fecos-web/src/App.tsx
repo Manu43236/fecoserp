@@ -30,69 +30,79 @@ const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
 })
 
+function getPortal(): 'console' | 'tenant' {
+  const host = window.location.hostname
+  if (host === 'localhost' || host === '127.0.0.1') return 'console'
+  return host.split('.')[0] === 'console' ? 'console' : 'tenant'
+}
+
+function ConsoleRoutes() {
+  return (
+    <Routes>
+      <Route element={<GuestGuard />}>
+        <Route path="/login" element={<LoginPage />} />
+      </Route>
+      <Route element={<AuthGuard />}>
+        <Route element={<SuperAdminGuard />}>
+          <Route element={<SuperAdminLayout />}>
+            <Route path="/sa/dashboard"     element={<PlaceholderPage title="SA Dashboard" />} />
+            <Route path="/sa/tenants"       element={<TenantsPage />} />
+            <Route path="/sa/subscriptions" element={<PlaceholderPage title="Subscriptions" />} />
+            <Route path="/sa/users"         element={<SAUsersPage />} />
+            <Route path="/sa/settings"      element={<PlaceholderPage title="Settings" />} />
+          </Route>
+        </Route>
+      </Route>
+      <Route path="*" element={<Navigate to="/login" replace />} />
+    </Routes>
+  )
+}
+
+function TenantRoutes() {
+  return (
+    <Routes>
+      <Route element={<GuestGuard />}>
+        <Route path="/login" element={<LoginPage />} />
+      </Route>
+      <Route element={<AuthGuard />}>
+        <Route element={<AppLayout />}>
+          <Route path="/dashboard"        element={<PlaceholderPage title="Dashboard" />} />
+          <Route path="/field-activity"   element={<PlaceholderPage title="Field Activity" />} />
+          <Route path="/deliveries"       element={<PlaceholderPage title="Deliveries" />} />
+          <Route path="/clients"          element={<ClientsPage />} />
+          <Route path="/leases"           element={<LeasesPage />} />
+          <Route path="/wells"            element={<WellsPage />} />
+          <Route path="/pump-shop"        element={<PumpShopPage />} />
+          <Route path="/reports"          element={<PlaceholderPage title="Reports" />} />
+          <Route path="/lab/queue"        element={<LabPage />} />
+          <Route path="/lab/results"      element={<LabPage />} />
+          <Route path="/qc"               element={<QCPage />} />
+          <Route path="/lab/raw-qc"       element={<Navigate to="/qc" replace />} />
+          <Route path="/lab/prod-qc"      element={<Navigate to="/qc" replace />} />
+          <Route path="/routes"           element={<RoutesPage />} />
+          <Route path="/schedule"         element={<ServiceVisitsPage />} />
+          <Route path="/inventory"        element={<InventoryPage />} />
+          <Route path="/plans"            element={<PlansPage />} />
+          <Route path="/tanks"            element={<TanksPage />} />
+          <Route path="/vehicles"         element={<VehiclesPage />} />
+          <Route path="/users"            element={<UsersPage />} />
+          <Route path="/masters"          element={<MastersPage />} />
+          <Route path="/products"         element={<ProductsPage />} />
+          <Route path="/rep/portfolio"    element={<PlaceholderPage title="Portfolio" />} />
+          <Route path="/rep/approvals"    element={<ApprovalsPage />} />
+        </Route>
+      </Route>
+      <Route path="*" element={<Navigate to="/login" replace />} />
+    </Routes>
+  )
+}
+
 export default function App() {
+  const portal = getPortal()
   return (
     <QueryClientProvider client={qc}>
       <BrowserRouter>
-        <Routes>
-          {/* Public */}
-          <Route element={<GuestGuard />}>
-            <Route path="/login" element={<LoginPage />} />
-          </Route>
-
-          {/* Super Admin */}
-          <Route element={<AuthGuard />}>
-            <Route element={<SuperAdminGuard />}>
-              <Route element={<SuperAdminLayout />}>
-                <Route path="/sa/dashboard"     element={<PlaceholderPage title="SA Dashboard" />} />
-                <Route path="/sa/tenants"       element={<TenantsPage />} />
-                <Route path="/sa/subscriptions" element={<PlaceholderPage title="Subscriptions" />} />
-                <Route path="/sa/users"         element={<SAUsersPage />} />
-                <Route path="/sa/settings"      element={<PlaceholderPage title="Settings" />} />
-              </Route>
-            </Route>
-          </Route>
-
-          {/* Tenant roles */}
-          <Route element={<AuthGuard />}>
-            <Route element={<AppLayout />}>
-              <Route path="/dashboard"        element={<PlaceholderPage title="Dashboard" />} />
-
-              {/* Manager */}
-              <Route path="/field-activity"   element={<PlaceholderPage title="Field Activity" />} />
-              <Route path="/deliveries"       element={<PlaceholderPage title="Deliveries" />} />
-              <Route path="/clients"          element={<ClientsPage />} />
-              <Route path="/leases"           element={<LeasesPage />} />
-              <Route path="/wells"            element={<WellsPage />} />
-              <Route path="/pump-shop"        element={<PumpShopPage />} />
-              <Route path="/reports"          element={<PlaceholderPage title="Reports" />} />
-
-              {/* Lab */}
-              <Route path="/lab/queue"        element={<LabPage />} />
-              <Route path="/lab/results"      element={<LabPage />} />
-              <Route path="/qc"               element={<QCPage />} />
-              <Route path="/lab/raw-qc"       element={<Navigate to="/qc" replace />} />
-              <Route path="/lab/prod-qc"      element={<Navigate to="/qc" replace />} />
-
-              {/* Admin/Dispatcher */}
-              <Route path="/routes"           element={<RoutesPage />} />
-              <Route path="/schedule"         element={<ServiceVisitsPage />} />
-              <Route path="/inventory"        element={<InventoryPage />} />
-              <Route path="/plans"             element={<PlansPage />} />
-              <Route path="/tanks"            element={<TanksPage />} />
-              <Route path="/vehicles"         element={<VehiclesPage />} />
-              <Route path="/users"            element={<UsersPage />} />
-              <Route path="/masters"          element={<MastersPage />} />
-              <Route path="/products"         element={<ProductsPage />} />
-
-              {/* Account Rep */}
-              <Route path="/rep/portfolio"    element={<PlaceholderPage title="Portfolio" />} />
-              <Route path="/rep/approvals"    element={<ApprovalsPage />} />
-            </Route>
-          </Route>
-
-          <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
+        {portal === 'console' ? <ConsoleRoutes /> : <TenantRoutes />}
       </BrowserRouter>
       <Toaster position="top-right" />
     </QueryClientProvider>
