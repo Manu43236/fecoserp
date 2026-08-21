@@ -174,19 +174,21 @@ export function LoginPage() {
   return (
     <div
       className="min-h-screen flex"
-      style={{
-        background: `linear-gradient(to right,
-          ${DEFAULT_COLORS.darkColor} 0%,
-          ${DEFAULT_COLORS.primaryColor} 55%,
-          ${colors.primaryColor} 65%,
-          ${colors.darkColor} 100%)`
-      }}
+      style={{ background: `linear-gradient(135deg, ${DEFAULT_COLORS.primaryColor} 0%, ${DEFAULT_COLORS.darkColor} 100%)` }}
     >
       {/* Left panel — FECOS brand over tenant background */}
       <div className="hidden lg:flex lg:w-[52%] flex-col">
         <div className="flex-1 flex items-center justify-center px-12">
           <div className="flex flex-col items-center gap-10 w-full">
-            <img src={fecosLogo} alt="FECOS" className="w-56 object-contain" />
+            <div className="flex flex-col items-center gap-4">
+              <img src={fecosLogo} alt="FECOS" className="w-48 object-contain" />
+              {tenantConfig?.logoUrl && (
+                <>
+                  <div className="w-16 h-px bg-white/30" />
+                  <img src={tenantConfig.logoUrl} alt={tenantConfig.companyName} className="w-32 h-16 object-contain" />
+                </>
+              )}
+            </div>
             <FeatureCarousel />
           </div>
         </div>
@@ -199,15 +201,23 @@ export function LoginPage() {
       <div className="w-full lg:w-[48%] flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           {/* Mobile logo */}
-          <div className="lg:hidden text-center mb-8">
-            <img src={fecosLogo} alt="FECOS" className="h-12 w-auto object-contain mx-auto" />
+          <div className="lg:hidden text-center mb-8 flex flex-col items-center gap-3">
+            <img src={fecosLogo} alt="FECOS" className="h-12 w-auto object-contain" />
+            {tenantConfig?.logoUrl && (
+              <>
+                <div className="w-12 h-px bg-white/30" />
+                <img src={tenantConfig.logoUrl} alt={tenantConfig.companyName} className="h-10 w-auto object-contain" />
+              </>
+            )}
           </div>
 
           {/* Card */}
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 space-y-7">
             <div>
               <h2 className="text-2xl font-bold text-gray-900">Welcome back</h2>
-              <p className="text-gray-400 text-sm mt-1">Sign in to your FECOS account</p>
+              <p className="text-gray-400 text-sm mt-1">
+                Sign in to your {tenantConfig?.companyName ?? 'FECOS'} account
+              </p>
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" autoComplete="off">
