@@ -103,6 +103,7 @@ function TenantValidator({ children }: { children: React.ReactNode }) {
 
 function ImpersonatePage() {
   const login = useAuthStore(s => s.login)
+  const setImpersonated = useAuthStore(s => s.setImpersonated)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -123,6 +124,7 @@ function ImpersonatePage() {
         darkColor: d.darkColor,
         accentColor: d.accentColor,
       }, token)
+      setImpersonated()
       navigate('/dashboard', { replace: true })
     }).catch(() => {
       localStorage.removeItem('fecos_token')

@@ -25,11 +25,13 @@ interface AuthState {
   token: string | null
   isAuthenticated: boolean
   saSession: SaSession | null
+  isImpersonated: boolean
 
   login: (user: AuthUser, token: string) => void
   logout: () => void
   impersonate: (user: AuthUser, token: string) => void
   exitImpersonation: () => void
+  setImpersonated: () => void
 }
 
 const DEFAULT_PRIMARY = '#1E3A5F'
@@ -50,18 +52,21 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       isAuthenticated: false,
       saSession: null,
+      isImpersonated: false,
 
       login: (user, token) => {
         localStorage.setItem('fecos_token', token)
         applyTenantTheme(user)
-        set({ user, token, isAuthenticated: true, saSession: null })
+        set({ user, token, isAuthenticated: true, saSession: null, isImpersonated: false })
       },
 
       logout: () => {
         localStorage.removeItem('fecos_token')
         applyTenantTheme(null)
-        set({ user: null, token: null, isAuthenticated: false, saSession: null })
+        set({ user: null, token: null, isAuthenticated: false, saSession: null, isImpersonated: false })
       },
+
+      setImpersonated: () => set({ isImpersonated: true }),
 
       impersonate: (user, token) => {
         const { user: currentUser, token: currentToken } = get()

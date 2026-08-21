@@ -69,7 +69,7 @@ function userInitials(name?: string) {
 }
 
 export function AppLayout() {
-  const { user, logout, saSession, exitImpersonation } = useAuthStore()
+  const { user, logout, saSession, exitImpersonation, isImpersonated } = useAuthStore()
   const navigate = useNavigate()
   const nav = user ? navByRole[user.role as Role] ?? [] : []
   const isImpersonating = !!saSession
@@ -150,7 +150,7 @@ export function AppLayout() {
               </p>
             </div>
             <button
-              onClick={logout}
+              onClick={() => { logout(); if (isImpersonated) window.location.href = 'https://console.fecoserp.com' }}
               title="Sign out"
               className="w-7 h-7 rounded-md flex items-center justify-center transition-colors shrink-0"
               style={{ color: 'rgba(203,213,225,0.45)' }}
