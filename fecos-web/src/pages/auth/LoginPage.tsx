@@ -172,12 +172,14 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left panel — always FECOS brand */}
-      <div
-        className="hidden lg:flex lg:w-[52%] flex-col"
-        style={{ background: `linear-gradient(135deg, ${DEFAULT_COLORS.primaryColor}, ${DEFAULT_COLORS.darkColor})` }}
-      >
+    <div
+      className="min-h-screen flex"
+      style={{
+        background: `linear-gradient(to right, ${DEFAULT_COLORS.darkColor} 0%, ${DEFAULT_COLORS.primaryColor} 40%, ${colors.primaryColor} 60%, ${colors.darkColor} 100%)`,
+      }}
+    >
+      {/* Left panel — FECOS brand (transparent, gradient handled by parent) */}
+      <div className="hidden lg:flex lg:w-[52%] flex-col">
         <div className="flex-1 flex items-center justify-center px-12">
           <div className="flex flex-col items-center gap-10 w-full">
             <img src={fecosLogo} alt="FECOS" className="w-56 object-contain" />
@@ -189,11 +191,8 @@ export function LoginPage() {
         </p>
       </div>
 
-      {/* Right panel — tenant theme */}
-      <div
-        className="w-full lg:w-[48%] flex items-center justify-center p-8"
-        style={{ background: `linear-gradient(135deg, ${colors.primaryColor}, ${colors.darkColor})` }}
-      >
+      {/* Right panel — transparent, gradient handled by parent */}
+      <div className="w-full lg:w-[48%] flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-8">
