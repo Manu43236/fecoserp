@@ -16,6 +16,13 @@ public class ServiceReportController {
 
     private final ServiceReportService service;
 
+    // Mobile — service tech dashboard summary for today
+    @GetMapping("/api/v1/service-tech/dashboard")
+    @PreAuthorize("hasRole('SERVICE_TECH')")
+    public ResponseEntity<ApiResponse<DashboardResponse>> dashboard() {
+        return ResponseEntity.ok(ApiResponse.ok(service.dashboard()));
+    }
+
     // Mobile — service tech gets their visits for today
     @GetMapping("/api/v1/my-visits")
     @PreAuthorize("hasRole('SERVICE_TECH')")

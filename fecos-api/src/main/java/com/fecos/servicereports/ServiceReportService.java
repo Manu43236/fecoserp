@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -118,6 +119,34 @@ public class ServiceReportService {
         UUID tenantId = currentTenantId();
         return reportRepo.findAllByTenant(tenantId, PageRequest.of(page, size))
                 .map(this::toResponse);
+    }
+
+    // ── Dashboard summary for today (mobile - service tech) ──────────────────
+
+    @Transactional(readOnly = true)
+    public DashboardResponse dashboard() {
+        UUID tenantId = currentTenantId();
+        UUID techId   = currentUserId();
+        LocalDate today = LocalDate.now();
+
+        List<com.fecos.servicevisits.ServiceVisitEntity> visits =
+                visitRepo.search(tenantId, null, techId, today, PageRequest.of(0, 100))
+                        .getContent();
+
+        int visitsTotal    = visits.size();
+        int stopsTotal     = 0;
+        int stopsCompleted = 0;
+
+        for (var v : visits) {
+            List<com.fecos.servicevisits.ServiceVisitStopEntity> stops =
+                    stopRepo.findAllByServiceVisitIdAndIsDeletedFalseOrderBySequenceAsc(v.getId());
+            stopsTotal += stops.size();
+            stopsCompleted += (int) stops.stream()
+                    .filter(s -> s.getStatus() == ServiceVisitStopStatus.COMPLETED)
+                    .count();
+        }
+
+        return new DashboardResponse(false, visitsTotal, stopsCompleted, stopsTotal, today);
     }
 
     // ── My visits for today (mobile - service tech) ───────────────────────────
