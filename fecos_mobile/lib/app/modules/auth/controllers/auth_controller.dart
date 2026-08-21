@@ -78,7 +78,7 @@ class AuthController extends GetxController {
       }
       await _storage.setToken(token);
       user.value = u;
-      Get.offAllNamed(Routes.home);
+      Get.offAllNamed(Routes.main);
     } on DioException catch (e) {
       final msg = switch (e.response?.statusCode) {
         401 => 'Invalid mobile number or PIN.',
