@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -39,4 +40,17 @@ public interface ServiceVisitRepository extends JpaRepository<ServiceVisitEntity
             Pageable pageable);
 
     Optional<ServiceVisitEntity> findByIdAndTenantIdAndIsDeletedFalse(UUID id, UUID tenantId);
+
+    @Query("""
+            SELECT v FROM ServiceVisitEntity v
+            WHERE v.tenantId = :tenantId
+              AND v.techId = :techId
+              AND v.isDeleted = false
+              AND v.visitDate > :from
+            ORDER BY v.visitDate ASC
+            """)
+    List<ServiceVisitEntity> findUpcomingForTech(
+            @Param("tenantId") UUID tenantId,
+            @Param("techId") UUID techId,
+            @Param("from") LocalDate from);
 }

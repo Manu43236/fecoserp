@@ -161,33 +161,46 @@ public class ServiceReportService {
                 : java.time.LocalDate.now();
 
         return visitRepo.search(tenantId, null, techId, visitDate, PageRequest.of(0, 50))
-                .getContent()
+                .getContent().stream()
+                .map(this::toMyVisitResponse)
+                .toList();
+    }
+
+    // ── Upcoming visits (mobile - service tech) ───────────────────────────────
+
+    @Transactional(readOnly = true)
+    public List<MyVisitResponse> upcomingVisits() {
+        UUID tenantId = currentTenantId();
+        UUID techId   = currentUserId();
+        return visitRepo.findUpcomingForTech(tenantId, techId, LocalDate.now())
                 .stream()
-                .map(v -> {
-                    List<MyVisitStopResponse> stops =
-                            stopRepo.findAllByServiceVisitIdAndIsDeletedFalseOrderBySequenceAsc(v.getId())
-                                    .stream()
-                                    .map(s -> {
-                                        WellEntity well = wellRepo.findById(s.getWellId()).orElse(null);
-                                        String wellName  = well != null ? well.getWellName() : "—";
-                                        String leaseName = well != null
-                                                ? leaseRepo.findById(well.getLeaseId()).map(l -> l.getLeaseName()).orElse("—")
-                                                : "—";
-                                        boolean hasReport = reportRepo
-                                                .findByServiceVisitStopIdAndIsDeletedFalse(s.getId())
-                                                .isPresent();
-                                        return new MyVisitStopResponse(
-                                                s.getId(), s.getWellId(), wellName, leaseName,
-                                                s.getSequence(), s.getStatus().name(),
-                                                s.isSampleCollected(), hasReport
-                                        );
-                                    }).toList();
-                    return new MyVisitResponse(v.getId(), v.getVisitDate().toString(),
-                            v.getStatus().name(), stops);
-                }).toList();
+                .map(this::toMyVisitResponse)
+                .toList();
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private MyVisitResponse toMyVisitResponse(com.fecos.servicevisits.ServiceVisitEntity v) {
+        List<MyVisitStopResponse> stops =
+                stopRepo.findAllByServiceVisitIdAndIsDeletedFalseOrderBySequenceAsc(v.getId())
+                        .stream()
+                        .map(s -> {
+                            WellEntity well = wellRepo.findById(s.getWellId()).orElse(null);
+                            String wellName  = well != null ? well.getWellName() : "—";
+                            String leaseName = well != null
+                                    ? leaseRepo.findById(well.getLeaseId()).map(l -> l.getLeaseName()).orElse("—")
+                                    : "—";
+                            boolean hasReport = reportRepo
+                                    .findByServiceVisitStopIdAndIsDeletedFalse(s.getId())
+                                    .isPresent();
+                            return new MyVisitStopResponse(
+                                    s.getId(), s.getWellId(), wellName, leaseName,
+                                    s.getSequence(), s.getStatus().name(),
+                                    s.isSampleCollected(), hasReport
+                            );
+                        }).toList();
+        return new MyVisitResponse(v.getId(), v.getVisitDate().toString(), v.getStatus().name(), stops);
+    }
 
     private ServiceReportResponse toResponse(ServiceReportEntity r) {
         List<ServiceReportChemicalResponse> chemicals =

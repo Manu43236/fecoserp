@@ -23,6 +23,13 @@ public class ServiceReportController {
         return ResponseEntity.ok(ApiResponse.ok(service.dashboard()));
     }
 
+    // Mobile — service tech upcoming visits (tomorrow onwards)
+    @GetMapping("/api/v1/my-upcoming-visits")
+    @PreAuthorize("hasRole('SERVICE_TECH')")
+    public ResponseEntity<ApiResponse<List<MyVisitResponse>>> upcomingVisits() {
+        return ResponseEntity.ok(ApiResponse.ok(service.upcomingVisits()));
+    }
+
     // Mobile — service tech gets their visits for today
     @GetMapping("/api/v1/my-visits")
     @PreAuthorize("hasRole('SERVICE_TECH')")
