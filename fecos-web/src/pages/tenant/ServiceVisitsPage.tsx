@@ -260,15 +260,24 @@ function VisitDrawer({ visit, onClose, onRefresh, wellOpts }: {
   visit: ServiceVisit; onClose: () => void; onRefresh: () => void; wellOpts: { value: string; label: string }[]
 }) {
   const qc = useQueryClient()
-  const [addingWell,    setAddingWell]    = useState(false)
-  const [newWellId,     setNewWellId]     = useState('')
-  const [reportStop,    setReportStop]    = useState<ServiceVisitStop | null>(null)
+  const [addingWell,  setAddingWell]  = useState(false)
+  const [newWellId,   setNewWellId]   = useState('')
+  const [reportStop,  setReportStop]  = useState<ServiceVisitStop | null>(null)
+  const [ackNote,     setAckNote]     = useState('')
+  const [showAckForm, setShowAckForm] = useState(false)
 
   const { data: dueData } = useQuery({
     queryKey: ['due-wells', visit.visitDate],
     queryFn:  () => serviceVisitsApi.dueWells(visit.visitDate).then(r => r.data?.data as DueWell[] ?? []),
     enabled:  visit.status === 'SCHEDULED' || visit.status === 'IN_PROGRESS',
   })
+
+  const { data: reportData, isLoading: reportLoading } = useQuery({
+    queryKey: ['treatment-report', reportStop?.id],
+    queryFn:  () => serviceVisitsApi.getTreatmentReport(visit.id, reportStop!.id).then(r => r.data?.data as TreatmentReport),
+    enabled:  !!reportStop,
+  })
+
   const dueWells: DueWell[] = dueData ?? []
   const alreadyAdded = new Set(visit.stops.map(s => s.wellId))
   const suggestions  = dueWells.filter(d => !alreadyAdded.has(d.wellId))
@@ -298,29 +307,307 @@ function VisitDrawer({ visit, onClose, onRefresh, wellOpts }: {
     onError:    () => toast.error('Failed to update status'),
   })
 
+  const ackMutation = useMutation({
+    mutationFn: () => serviceVisitsApi.acknowledgeSoar(visit.id, reportStop!.id, ackNote),
+    onSuccess:  () => {
+      toast.success('SOAR acknowledged')
+      qc.invalidateQueries({ queryKey: ['treatment-report', reportStop?.id] })
+      qc.invalidateQueries({ queryKey: ['service-visits'] })
+      setShowAckForm(false)
+      onRefresh()
+    },
+    onError: () => toast.error('Failed to acknowledge'),
+  })
+
   const canEdit = visit.status === 'SCHEDULED' || visit.status === 'IN_PROGRESS'
+
+  const fmt = (iso: string | null) => iso
+    ? new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+    : '—'
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
       <div className="fixed inset-0 bg-black/20" />
-      <div className="relative w-[600px] h-full bg-white shadow-xl flex flex-col">
+      <div className="relative w-[620px] h-full bg-white shadow-xl flex flex-col">
 
         {/* Header */}
-        <div className="flex items-center gap-3 px-6 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-primary)' }}>
-            <ClipboardList size={14} className="text-white" />
+        {reportStop ? (
+          <div className="flex items-center gap-3 px-5 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
+            <button onClick={() => { setReportStop(null); setShowAckForm(false); setAckNote('') }}
+              className="flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors shrink-0">
+              ← Back
+            </button>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900 truncate">Treatment Report — {reportStop.wellName}</p>
+              <p className="text-xs text-gray-500">{reportStop.leaseName} · {reportStop.clientName}</p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {reportData && (
+                <button onClick={() => printReportPdf(reportData)}
+                  className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg border text-gray-600 hover:bg-gray-50 transition-colors"
+                  style={{ borderColor: 'rgba(0,0,0,0.15)' }}>
+                  <Printer size={13} /> Print / PDF
+                </button>
+              )}
+              <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+            </div>
           </div>
-          <div>
-            <h2 className="text-sm font-semibold text-gray-900">{visit.techName}</h2>
-            <p className="text-xs text-gray-500">{new Date(visit.visitDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
+        ) : (
+          <div className="flex items-center gap-3 px-6 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-primary)' }}>
+              <ClipboardList size={14} className="text-white" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-gray-900">{visit.techName}</h2>
+              <p className="text-xs text-gray-500">{new Date(visit.visitDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
+            </div>
+            <div className="ml-auto flex items-center gap-2">
+              {statusBadge(visit.status)}
+              <button onClick={onClose} className="text-gray-400 hover:text-gray-600 ml-1"><X size={18} /></button>
+            </div>
           </div>
-          <div className="ml-auto flex items-center gap-2">
-            {statusBadge(visit.status)}
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 ml-1"><X size={18} /></button>
-          </div>
-        </div>
+        )}
 
-        {/* Body */}
+        {/* Body — Report View */}
+        {reportStop ? (
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+            {reportLoading ? (
+              <div className="space-y-3">{Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="h-14 bg-gray-100 rounded-xl animate-pulse" />
+              ))}</div>
+            ) : !reportData ? (
+              <p className="text-sm text-gray-400 text-center py-10">Report not found</p>
+            ) : (
+              <>
+                {/* Meta */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-gray-50 rounded-xl p-3">
+                    <p className="text-xs text-gray-400 mb-0.5">Service Tech</p>
+                    <p className="text-sm font-semibold text-gray-900">{reportData.techName}</p>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-3">
+                    <p className="text-xs text-gray-400 mb-0.5">Client</p>
+                    <p className="text-sm font-semibold text-gray-900">{reportData.clientName}</p>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-3">
+                    <p className="text-xs text-gray-400 mb-0.5">Performed At</p>
+                    <p className="text-sm font-semibold text-gray-900">{fmt(reportData.performedAt)}</p>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-3">
+                    <p className="text-xs text-gray-400 mb-0.5">Submitted At</p>
+                    <p className="text-sm font-semibold text-gray-900">{fmt(reportData.submittedAt)}</p>
+                  </div>
+                </div>
+
+                {/* GPS */}
+                {reportData.gpsLat && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 rounded-xl px-3 py-2.5">
+                    <MapPin size={14} className="text-gray-400 shrink-0" />
+                    <span className="font-medium">{reportData.gpsLat.toFixed(6)}, {reportData.gpsLng?.toFixed(6)}</span>
+                    <span className="text-xs text-gray-400 ml-auto">captured {fmt(reportData.gpsCapturedAt)}</span>
+                  </div>
+                )}
+
+                {/* SOAR */}
+                {reportData.soar && (
+                  <div className={`p-3.5 rounded-xl border ${reportData.soarAckAt ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200'}`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle size={14} className={reportData.soarAckAt ? 'text-amber-600' : 'text-red-600'} />
+                        <p className={`text-sm font-semibold ${reportData.soarAckAt ? 'text-amber-700' : 'text-red-700'}`}>
+                          SOAR — Special Observation / Action Required
+                        </p>
+                      </div>
+                      {!reportData.soarAckAt && !showAckForm && (
+                        <button onClick={() => setShowAckForm(true)}
+                          className="h-7 px-3 text-xs font-semibold rounded-lg text-white shrink-0"
+                          style={{ backgroundColor: 'var(--color-primary)' }}>
+                          Acknowledge
+                        </button>
+                      )}
+                    </div>
+                    {reportData.soarNote && <p className={`text-sm mt-1.5 ${reportData.soarAckAt ? 'text-amber-800' : 'text-red-800'}`}>{reportData.soarNote}</p>}
+                    {showAckForm && (
+                      <div className="mt-3 space-y-2">
+                        <textarea value={ackNote} onChange={e => setAckNote(e.target.value)} rows={2}
+                          placeholder="Describe action taken…"
+                          className="w-full px-3 py-2 text-sm border border-red-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-red-200 bg-white" />
+                        <div className="flex gap-2">
+                          <button onClick={() => ackMutation.mutate()} disabled={!ackNote.trim() || ackMutation.isPending}
+                            className="h-8 px-4 text-xs font-semibold rounded-lg text-white disabled:opacity-60"
+                            style={{ backgroundColor: 'var(--color-primary)' }}>
+                            {ackMutation.isPending ? 'Saving…' : 'Confirm Acknowledgement'}
+                          </button>
+                          <button onClick={() => setShowAckForm(false)}
+                            className="h-8 px-3 text-xs rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {reportData.soarAckAt && (
+                      <div className="mt-2 pt-2 border-t border-amber-200">
+                        <p className="text-xs font-semibold text-amber-700">Acknowledged by {reportData.soarAckByName} · {fmt(reportData.soarAckAt)}</p>
+                        {reportData.soarAckNote && <p className="text-xs text-amber-800 mt-0.5">{reportData.soarAckNote}</p>}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Site Photo */}
+                {reportData.photoUrl && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <Camera size={12} /> Site Photo
+                    </p>
+                    <img src={reportData.photoUrl} alt="Site photo" className="w-full rounded-xl object-cover max-h-72 border border-gray-200" />
+                    {reportData.photoCapturedAt && <p className="text-xs text-gray-400 mt-1">Captured {fmt(reportData.photoCapturedAt)}</p>}
+                  </div>
+                )}
+
+                {/* Treatment Lines */}
+                {reportData.lines.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Treatment Lines</p>
+                    <div className="space-y-3">
+                      {reportData.lines.map(l => {
+                        const isCi = l.method === 'CONTINUOUS'
+                        return (
+                          <div key={l.id} className="border border-gray-200 rounded-xl overflow-hidden text-sm">
+                            <div className={`flex items-center justify-between px-3 py-2.5 ${isCi ? 'bg-blue-50' : 'bg-purple-50'}`}>
+                              <div className="flex items-center gap-2">
+                                <span className={`text-xs font-bold px-2 py-0.5 rounded ${isCi ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}`}>
+                                  {isCi ? 'CI' : 'Batch'}
+                                </span>
+                                <span className="font-semibold text-gray-900">{l.productName ?? l.method}</span>
+                              </div>
+                              {isCi && l.onRate !== null && (
+                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${l.onRate ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                  {l.onRate ? 'On Rate' : 'Off Rate'}
+                                </span>
+                              )}
+                              {!isCi && (
+                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${l.applied ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                                  {l.applied ? 'Applied' : 'Not Applied'}
+                                </span>
+                              )}
+                            </div>
+                            <div className="px-3 py-3 space-y-2.5">
+                              {(l.tankSerial || l.tankLevelPct != null) && (
+                                <div className="flex items-center gap-4 text-xs">
+                                  {l.tankSerial && <span className="text-gray-600"><span className="text-gray-400">Tank </span>{l.tankSerial}</span>}
+                                  {l.tankCapacityGallons != null && <span className="text-gray-500">{l.tankCapacityGallons} gal capacity</span>}
+                                  {l.tankLevelPct != null && (
+                                    <span className={`font-semibold ${l.tankLevelPct < 10 ? 'text-red-600' : l.tankLevelPct < 25 ? 'text-amber-600' : 'text-green-700'}`}>
+                                      {l.tankLevelPct.toFixed(2)}% level
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                              {isCi && (
+                                <div className="grid grid-cols-3 gap-3 text-xs">
+                                  <div className="bg-gray-50 rounded-lg px-2.5 py-2">
+                                    <p className="text-gray-400 mb-0.5">Pump</p>
+                                    <p className={`font-semibold ${l.pumpRunning ? 'text-green-700' : 'text-red-600'}`}>
+                                      {l.pumpRunning ? 'Running' : 'Down'}
+                                    </p>
+                                  </div>
+                                  <div className="bg-gray-50 rounded-lg px-2.5 py-2">
+                                    <p className="text-gray-400 mb-0.5">Rate Found</p>
+                                    <p className="font-semibold text-gray-800">{l.rateFound != null ? `${l.rateFound} gal/day` : '—'}</p>
+                                  </div>
+                                  <div className="bg-gray-50 rounded-lg px-2.5 py-2">
+                                    <p className="text-gray-400 mb-0.5">Rate Set To</p>
+                                    <p className="font-semibold text-gray-800">{l.rateSetTo != null ? `${l.rateSetTo} gal/day` : '—'}</p>
+                                  </div>
+                                </div>
+                              )}
+                              {isCi && !l.pumpRunning && l.pumpDownReason && (
+                                <p className="text-xs text-red-700 bg-red-50 rounded-lg px-2.5 py-2">
+                                  <span className="font-medium">Pump down: </span>{l.pumpDownReason}
+                                </p>
+                              )}
+                              {isCi && l.deviationReason && (
+                                <p className="text-xs text-amber-800 bg-amber-50 rounded-lg px-2.5 py-2">
+                                  <span className="font-medium">Rate change reason: </span>{l.deviationReason}
+                                </p>
+                              )}
+                              {!isCi && l.quantityApplied != null && (
+                                <div className="bg-gray-50 rounded-lg px-2.5 py-2 text-xs">
+                                  <p className="text-gray-400 mb-0.5">Quantity Applied</p>
+                                  <p className="font-semibold text-gray-800">{l.quantityApplied} gal</p>
+                                </div>
+                              )}
+                              {l.notes && <p className="text-xs text-gray-500 italic">{l.notes}</p>}
+                              {l.recordedAt && <p className="text-xs text-gray-400">Recorded {fmt(l.recordedAt)}</p>}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Sample */}
+                {(reportData.sampleType || reportData.sampleNotes || reportData.samplePhotoUrl) && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <FlaskConical size={12} /> Sample
+                    </p>
+                    <div className="border border-blue-100 bg-blue-50/50 rounded-xl p-3 space-y-2">
+                      {reportData.sampleType && (
+                        <div>
+                          <p className="text-xs text-gray-400">Sample Type</p>
+                          <p className="text-sm font-semibold text-gray-900">{reportData.sampleType}</p>
+                        </div>
+                      )}
+                      {reportData.sampleNotes && (
+                        <div>
+                          <p className="text-xs text-gray-400">Sample Notes</p>
+                          <p className="text-sm text-gray-700">{reportData.sampleNotes}</p>
+                        </div>
+                      )}
+                      {reportData.samplePhotoUrl && (
+                        <div>
+                          <p className="text-xs text-gray-400 mb-1.5">Sample Photo</p>
+                          <img src={reportData.samplePhotoUrl} alt="Sample bottle"
+                            className="w-full rounded-xl object-cover max-h-56 border border-blue-200" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Signature */}
+                {reportData.signerName && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <PenLine size={12} /> Operator Signature
+                    </p>
+                    <div className="border border-gray-200 rounded-xl p-3 bg-gray-50">
+                      {reportData.signatureUrl && (
+                        <img src={reportData.signatureUrl} alt="Signature"
+                          className="h-20 object-contain mb-2 bg-white rounded-lg border border-gray-200 px-2" />
+                      )}
+                      <p className="text-sm font-semibold text-gray-900">{reportData.signerName}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">Signed {fmt(reportData.signedAt)}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Notes */}
+                {reportData.notes && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Notes</p>
+                    <p className="text-sm text-gray-700 bg-gray-50 rounded-xl px-3 py-2.5">{reportData.notes}</p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        ) : (
+
+        /* Body — Wells List View */
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
 
           {/* Due Today Suggestions */}
@@ -412,45 +699,39 @@ function VisitDrawer({ visit, onClose, onRefresh, wellOpts }: {
             </div>
           )}
         </div>
+        )}
 
-        {/* Footer */}
-        <div className="px-6 py-4 flex gap-3 shrink-0" style={{ borderTop: '1px solid rgba(0,0,0,0.07)' }}>
-          {visit.status === 'SCHEDULED' && (
-            <button onClick={() => updateVisitMutation.mutate('CANCELLED')}
-              className="flex items-center gap-1.5 h-10 px-4 text-sm font-medium rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors">
-              Cancel Visit
-            </button>
-          )}
-          {visit.status === 'SCHEDULED' && (
-            <button onClick={() => updateVisitMutation.mutate('IN_PROGRESS')}
-              disabled={updateVisitMutation.isPending}
-              className="flex-1 h-10 text-sm font-semibold rounded-lg text-white transition-colors"
-              style={{ backgroundColor: 'var(--color-primary)' }}>
-              Mark In Progress
-            </button>
-          )}
-          {visit.status === 'IN_PROGRESS' && (
-            <button onClick={() => updateVisitMutation.mutate('COMPLETED')}
-              disabled={updateVisitMutation.isPending}
-              className="flex-1 h-10 text-sm font-semibold rounded-lg text-white transition-colors"
-              style={{ backgroundColor: 'var(--color-primary)' }}>
-              Mark Completed
-            </button>
-          )}
-          {(visit.status === 'COMPLETED' || visit.status === 'CANCELLED') && (
-            <p className="flex-1 text-center text-sm text-gray-400 self-center">Visit {visit.status.toLowerCase()}</p>
-          )}
-        </div>
+        {/* Footer — only on wells list view */}
+        {!reportStop && (
+          <div className="px-6 py-4 flex gap-3 shrink-0" style={{ borderTop: '1px solid rgba(0,0,0,0.07)' }}>
+            {visit.status === 'SCHEDULED' && (
+              <button onClick={() => updateVisitMutation.mutate('CANCELLED')}
+                className="flex items-center gap-1.5 h-10 px-4 text-sm font-medium rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors">
+                Cancel Visit
+              </button>
+            )}
+            {visit.status === 'SCHEDULED' && (
+              <button onClick={() => updateVisitMutation.mutate('IN_PROGRESS')}
+                disabled={updateVisitMutation.isPending}
+                className="flex-1 h-10 text-sm font-semibold rounded-lg text-white transition-colors"
+                style={{ backgroundColor: 'var(--color-primary)' }}>
+                Mark In Progress
+              </button>
+            )}
+            {visit.status === 'IN_PROGRESS' && (
+              <button onClick={() => updateVisitMutation.mutate('COMPLETED')}
+                disabled={updateVisitMutation.isPending}
+                className="flex-1 h-10 text-sm font-semibold rounded-lg text-white transition-colors"
+                style={{ backgroundColor: 'var(--color-primary)' }}>
+                Mark Completed
+              </button>
+            )}
+            {(visit.status === 'COMPLETED' || visit.status === 'CANCELLED') && (
+              <p className="flex-1 text-center text-sm text-gray-400 self-center">Visit {visit.status.toLowerCase()}</p>
+            )}
+          </div>
+        )}
       </div>
-
-      {reportStop && (
-        <TreatmentReportDrawer
-          visitId={visit.id}
-          stopId={reportStop.id}
-          onClose={() => setReportStop(null)}
-          onAcknowledged={onRefresh}
-        />
-      )}
     </div>
   )
 }
@@ -521,278 +802,6 @@ function StopCard({ stop, index, canEdit, onRemove, onStatusChange, onSampleTogg
             <FileText size={11} /> View Report
           </button>
         )}
-      </div>
-    </div>
-  )
-}
-
-// ── Treatment Report Drawer ────────────────────────────────────────────────────
-
-function TreatmentReportDrawer({ visitId, stopId, onClose, onAcknowledged }: {
-  visitId: string; stopId: string; onClose: () => void; onAcknowledged: () => void
-}) {
-  const qc = useQueryClient()
-  const [ackNote, setAckNote] = useState('')
-  const [showAckForm, setShowAckForm] = useState(false)
-
-  const { data, isLoading } = useQuery({
-    queryKey: ['treatment-report', stopId],
-    queryFn: () => serviceVisitsApi.getTreatmentReport(visitId, stopId).then(r => r.data?.data as TreatmentReport),
-  })
-
-  const ackMutation = useMutation({
-    mutationFn: () => serviceVisitsApi.acknowledgeSoar(visitId, stopId, ackNote),
-    onSuccess: () => {
-      toast.success('SOAR acknowledged')
-      qc.invalidateQueries({ queryKey: ['treatment-report', stopId] })
-      qc.invalidateQueries({ queryKey: ['service-visits'] })
-      setShowAckForm(false)
-      onAcknowledged()
-    },
-    onError: () => toast.error('Failed to acknowledge'),
-  })
-
-  const fmt = (iso: string | null) => iso
-    ? new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
-    : '—'
-
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="fixed inset-0 bg-black/20" />
-      <div className="relative w-[560px] h-full bg-white shadow-xl flex flex-col">
-        <div className="flex items-center justify-between px-5 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
-          <div>
-            <h2 className="text-sm font-semibold text-gray-900">Treatment Report</h2>
-            {data && <p className="text-xs text-gray-500">{data.wellName} · {data.leaseName}</p>}
-          </div>
-          <div className="flex items-center gap-2">
-            {data && (
-              <button onClick={() => printReportPdf(data)}
-                className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg border text-gray-600 hover:bg-gray-50 transition-colors"
-                style={{ borderColor: 'rgba(0,0,0,0.15)' }}>
-                <Printer size={13} /> Print / PDF
-              </button>
-            )}
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
-          {isLoading ? (
-            <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />
-            ))}</div>
-          ) : !data ? (
-            <p className="text-sm text-gray-400 text-center py-10">Report not found</p>
-          ) : (
-            <>
-              {/* Meta */}
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div><p className="text-xs text-gray-500">Tech</p><p className="font-medium text-gray-900">{data.techName}</p></div>
-                <div><p className="text-xs text-gray-500">Client</p><p className="font-medium text-gray-900">{data.clientName}</p></div>
-                <div><p className="text-xs text-gray-500">Performed At</p><p className="font-medium text-gray-900">{fmt(data.performedAt)}</p></div>
-                <div><p className="text-xs text-gray-500">Submitted At</p><p className="font-medium text-gray-900">{fmt(data.submittedAt)}</p></div>
-              </div>
-
-              {/* SOAR */}
-              {data.soar && (
-                <div className={`p-3 rounded-xl border ${data.soarAckAt ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200'}`}>
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle size={14} className={data.soarAckAt ? 'text-amber-600' : 'text-red-600'} />
-                      <p className={`text-sm font-semibold ${data.soarAckAt ? 'text-amber-700' : 'text-red-700'}`}>
-                        SOAR — Special Observation / Action Required
-                      </p>
-                    </div>
-                    {!data.soarAckAt && !showAckForm && (
-                      <button onClick={() => setShowAckForm(true)}
-                        className="h-7 px-3 text-xs font-semibold rounded-lg text-white shrink-0"
-                        style={{ backgroundColor: 'var(--color-primary)' }}>
-                        Acknowledge
-                      </button>
-                    )}
-                  </div>
-
-                  {data.soarNote && <p className={`text-sm mt-1.5 ${data.soarAckAt ? 'text-amber-800' : 'text-red-800'}`}>{data.soarNote}</p>}
-
-                  {/* Ack form */}
-                  {showAckForm && (
-                    <div className="mt-3 space-y-2">
-                      <textarea
-                        value={ackNote}
-                        onChange={e => setAckNote(e.target.value)}
-                        rows={2}
-                        placeholder="Describe action taken (e.g. Maintenance crew dispatched)…"
-                        className="w-full px-3 py-2 text-sm border border-red-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-red-200 bg-white"
-                      />
-                      <div className="flex gap-2">
-                        <button onClick={() => ackMutation.mutate()} disabled={!ackNote.trim() || ackMutation.isPending}
-                          className="h-8 px-4 text-xs font-semibold rounded-lg text-white disabled:opacity-60"
-                          style={{ backgroundColor: 'var(--color-primary)' }}>
-                          {ackMutation.isPending ? 'Saving…' : 'Confirm Acknowledgement'}
-                        </button>
-                        <button onClick={() => setShowAckForm(false)}
-                          className="h-8 px-3 text-xs rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Ack record */}
-                  {data.soarAckAt && (
-                    <div className="mt-2 pt-2 border-t border-amber-200">
-                      <p className="text-xs font-semibold text-amber-700">Acknowledged by {data.soarAckByName} · {fmt(data.soarAckAt)}</p>
-                      {data.soarAckNote && <p className="text-xs text-amber-800 mt-0.5">{data.soarAckNote}</p>}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* GPS */}
-              {data.gpsLat && (
-                <div className="flex items-center gap-2 text-sm text-gray-700">
-                  <MapPin size={14} className="text-gray-400 shrink-0" />
-                  <span>{data.gpsLat.toFixed(6)}, {data.gpsLng?.toFixed(6)}</span>
-                  <span className="text-xs text-gray-400">· captured {fmt(data.gpsCapturedAt)}</span>
-                </div>
-              )}
-
-              {/* Photo */}
-              {data.photoUrl && (
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Camera size={14} className="text-gray-400" />
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Photo</p>
-                  </div>
-                  <img src={data.photoUrl} alt="Site photo" className="w-full rounded-xl object-cover max-h-64 border border-gray-200" />
-                  {data.photoCapturedAt && <p className="text-xs text-gray-400 mt-1">Captured {fmt(data.photoCapturedAt)}</p>}
-                </div>
-              )}
-
-              {/* Treatment Lines */}
-              {data.lines.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Treatment Lines</p>
-                  <div className="space-y-3">
-                    {data.lines.map(l => {
-                      const isCi = l.method === 'CONTINUOUS'
-                      return (
-                        <div key={l.id} className="border border-gray-200 rounded-xl overflow-hidden text-sm">
-                          {/* Line header */}
-                          <div className={`flex items-center justify-between px-3 py-2 ${isCi ? 'bg-blue-50' : 'bg-purple-50'}`}>
-                            <div className="flex items-center gap-2">
-                              <span className={`text-xs font-bold px-2 py-0.5 rounded ${isCi ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}`}>
-                                {isCi ? 'CI' : 'Batch'}
-                              </span>
-                              <span className="font-semibold text-gray-900">{l.productName ?? l.method}</span>
-                            </div>
-                            {isCi && l.onRate !== null && (
-                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${l.onRate ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                {l.onRate ? 'On Rate' : 'Off Rate'}
-                              </span>
-                            )}
-                            {!isCi && (
-                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${l.applied ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                                {l.applied ? 'Applied' : 'Not Applied'}
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="px-3 py-2.5 space-y-2">
-                            {/* Tank check */}
-                            {(l.tankSerial || l.tankLevelPct != null) && (
-                              <div className="flex items-center gap-4 text-xs text-gray-600">
-                                {l.tankSerial && <span><span className="text-gray-400">Tank </span>{l.tankSerial}</span>}
-                                {l.tankLevelPct != null && (
-                                  <span className={l.tankLevelPct < 10 ? 'text-red-600 font-semibold' : l.tankLevelPct < 25 ? 'text-amber-600 font-semibold' : 'text-green-700 font-semibold'}>
-                                    {l.tankLevelPct.toFixed(2)}% level
-                                  </span>
-                                )}
-                              </div>
-                            )}
-
-                            {/* CI details */}
-                            {isCi && (
-                              <div className="grid grid-cols-3 gap-2 text-xs text-gray-600">
-                                <div>
-                                  <span className="text-gray-400">Pump</span><br />
-                                  <span className={l.pumpRunning ? 'text-green-700 font-medium' : 'text-red-600 font-medium'}>
-                                    {l.pumpRunning ? 'Running' : 'Down'}
-                                  </span>
-                                </div>
-                                <div><span className="text-gray-400">Rate Found</span><br />{l.rateFound != null ? `${l.rateFound} gal/day` : '—'}</div>
-                                <div><span className="text-gray-400">Rate Set To</span><br />{l.rateSetTo != null ? `${l.rateSetTo} gal/day` : '—'}</div>
-                              </div>
-                            )}
-
-                            {/* Pump down reason */}
-                            {isCi && !l.pumpRunning && l.pumpDownReason && (
-                              <p className="text-xs text-red-700 bg-red-50 rounded px-2 py-1">
-                                <span className="font-medium">Pump down: </span>{l.pumpDownReason}
-                              </p>
-                            )}
-
-                            {/* Deviation reason */}
-                            {isCi && l.deviationReason && (
-                              <p className="text-xs text-amber-800 bg-amber-50 rounded px-2 py-1">
-                                <span className="font-medium">Rate change: </span>{l.deviationReason}
-                              </p>
-                            )}
-
-                            {/* Batch quantity */}
-                            {!isCi && l.quantityApplied != null && (
-                              <p className="text-xs text-gray-600">
-                                <span className="text-gray-400">Quantity applied: </span>{l.quantityApplied} gal
-                              </p>
-                            )}
-
-                            {l.notes && <p className="text-xs text-gray-500 italic">{l.notes}</p>}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Sample */}
-              {(data.sampleType || data.samplePhotoUrl) && (
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Sample</p>
-                  {data.sampleType && <p className="text-sm text-gray-900">{data.sampleType}</p>}
-                  {data.sampleNotes && <p className="text-sm text-gray-600">{data.sampleNotes}</p>}
-                  {data.samplePhotoUrl && (
-                    <img src={data.samplePhotoUrl} alt="Sample bottle" className="mt-2 w-full rounded-xl object-cover max-h-48 border border-gray-200" />
-                  )}
-                </div>
-              )}
-
-              {/* Signature */}
-              {data.signerName && (
-                <div className="p-3 rounded-xl bg-gray-50 border border-gray-200">
-                  <div className="flex items-center gap-2 mb-1">
-                    <PenLine size={13} className="text-gray-400" />
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Signature</p>
-                  </div>
-                  {data.signatureUrl && (
-                    <img src={data.signatureUrl} alt="Signature" className="h-16 object-contain mb-1" />
-                  )}
-                  <p className="text-sm text-gray-700">{data.signerName}</p>
-                  <p className="text-xs text-gray-400">{fmt(data.signedAt)}</p>
-                </div>
-              )}
-
-              {/* Notes */}
-              {data.notes && (
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Notes</p>
-                  <p className="text-sm text-gray-700">{data.notes}</p>
-                </div>
-              )}
-            </>
-          )}
-        </div>
       </div>
     </div>
   )
