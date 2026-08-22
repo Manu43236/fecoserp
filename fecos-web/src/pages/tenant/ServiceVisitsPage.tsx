@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { X, Plus, ClipboardList, ChevronRight, Trash2, FlaskConical, AlertTriangle, FileText, MapPin, Camera, PenLine, Printer } from 'lucide-react'
+import { X, Plus, ClipboardList, ChevronRight, Trash2, FlaskConical, AlertTriangle, FileText, MapPin, Camera, PenLine } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { serviceVisitsApi } from '@/api/serviceVisits'
 import type { ServiceVisit, ServiceVisitStop, VisitStatus, VisitStopStatus, DueWell, TreatmentReport } from '@/api/serviceVisits'
@@ -132,7 +132,6 @@ function printReportPdf(r: TreatmentReport) {
   <div class="section-title">Notes</div>
   <div class="card"><p style="font-size:13px;color:#374151">${r.notes}</p></div>` : ''}
 
-  <script>window.onload = () => { window.print(); }<\/script>
   </body></html>`
 
   const w = window.open('', '_blank')
@@ -346,7 +345,7 @@ function VisitDrawer({ visit, onClose, onRefresh, wellOpts }: {
                 <button onClick={() => printReportPdf(reportData)}
                   className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg border text-gray-600 hover:bg-gray-50 transition-colors"
                   style={{ borderColor: 'rgba(0,0,0,0.15)' }}>
-                  <Printer size={13} /> Print / PDF
+                  <FileText size={13} /> View PDF
                 </button>
               )}
               <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
