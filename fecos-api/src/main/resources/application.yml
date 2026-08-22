@@ -32,7 +32,7 @@ fecos:
     expiration-ms: 86400000  # 24h
   aws:
     region: ${AWS_REGION:us-east-1}
-    s3-bucket: ${AWS_S3_BUCKET:fecos-dev-bucket}
+    s3-bucket: ${AWS_S3_BUCKET:fecos-erp}
   firebase:
     credentials-path: ${FIREBASE_CREDENTIALS_PATH:}
 

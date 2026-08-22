@@ -10,7 +10,6 @@ public record ServiceVisitStopResponse(
         String clientName,
         int sequence,
         ServiceVisitStopStatus status,
-        boolean sampleCollected,
         boolean hasSoar,
         boolean soarAcknowledged,
         boolean hasReport,

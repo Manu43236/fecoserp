@@ -14,6 +14,9 @@ import java.util.UUID;
 @Table(name = "service_visits")
 public class ServiceVisitEntity extends TenantAwareEntity {
 
+    @Column(name = "name", length = 255)
+    private String name;
+
     @Column(name = "visit_date", nullable = false)
     private LocalDate visitDate;
 

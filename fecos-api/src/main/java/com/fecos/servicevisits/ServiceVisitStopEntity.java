@@ -26,9 +26,6 @@ public class ServiceVisitStopEntity extends TenantAwareEntity {
     @Column(nullable = false, length = 20)
     private ServiceVisitStopStatus status = ServiceVisitStopStatus.PENDING;
 
-    @Column(name = "sample_collected", nullable = false)
-    private boolean sampleCollected = false;
-
     @Column(columnDefinition = "TEXT")
     private String notes;
 }

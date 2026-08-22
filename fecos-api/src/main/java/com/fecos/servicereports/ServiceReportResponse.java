@@ -1,6 +1,5 @@
 package com.fecos.servicereports;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -11,10 +10,6 @@ public record ServiceReportResponse(
         String wellName,
         String leaseName,
         String techName,
-        boolean pumpRunning,
-        BigDecimal tankLevelBefore,
-        BigDecimal tankLevelAfter,
-        BigDecimal actualRate,
         boolean soar,
         String specialTreat,
         String notes,

@@ -57,10 +57,6 @@ public class ServiceReportService {
                     return r;
                 });
 
-        report.setPumpRunning(req.pumpRunning());
-        report.setTankLevelBefore(req.tankLevelBefore());
-        report.setTankLevelAfter(req.tankLevelAfter());
-        report.setActualRate(req.actualRate());
         report.setSoar(req.soar());
         report.setSpecialTreat(req.specialTreat());
         report.setNotes(req.notes());
@@ -334,7 +330,7 @@ public class ServiceReportService {
                             return new MyVisitStopResponse(
                                     s.getId(), s.getWellId(), wellName, leaseName, clientName,
                                     s.getSequence(), s.getStatus().name(),
-                                    s.isSampleCollected(), hasReport
+                                    hasReport
                             );
                         }).toList();
         return new MyVisitResponse(v.getId(), v.getVisitDate().toString(), v.getStatus().name(), stops);
@@ -422,8 +418,7 @@ public class ServiceReportService {
 
         return new ServiceReportResponse(
                 r.getId(), r.getServiceVisitStopId(), wellName, leaseName, techName,
-                r.isPumpRunning(), r.getTankLevelBefore(), r.getTankLevelAfter(),
-                r.getActualRate(), r.isSoar(), r.getSpecialTreat(), r.getNotes(),
+                r.isSoar(), r.getSpecialTreat(), r.getNotes(),
                 chemicals, r.getSubmittedAt(), r.getCreatedAt()
         );
     }

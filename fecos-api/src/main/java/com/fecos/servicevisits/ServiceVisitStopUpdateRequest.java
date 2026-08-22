@@ -1,3 +1,3 @@
 package com.fecos.servicevisits;
 
-public record ServiceVisitStopUpdateRequest(ServiceVisitStopStatus status, Boolean sampleCollected, String notes) {}
+public record ServiceVisitStopUpdateRequest(ServiceVisitStopStatus status, String notes) {}

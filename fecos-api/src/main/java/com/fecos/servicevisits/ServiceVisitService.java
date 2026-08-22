@@ -126,9 +126,8 @@ public class ServiceVisitService {
         ServiceVisitStopEntity stop = stopRepo.findByIdAndTenantIdAndIsDeletedFalse(stopId, tenantId)
                 .orElseThrow(() -> new RuntimeException("Stop not found"));
 
-        if (req.status()          != null) stop.setStatus(req.status());
-        if (req.sampleCollected() != null) stop.setSampleCollected(req.sampleCollected());
-        if (req.notes()           != null) stop.setNotes(req.notes());
+        if (req.status() != null) stop.setStatus(req.status());
+        if (req.notes()  != null) stop.setNotes(req.notes());
         stopRepo.save(stop);
 
         return get(visitId);
@@ -230,7 +229,7 @@ public class ServiceVisitService {
         boolean hasReport        = report.isPresent();
         return new ServiceVisitStopResponse(
                 s.getId(), s.getWellId(), wellName, leaseName, clientName,
-                s.getSequence(), s.getStatus(), s.isSampleCollected(),
+                s.getSequence(), s.getStatus(),
                 hasSoar, soarAcknowledged, hasReport, s.getNotes()
         );
     }

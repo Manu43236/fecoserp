@@ -10,6 +10,5 @@ public record MyVisitStopResponse(
         String clientName,
         int sequence,
         String status,
-        boolean sampleCollected,
         boolean hasReport
 ) {}
