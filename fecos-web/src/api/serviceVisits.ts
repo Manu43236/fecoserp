@@ -102,7 +102,7 @@ export const serviceVisitsApi = {
 
   addStop:    (id: string, data: { wellId: string; notes?: string }) =>
     api.post(`/api/v1/service-visits/${id}/stops`, data),
-  updateStop: (id: string, stopId: string, data: { status?: VisitStopStatus; sampleCollected?: boolean; notes?: string }) =>
+  updateStop: (id: string, stopId: string, data: { status?: VisitStopStatus; notes?: string }) =>
     api.put(`/api/v1/service-visits/${id}/stops/${stopId}`, data),
   removeStop: (id: string, stopId: string) =>
     api.delete(`/api/v1/service-visits/${id}/stops/${stopId}`),

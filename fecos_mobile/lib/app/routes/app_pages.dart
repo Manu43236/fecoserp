@@ -13,6 +13,12 @@ import 'package:fecos_mobile/app/modules/pre_trip/bindings/pre_trip_binding.dart
 import 'package:fecos_mobile/app/modules/pre_trip/views/pre_trip_view.dart';
 import 'package:fecos_mobile/app/modules/service_report/bindings/service_report_binding.dart';
 import 'package:fecos_mobile/app/modules/service_report/views/service_report_view.dart';
+import 'package:fecos_mobile/app/modules/well_overview/bindings/well_overview_binding.dart';
+import 'package:fecos_mobile/app/modules/well_overview/views/well_overview_view.dart';
+import 'package:fecos_mobile/app/modules/well_stop/bindings/well_stop_binding.dart';
+import 'package:fecos_mobile/app/modules/well_stop/views/well_stop_view.dart';
+import 'package:fecos_mobile/app/modules/report_view/bindings/report_view_binding.dart';
+import 'package:fecos_mobile/app/modules/report_view/views/report_view_view.dart';
 
 part 'app_routes.dart';
 
@@ -56,6 +62,21 @@ class AppPages {
       name: _Paths.serviceReport,
       page: () => const ServiceReportView(),
       binding: ServiceReportBinding(),
+    ),
+    GetPage(
+      name: _Paths.wellOverview,
+      page: () => const WellOverviewView(),
+      binding: WellOverviewBinding(),
+    ),
+    GetPage(
+      name: _Paths.wellStop,
+      page: () => const WellStopView(),
+      binding: WellStopBinding(),
+    ),
+    GetPage(
+      name: _Paths.reportView,
+      page: () => const ReportViewView(),
+      binding: ReportViewBinding(),
     ),
   ];
 }

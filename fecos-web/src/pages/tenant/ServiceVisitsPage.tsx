@@ -371,7 +371,7 @@ function VisitDrawer({ visit, onClose, onRefresh, wellOpts }: {
   })
 
   const updateStopMutation = useMutation({
-    mutationFn: ({ stopId, data }: { stopId: string; data: { status?: VisitStopStatus; sampleCollected?: boolean } }) =>
+    mutationFn: ({ stopId, data }: { stopId: string; data: { status?: VisitStopStatus } }) =>
       serviceVisitsApi.updateStop(visit.id, stopId, data),
     onSuccess: () => onRefresh(),
     onError:   () => toast.error('Failed to update stop'),
@@ -760,7 +760,6 @@ function VisitDrawer({ visit, onClose, onRefresh, wellOpts }: {
                     canEdit={canEdit}
                     onRemove={() => removeStopMutation.mutate(stop.id)}
                     onStatusChange={s => updateStopMutation.mutate({ stopId: stop.id, data: { status: s } })}
-                    onSampleToggle={() => updateStopMutation.mutate({ stopId: stop.id, data: { sampleCollected: !stop.sampleCollected } })}
                     onViewReport={() => setReportStop(stop)}
                   />
                 ))}
@@ -814,10 +813,10 @@ function VisitDrawer({ visit, onClose, onRefresh, wellOpts }: {
 
 // ── Stop Card ──────────────────────────────────────────────────────────────────
 
-function StopCard({ stop, index, canEdit, onRemove, onStatusChange, onSampleToggle, onViewReport }: {
+function StopCard({ stop, index, canEdit, onRemove, onStatusChange, onViewReport }: {
   stop: ServiceVisitStop; index: number; canEdit: boolean
   onRemove: () => void; onStatusChange: (s: VisitStopStatus) => void
-  onSampleToggle: () => void; onViewReport: () => void
+  onViewReport: () => void
 }) {
   return (
     <div className={`border rounded-xl p-3 bg-white ${stop.hasSoar && !stop.soarAcknowledged ? 'border-red-200' : stop.hasSoar ? 'border-amber-200' : 'border-gray-200'}`}>
@@ -861,16 +860,6 @@ function StopCard({ stop, index, canEdit, onRemove, onStatusChange, onSampleTogg
         ) : (
           stopDot(stop.status)
         )}
-
-        <button onClick={onSampleToggle} disabled={!canEdit}
-          className={`flex items-center gap-1 h-7 px-2.5 text-xs font-medium rounded-lg border transition-colors ${
-            stop.sampleCollected
-              ? 'bg-blue-50 border-blue-200 text-blue-700'
-              : 'border-gray-200 text-gray-500 hover:bg-gray-50'
-          } ${!canEdit ? 'opacity-60 cursor-default' : ''}`}>
-          <FlaskConical size={11} />
-          {stop.sampleCollected ? 'Sample Collected' : 'Sample'}
-        </button>
 
         {stop.hasReport && (
           <button onClick={onViewReport}

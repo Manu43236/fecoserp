@@ -7,9 +7,11 @@ class MyVisitStop {
   final String wellId;
   final String wellName;
   final String leaseName;
+  final String clientName;
   final int sequence;
   final String status;
-  final bool sampleCollected;
+  final bool hasSoar;
+  final bool soarAcknowledged;
   final bool hasReport;
 
   const MyVisitStop({
@@ -17,9 +19,11 @@ class MyVisitStop {
     required this.wellId,
     required this.wellName,
     required this.leaseName,
+    required this.clientName,
     required this.sequence,
     required this.status,
-    required this.sampleCollected,
+    required this.hasSoar,
+    required this.soarAcknowledged,
     required this.hasReport,
   });
 
@@ -28,21 +32,25 @@ class MyVisitStop {
         wellId: j['wellId'],
         wellName: j['wellName'],
         leaseName: j['leaseName'],
+        clientName: j['clientName'] ?? '',
         sequence: j['sequence'],
         status: j['status'],
-        sampleCollected: j['sampleCollected'] ?? false,
+        hasSoar: j['hasSoar'] ?? false,
+        soarAcknowledged: j['soarAcknowledged'] ?? false,
         hasReport: j['hasReport'] ?? false,
       );
 }
 
 class MyVisit {
   final String id;
+  final String? name;
   final String visitDate;
   final String status;
   final List<MyVisitStop> stops;
 
   const MyVisit({
     required this.id,
+    this.name,
     required this.visitDate,
     required this.status,
     required this.stops,
@@ -50,6 +58,7 @@ class MyVisit {
 
   factory MyVisit.fromJson(Map<String, dynamic> j) => MyVisit(
         id: j['id'],
+        name: j['name'] as String?,
         visitDate: j['visitDate'],
         status: j['status'],
         stops: (j['stops'] as List).map((s) => MyVisitStop.fromJson(s)).toList(),
