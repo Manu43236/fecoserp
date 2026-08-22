@@ -320,7 +320,17 @@ public class TreatmentPlanService {
                                 tankCapacityGallons = tank.getCapacityGallons();
                             }
                         }
-                        return TreatmentPlanLineResponse.from(l, productName, calcThirdPartyLevel(l), pumpDeployed, pumpId, pumpSerial, updatedByName, tankSerial, tankCapacityGallons);
+                        BigDecimal calculatedLevel;
+                        if (l.getTankOwner() == com.fecos.tanks.TankOwner.OWN && l.getTankId() != null) {
+                            try {
+                                calculatedLevel = tankService.getCalculatedLevel(l.getTankId());
+                            } catch (Exception ignored) {
+                                calculatedLevel = null;
+                            }
+                        } else {
+                            calculatedLevel = calcThirdPartyLevel(l);
+                        }
+                        return TreatmentPlanLineResponse.from(l, productName, calculatedLevel, pumpDeployed, pumpId, pumpSerial, updatedByName, tankSerial, tankCapacityGallons);
                     })
                     .toList();
         }
