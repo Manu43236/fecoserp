@@ -18,7 +18,7 @@ public class TreatmentPlanController {
     private final TreatmentPlanService planService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP','LAB_TECH')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP','LAB_TECH','SERVICE_TECH')")
     public ResponseEntity<ApiResponse<Page<TreatmentPlanResponse>>> list(
             @RequestParam(required = false) TreatmentPlanStatus status,
             @RequestParam(required = false) UUID wellId,
@@ -30,7 +30,7 @@ public class TreatmentPlanController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP','LAB_TECH')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP','LAB_TECH','SERVICE_TECH')")
     public ResponseEntity<ApiResponse<TreatmentPlanResponse>> get(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok("Plan retrieved", planService.findById(id)));
     }
