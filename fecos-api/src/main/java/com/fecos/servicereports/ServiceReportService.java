@@ -240,6 +240,10 @@ public class ServiceReportService {
                 line.setRateSetTo(lr.rateSetTo());
                 line.setOnRate(lr.onRate());
                 line.setApplied(lr.applied());
+                line.setQuantityApplied(lr.quantityApplied());
+                line.setTankLevelPct(lr.tankLevelPct());
+                line.setDeviationReason(lr.deviationReason());
+                line.setPumpDownReason(lr.pumpDownReason());
                 line.setNotes(lr.notes());
                 line.setRecordedAt(lr.recordedAt());
                 line.setSortOrder(lr.sortOrder());
@@ -339,10 +343,15 @@ public class ServiceReportService {
                 treatLineRepo.findAllByServiceReportIdAndIsDeletedFalseOrderBySortOrderAsc(r.getId())
                         .stream()
                         .map(l -> new TreatmentReportResponse.TreatmentLineResponse(
-                                l.getId(), l.getPlanLineId(), l.getTankId(), l.getMethod(),
-                                l.getPumpRunning(), l.getRateFound(), l.getRateSetTo(),
-                                l.getOnRate(), l.getApplied(), l.getNotes(),
-                                l.getRecordedAt(), l.getSortOrder()
+                                l.getId(), l.getPlanLineId(), l.getTankId(),
+                                null, null, // tankSerial/tankCapacityGallons not stored on report
+                                l.getMethod(),
+                                l.getPumpRunning(), l.getPumpDownReason(),
+                                l.getRateFound(), l.getRateSetTo(), l.getOnRate(),
+                                l.getDeviationReason(),
+                                l.getApplied(), l.getQuantityApplied(),
+                                l.getTankLevelPct(),
+                                l.getNotes(), l.getRecordedAt(), l.getSortOrder()
                         )).toList();
 
         String wellName = "—", leaseName = "—", clientName = "—", techName = "—";

@@ -5,6 +5,7 @@ import com.fecos.leases.LeaseRepository;
 import com.fecos.products.ProductRepository;
 import com.fecos.pumpshop.PumpRepository;
 import com.fecos.pumpshop.PumpStatus;
+import com.fecos.tanks.TankRepository;
 import com.fecos.tanks.TankService;
 import com.fecos.users.UserRepository;
 import com.fecos.wells.WellRepository;
@@ -35,6 +36,7 @@ public class TreatmentPlanService {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final TankService tankService;
+    private final TankRepository tankRepository;
     private final PumpRepository pumpRepository;
 
     public Page<TreatmentPlanResponse> list(TreatmentPlanStatus status, UUID wellId, UUID accountRepId, int page, int size) {
@@ -309,7 +311,16 @@ public class TreatmentPlanService {
                         String updatedByName = l.getRecRateUpdatedBy() != null
                                 ? userRepository.findById(l.getRecRateUpdatedBy()).map(u -> u.getFullName()).orElse(null)
                                 : null;
-                        return TreatmentPlanLineResponse.from(l, productName, calcThirdPartyLevel(l), pumpDeployed, pumpId, pumpSerial, updatedByName);
+                        String tankSerial = null;
+                        BigDecimal tankCapacityGallons = null;
+                        if (l.getTankId() != null) {
+                            var tank = tankRepository.findById(l.getTankId()).orElse(null);
+                            if (tank != null) {
+                                tankSerial = tank.getSerialNumber();
+                                tankCapacityGallons = tank.getCapacityGallons();
+                            }
+                        }
+                        return TreatmentPlanLineResponse.from(l, productName, calcThirdPartyLevel(l), pumpDeployed, pumpId, pumpSerial, updatedByName, tankSerial, tankCapacityGallons);
                     })
                     .toList();
         }

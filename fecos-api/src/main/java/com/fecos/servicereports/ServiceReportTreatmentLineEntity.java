@@ -44,6 +44,19 @@ public class ServiceReportTreatmentLineEntity extends TenantAwareEntity {
     @Column(name = "applied")
     private Boolean applied;
 
+    @Column(name = "quantity_applied", precision = 10, scale = 4)
+    private BigDecimal quantityApplied;
+
+    // Field readings
+    @Column(name = "tank_level_pct", precision = 5, scale = 2)
+    private BigDecimal tankLevelPct;
+
+    @Column(name = "deviation_reason", columnDefinition = "TEXT")
+    private String deviationReason;
+
+    @Column(name = "pump_down_reason", columnDefinition = "TEXT")
+    private String pumpDownReason;
+
     // Common
     @Column(columnDefinition = "TEXT")
     private String notes;
