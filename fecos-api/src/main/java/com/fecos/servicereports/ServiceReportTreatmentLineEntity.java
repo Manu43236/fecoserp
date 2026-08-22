@@ -66,4 +66,7 @@ public class ServiceReportTreatmentLineEntity extends TenantAwareEntity {
 
     @Column(name = "sort_order", nullable = false)
     private int sortOrder = 1;
+
+    @Column(name = "product_name", length = 255)
+    private String productName;
 }

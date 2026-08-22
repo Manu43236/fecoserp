@@ -534,42 +534,97 @@ function TreatmentReportDrawer({ visitId, stopId, onClose, onAcknowledged }: {
               {data.lines.length > 0 && (
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Treatment Lines</p>
-                  <div className="space-y-2">
-                    {data.lines.map(l => (
-                      <div key={l.id} className="border border-gray-200 rounded-xl p-3 text-sm">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-medium text-gray-900">{l.method}</span>
-                          {l.method === 'CI' && l.onRate !== null && (
-                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${l.onRate ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                              {l.onRate ? 'On Rate' : 'Off Rate'}
-                            </span>
-                          )}
-                          {l.method === 'BATCH' && (
-                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${l.applied ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                              {l.applied ? 'Applied' : 'Not Applied'}
-                            </span>
-                          )}
-                        </div>
-                        {l.method === 'CI' && (
-                          <div className="grid grid-cols-3 gap-2 text-xs text-gray-600 mt-1">
-                            <div><span className="text-gray-400">Pump</span><br />{l.pumpRunning ? 'Running' : 'Not Running'}</div>
-                            <div><span className="text-gray-400">Rate Found</span><br />{l.rateFound ?? '—'}</div>
-                            <div><span className="text-gray-400">Rate Set To</span><br />{l.rateSetTo ?? '—'}</div>
+                  <div className="space-y-3">
+                    {data.lines.map(l => {
+                      const isCi = l.method === 'CONTINUOUS'
+                      return (
+                        <div key={l.id} className="border border-gray-200 rounded-xl overflow-hidden text-sm">
+                          {/* Line header */}
+                          <div className={`flex items-center justify-between px-3 py-2 ${isCi ? 'bg-blue-50' : 'bg-purple-50'}`}>
+                            <div className="flex items-center gap-2">
+                              <span className={`text-xs font-bold px-2 py-0.5 rounded ${isCi ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}`}>
+                                {isCi ? 'CI' : 'Batch'}
+                              </span>
+                              <span className="font-semibold text-gray-900">{l.productName ?? l.method}</span>
+                            </div>
+                            {isCi && l.onRate !== null && (
+                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${l.onRate ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                {l.onRate ? 'On Rate' : 'Off Rate'}
+                              </span>
+                            )}
+                            {!isCi && (
+                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${l.applied ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                                {l.applied ? 'Applied' : 'Not Applied'}
+                              </span>
+                            )}
                           </div>
-                        )}
-                        {l.notes && <p className="text-xs text-gray-500 mt-1.5">{l.notes}</p>}
-                      </div>
-                    ))}
+
+                          <div className="px-3 py-2.5 space-y-2">
+                            {/* Tank check */}
+                            {(l.tankSerial || l.tankLevelPct != null) && (
+                              <div className="flex items-center gap-4 text-xs text-gray-600">
+                                {l.tankSerial && <span><span className="text-gray-400">Tank </span>{l.tankSerial}</span>}
+                                {l.tankLevelPct != null && (
+                                  <span className={l.tankLevelPct < 10 ? 'text-red-600 font-semibold' : l.tankLevelPct < 25 ? 'text-amber-600 font-semibold' : 'text-green-700 font-semibold'}>
+                                    {l.tankLevelPct.toFixed(2)}% level
+                                  </span>
+                                )}
+                              </div>
+                            )}
+
+                            {/* CI details */}
+                            {isCi && (
+                              <div className="grid grid-cols-3 gap-2 text-xs text-gray-600">
+                                <div>
+                                  <span className="text-gray-400">Pump</span><br />
+                                  <span className={l.pumpRunning ? 'text-green-700 font-medium' : 'text-red-600 font-medium'}>
+                                    {l.pumpRunning ? 'Running' : 'Down'}
+                                  </span>
+                                </div>
+                                <div><span className="text-gray-400">Rate Found</span><br />{l.rateFound != null ? `${l.rateFound} gal/day` : '—'}</div>
+                                <div><span className="text-gray-400">Rate Set To</span><br />{l.rateSetTo != null ? `${l.rateSetTo} gal/day` : '—'}</div>
+                              </div>
+                            )}
+
+                            {/* Pump down reason */}
+                            {isCi && !l.pumpRunning && l.pumpDownReason && (
+                              <p className="text-xs text-red-700 bg-red-50 rounded px-2 py-1">
+                                <span className="font-medium">Pump down: </span>{l.pumpDownReason}
+                              </p>
+                            )}
+
+                            {/* Deviation reason */}
+                            {isCi && l.deviationReason && (
+                              <p className="text-xs text-amber-800 bg-amber-50 rounded px-2 py-1">
+                                <span className="font-medium">Rate change: </span>{l.deviationReason}
+                              </p>
+                            )}
+
+                            {/* Batch quantity */}
+                            {!isCi && l.quantityApplied != null && (
+                              <p className="text-xs text-gray-600">
+                                <span className="text-gray-400">Quantity applied: </span>{l.quantityApplied} gal
+                              </p>
+                            )}
+
+                            {l.notes && <p className="text-xs text-gray-500 italic">{l.notes}</p>}
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               )}
 
               {/* Sample */}
-              {data.sampleType && (
+              {(data.sampleType || data.samplePhotoUrl) && (
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Sample</p>
-                  <p className="text-sm text-gray-900">{data.sampleType}</p>
+                  {data.sampleType && <p className="text-sm text-gray-900">{data.sampleType}</p>}
                   {data.sampleNotes && <p className="text-sm text-gray-600">{data.sampleNotes}</p>}
+                  {data.samplePhotoUrl && (
+                    <img src={data.samplePhotoUrl} alt="Sample bottle" className="mt-2 w-full rounded-xl object-cover max-h-48 border border-gray-200" />
+                  )}
                 </div>
               )}
 

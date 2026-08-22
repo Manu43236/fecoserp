@@ -86,4 +86,7 @@ public class ServiceReportEntity extends TenantAwareEntity {
 
     @Column(name = "signed_at")
     private Instant signedAt;
+
+    @Column(name = "sample_photo_url", length = 500)
+    private String samplePhotoUrl;
 }

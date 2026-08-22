@@ -19,18 +19,25 @@ export interface ServiceVisitStop {
 }
 
 export interface TreatmentLine {
-  id:          string
-  planLineId:  string
-  tankId:      string | null
-  method:      string
-  pumpRunning: boolean | null
-  rateFound:   number | null
-  rateSetTo:   number | null
-  onRate:      boolean | null
-  applied:     boolean | null
-  notes:       string | null
-  recordedAt:  string | null
-  sortOrder:   number
+  id:                  string
+  planLineId:          string
+  tankId:              string | null
+  tankSerial:          string | null
+  tankCapacityGallons: number | null
+  productName:         string | null
+  method:              string
+  pumpRunning:         boolean | null
+  pumpDownReason:      string | null
+  rateFound:           number | null
+  rateSetTo:           number | null
+  onRate:              boolean | null
+  deviationReason:     string | null
+  applied:             boolean | null
+  quantityApplied:     number | null
+  tankLevelPct:        number | null
+  notes:               string | null
+  recordedAt:          string | null
+  sortOrder:           number
 }
 
 export interface TreatmentReport {
@@ -53,6 +60,7 @@ export interface TreatmentReport {
   soarAckNote:    string | null
   sampleType:     string | null
   sampleNotes:    string | null
+  samplePhotoUrl: string | null
   signatureUrl:   string | null
   signerName:     string | null
   signedAt:       string | null

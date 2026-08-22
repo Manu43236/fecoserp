@@ -16,6 +16,7 @@ public record TreatmentReportRequest(
         String soarNote,
         String sampleType,
         String sampleNotes,
+        String samplePhotoUrl,
         String signatureUrl,
         String signerName,
         Instant signedAt,
@@ -24,6 +25,7 @@ public record TreatmentReportRequest(
 ) {
     public record TreatmentLineRequest(
             UUID planLineId,
+            String productName,
             UUID tankId,
             String method,
             Boolean pumpRunning,

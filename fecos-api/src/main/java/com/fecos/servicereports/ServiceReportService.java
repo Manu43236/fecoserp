@@ -215,6 +215,7 @@ public class ServiceReportService {
         report.setSoarNote(req.soarNote());
         report.setSampleType(req.sampleType());
         report.setSampleNotes(req.sampleNotes());
+        report.setSamplePhotoUrl(req.samplePhotoUrl());
         report.setSignatureUrl(req.signatureUrl());
         report.setSignerName(req.signerName());
         report.setSignedAt(req.signedAt());
@@ -244,6 +245,7 @@ public class ServiceReportService {
                 line.setTankLevelPct(lr.tankLevelPct());
                 line.setDeviationReason(lr.deviationReason());
                 line.setPumpDownReason(lr.pumpDownReason());
+                line.setProductName(lr.productName());
                 line.setNotes(lr.notes());
                 line.setRecordedAt(lr.recordedAt());
                 line.setSortOrder(lr.sortOrder());
@@ -345,6 +347,7 @@ public class ServiceReportService {
                         .map(l -> new TreatmentReportResponse.TreatmentLineResponse(
                                 l.getId(), l.getPlanLineId(), l.getTankId(),
                                 null, null, // tankSerial/tankCapacityGallons not stored on report
+                                l.getProductName(),
                                 l.getMethod(),
                                 l.getPumpRunning(), l.getPumpDownReason(),
                                 l.getRateFound(), l.getRateSetTo(), l.getOnRate(),
@@ -381,7 +384,7 @@ public class ServiceReportService {
                 r.getPerformedAt(), r.getGpsLat(), r.getGpsLng(), r.getGpsCapturedAt(),
                 r.getPhotoUrl(), r.getPhotoCapturedAt(),
                 r.isSoar(), r.getSoarNote(), soarAckByName, soarAckAtStr, r.getSoarAckNote(),
-                r.getSampleType(), r.getSampleNotes(),
+                r.getSampleType(), r.getSampleNotes(), r.getSamplePhotoUrl(),
                 r.getSignatureUrl(), r.getSignerName(), r.getSignedAt(),
                 r.getNotes(), r.getSubmittedAt(), lines
         );
