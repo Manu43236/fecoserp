@@ -11,7 +11,6 @@ export interface ServiceVisitStop {
   clientName:      string
   sequence:        number
   status:          VisitStopStatus
-  sampleCollected: boolean
   hasSoar:         boolean
   soarAcknowledged: boolean
   hasReport:       boolean
@@ -71,6 +70,7 @@ export interface TreatmentReport {
 
 export interface ServiceVisit {
   id:        string
+  name:      string | null
   visitDate: string
   techId:    string
   techName:  string
@@ -94,7 +94,7 @@ export const serviceVisitsApi = {
   list: (params?: { status?: VisitStatus; techId?: string; date?: string; page?: number; size?: number }) =>
     api.get('/api/v1/service-visits', { params }),
   get:    (id: string) => api.get(`/api/v1/service-visits/${id}`),
-  create: (data: { techId: string; visitDate: string; notes?: string }) =>
+  create: (data: { name: string; techId: string; visitDate: string; notes?: string; wellIds: string[] }) =>
     api.post('/api/v1/service-visits', data),
   update: (id: string, data: { techId?: string; visitDate?: string; status?: VisitStatus; notes?: string }) =>
     api.put(`/api/v1/service-visits/${id}`, data),

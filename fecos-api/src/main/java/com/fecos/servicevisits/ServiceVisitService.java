@@ -62,13 +62,30 @@ public class ServiceVisitService {
         ServiceVisitEntity v = new ServiceVisitEntity();
         v.setId(UUID.randomUUID());
         v.setTenantId(tenantId);
+        v.setName(req.name());
         v.setVisitDate(req.visitDate());
         v.setTechId(req.techId());
         v.setNotes(req.notes());
         v.setStatus(ServiceVisitStatus.SCHEDULED);
         v.setCreatedBy(userId);
+        visitRepo.save(v);
 
-        return toResponse(visitRepo.save(v), false);
+        if (req.wellIds() != null) {
+            int seq = 1;
+            for (UUID wellId : req.wellIds()) {
+                ServiceVisitStopEntity stop = new ServiceVisitStopEntity();
+                stop.setId(UUID.randomUUID());
+                stop.setTenantId(tenantId);
+                stop.setServiceVisitId(v.getId());
+                stop.setWellId(wellId);
+                stop.setSequence(seq++);
+                stop.setStatus(ServiceVisitStopStatus.PENDING);
+                stop.setCreatedBy(userId);
+                stopRepo.save(stop);
+            }
+        }
+
+        return toResponse(v, true);
     }
 
     // ── Update ───────────────────────────────────────────────────────────────
@@ -205,7 +222,7 @@ public class ServiceVisitService {
         }
 
         return new ServiceVisitResponse(
-                v.getId(), v.getVisitDate(), v.getTechId(), techName,
+                v.getId(), v.getName(), v.getVisitDate(), v.getTechId(), techName,
                 v.getStatus(), v.getNotes(), stops, v.getCreatedAt()
         );
     }
