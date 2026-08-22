@@ -1,12 +1,143 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { X, Plus, ClipboardList, ChevronRight, Trash2, FlaskConical, AlertTriangle, FileText, MapPin, Camera, PenLine } from 'lucide-react'
+import { X, Plus, ClipboardList, ChevronRight, Trash2, FlaskConical, AlertTriangle, FileText, MapPin, Camera, PenLine, Printer } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { serviceVisitsApi } from '@/api/serviceVisits'
 import type { ServiceVisit, ServiceVisitStop, VisitStatus, VisitStopStatus, DueWell, TreatmentReport } from '@/api/serviceVisits'
 import { usersApi } from '@/api/users'
 import type { UserRecord } from '@/api/users'
 import { SearchableDropdown } from '@/components/ui/SearchableDropdown'
+
+// ── PDF Print ──────────────────────────────────────────────────────────────────
+
+function printReportPdf(r: TreatmentReport) {
+  const fmt = (iso: string | null) => iso
+    ? new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+    : '—'
+
+  const row = (label: string, value: string) =>
+    `<tr><td style="color:#666;padding:4px 8px 4px 0;white-space:nowrap;vertical-align:top;font-size:12px">${label}</td><td style="padding:4px 0;font-size:13px;font-weight:500">${value}</td></tr>`
+
+  const linesHtml = r.lines.map(l => {
+    const isCi = l.method === 'CONTINUOUS'
+    const badge = isCi
+      ? `<span style="background:#dbeafe;color:#1e40af;font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px">CI</span>`
+      : `<span style="background:#ede9fe;color:#5b21b6;font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px">Batch</span>`
+    const onRateBadge = isCi && l.onRate !== null
+      ? `<span style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:10px;${l.onRate ? 'background:#dcfce7;color:#15803d' : 'background:#fee2e2;color:#b91c1c'}">${l.onRate ? 'On Rate' : 'Off Rate'}</span>`
+      : ''
+    const appliedBadge = !isCi
+      ? `<span style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:10px;${l.applied ? 'background:#dcfce7;color:#15803d' : 'background:#f3f4f6;color:#6b7280'}">${l.applied ? 'Applied' : 'Not Applied'}</span>`
+      : ''
+    const levelColor = l.tankLevelPct == null ? '' : l.tankLevelPct < 10 ? 'color:#dc2626;font-weight:600' : l.tankLevelPct < 25 ? 'color:#d97706;font-weight:600' : 'color:#16a34a;font-weight:600'
+
+    return `
+      <div style="border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:${isCi ? '#eff6ff' : '#f5f3ff'}">
+          <div style="display:flex;align-items:center;gap:8px">${badge}<span style="font-size:14px;font-weight:600">${l.productName ?? l.method}</span></div>
+          <div>${onRateBadge}${appliedBadge}</div>
+        </div>
+        <div style="padding:10px 12px;font-size:13px">
+          ${l.tankSerial || l.tankLevelPct != null ? `<div style="margin-bottom:6px;color:#4b5563">
+            ${l.tankSerial ? `<span>Tank ${l.tankSerial}</span>` : ''}
+            ${l.tankLevelPct != null ? `<span style="margin-left:12px;${levelColor}">${l.tankLevelPct.toFixed(2)}% level</span>` : ''}
+          </div>` : ''}
+          ${isCi ? `<table style="width:100%;border-collapse:collapse">
+            <tr>
+              <td style="width:33%;font-size:11px;color:#9ca3af">Pump</td>
+              <td style="width:33%;font-size:11px;color:#9ca3af">Rate Found</td>
+              <td style="width:33%;font-size:11px;color:#9ca3af">Rate Set To</td>
+            </tr>
+            <tr>
+              <td style="font-size:13px;font-weight:500;${l.pumpRunning ? 'color:#15803d' : 'color:#dc2626'}">${l.pumpRunning ? 'Running' : 'Down'}</td>
+              <td style="font-size:13px;font-weight:500">${l.rateFound != null ? `${l.rateFound} gal/day` : '—'}</td>
+              <td style="font-size:13px;font-weight:500">${l.rateSetTo != null ? `${l.rateSetTo} gal/day` : '—'}</td>
+            </tr>
+          </table>` : ''}
+          ${isCi && !l.pumpRunning && l.pumpDownReason ? `<div style="margin-top:6px;background:#fef2f2;border-radius:6px;padding:6px 8px;font-size:12px;color:#b91c1c"><b>Pump down:</b> ${l.pumpDownReason}</div>` : ''}
+          ${isCi && l.deviationReason ? `<div style="margin-top:6px;background:#fffbeb;border-radius:6px;padding:6px 8px;font-size:12px;color:#92400e"><b>Rate change:</b> ${l.deviationReason}</div>` : ''}
+          ${!isCi && l.quantityApplied != null ? `<div style="margin-top:4px;color:#4b5563"><span style="color:#9ca3af">Quantity applied: </span>${l.quantityApplied} gal</div>` : ''}
+          ${l.notes ? `<div style="margin-top:6px;font-size:12px;color:#6b7280;font-style:italic">${l.notes}</div>` : ''}
+        </div>
+      </div>`
+  }).join('')
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+  <title>Treatment Report — ${r.wellName}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #111; background: #fff; padding: 32px; max-width: 700px; margin: 0 auto; }
+    h1 { font-size: 20px; font-weight: 700; margin-bottom: 2px; }
+    .sub { font-size: 13px; color: #6b7280; margin-bottom: 20px; }
+    .section-title { font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.07em; margin: 20px 0 8px; }
+    .card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; }
+    table.meta { border-collapse: collapse; width: 100%; }
+    .sig-img { height: 60px; object-fit: contain; display: block; margin-bottom: 4px; }
+    img.photo { width: 100%; border-radius: 10px; object-fit: cover; max-height: 260px; border: 1px solid #e5e7eb; margin-top: 6px; }
+    .soar { background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+    .soar-ack { background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 10px 12px; }
+    @media print { body { padding: 16px; } }
+  </style>
+  </head><body>
+  <h1>Treatment Report</h1>
+  <div class="sub">${r.wellName} · ${r.leaseName} · ${r.clientName}</div>
+
+  <div class="section-title">Visit Info</div>
+  <div class="card">
+    <table class="meta">
+      ${row('Service Tech', r.techName)}
+      ${row('Performed At', fmt(r.performedAt))}
+      ${row('Submitted At', fmt(r.submittedAt))}
+      ${r.gpsLat ? row('GPS', `${r.gpsLat.toFixed(6)}, ${r.gpsLng?.toFixed(6)}`) : ''}
+    </table>
+  </div>
+
+  ${r.soar ? `
+  <div class="section-title">SOAR</div>
+  <div class="${r.soarAckAt ? 'soar-ack' : 'soar'}">
+    <div style="font-size:13px;font-weight:600;margin-bottom:4px">Special Observation / Action Required</div>
+    ${r.soarNote ? `<div style="font-size:13px">${r.soarNote}</div>` : ''}
+    ${r.soarAckAt ? `<div style="font-size:12px;color:#92400e;margin-top:6px;border-top:1px solid #fde68a;padding-top:6px">
+      Acknowledged by ${r.soarAckByName} · ${fmt(r.soarAckAt)}
+      ${r.soarAckNote ? `<br/>${r.soarAckNote}` : ''}
+    </div>` : '<div style="font-size:12px;color:#b91c1c;margin-top:4px;font-weight:600">⚠ Not yet acknowledged</div>'}
+  </div>` : ''}
+
+  ${r.photoUrl ? `
+  <div class="section-title">Site Photo</div>
+  <img class="photo" src="${r.photoUrl}" alt="Site photo"/>
+  ${r.photoCapturedAt ? `<div style="font-size:11px;color:#9ca3af;margin-top:4px">Captured ${fmt(r.photoCapturedAt)}</div>` : ''}` : ''}
+
+  ${r.lines.length > 0 ? `
+  <div class="section-title">Treatment Lines</div>
+  ${linesHtml}` : ''}
+
+  ${r.sampleType || r.sampleNotes || r.samplePhotoUrl ? `
+  <div class="section-title">Sample</div>
+  <div class="card">
+    ${r.sampleType ? `<div style="font-size:13px;font-weight:500;margin-bottom:2px">${r.sampleType}</div>` : ''}
+    ${r.sampleNotes ? `<div style="font-size:13px;color:#4b5563">${r.sampleNotes}</div>` : ''}
+    ${r.samplePhotoUrl ? `<img class="photo" src="${r.samplePhotoUrl}" alt="Sample bottle"/>` : ''}
+  </div>` : ''}
+
+  ${r.signerName ? `
+  <div class="section-title">Signature</div>
+  <div class="card">
+    ${r.signatureUrl ? `<img class="sig-img" src="${r.signatureUrl}" alt="Signature"/>` : ''}
+    <div style="font-size:13px;font-weight:500">${r.signerName}</div>
+    <div style="font-size:12px;color:#9ca3af">${fmt(r.signedAt)}</div>
+  </div>` : ''}
+
+  ${r.notes ? `
+  <div class="section-title">Notes</div>
+  <div class="card"><p style="font-size:13px;color:#374151">${r.notes}</p></div>` : ''}
+
+  <script>window.onload = () => { window.print(); }<\/script>
+  </body></html>`
+
+  const w = window.open('', '_blank')
+  if (w) { w.document.write(html); w.document.close() }
+}
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -434,7 +565,16 @@ function TreatmentReportDrawer({ visitId, stopId, onClose, onAcknowledged }: {
             <h2 className="text-sm font-semibold text-gray-900">Treatment Report</h2>
             {data && <p className="text-xs text-gray-500">{data.wellName} · {data.leaseName}</p>}
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+          <div className="flex items-center gap-2">
+            {data && (
+              <button onClick={() => printReportPdf(data)}
+                className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg border text-gray-600 hover:bg-gray-50 transition-colors"
+                style={{ borderColor: 'rgba(0,0,0,0.15)' }}>
+                <Printer size={13} /> Print / PDF
+              </button>
+            )}
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
