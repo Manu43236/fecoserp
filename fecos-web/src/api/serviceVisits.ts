@@ -8,10 +8,57 @@ export interface ServiceVisitStop {
   wellId:          string
   wellName:        string
   leaseName:       string
+  clientName:      string
   sequence:        number
   status:          VisitStopStatus
   sampleCollected: boolean
+  hasSoar:         boolean
+  soarAcknowledged: boolean
+  hasReport:       boolean
   notes:           string | null
+}
+
+export interface TreatmentLine {
+  id:          string
+  planLineId:  string
+  tankId:      string | null
+  method:      string
+  pumpRunning: boolean | null
+  rateFound:   number | null
+  rateSetTo:   number | null
+  onRate:      boolean | null
+  applied:     boolean | null
+  notes:       string | null
+  recordedAt:  string | null
+  sortOrder:   number
+}
+
+export interface TreatmentReport {
+  id:             string
+  stopId:         string
+  wellName:       string
+  leaseName:      string
+  clientName:     string
+  techName:       string
+  performedAt:    string | null
+  gpsLat:         number | null
+  gpsLng:         number | null
+  gpsCapturedAt:  string | null
+  photoUrl:       string | null
+  photoCapturedAt: string | null
+  soar:           boolean
+  soarNote:       string | null
+  soarAckByName:  string | null
+  soarAckAt:      string | null
+  soarAckNote:    string | null
+  sampleType:     string | null
+  sampleNotes:    string | null
+  signatureUrl:   string | null
+  signerName:     string | null
+  signedAt:       string | null
+  notes:          string | null
+  submittedAt:    string | null
+  lines:          TreatmentLine[]
 }
 
 export interface ServiceVisit {
@@ -54,4 +101,10 @@ export const serviceVisitsApi = {
 
   dueWells: (date: string) =>
     api.get('/api/v1/service-visits/due-wells', { params: { date } }),
+
+  getTreatmentReport: (visitId: string, stopId: string) =>
+    api.get<{ data: TreatmentReport }>(`/api/v1/service-visits/${visitId}/stops/${stopId}/treatment-report`),
+
+  acknowledgeSoar: (visitId: string, stopId: string, ackNote: string) =>
+    api.post<{ data: TreatmentReport }>(`/api/v1/service-visits/${visitId}/stops/${stopId}/treatment-report/acknowledge`, { ackNote }),
 }

@@ -13,6 +13,9 @@ export interface PlanLineRecord {
   productId: string
   productName: string
   recRate: number
+  recRatePrevious: number | null
+  recRateUpdatedByName: string | null
+  recRateUpdatedAt: string | null
   method: PlanMethod
   schedule: PlanSchedule | null
   notes: string | null

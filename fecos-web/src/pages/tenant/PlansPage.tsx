@@ -793,6 +793,13 @@ function PlanDrawer({
                             <span className="text-xs text-gray-500">{METHOD_LABELS[line.method]}{line.schedule ? ` — ${SCHEDULE_LABELS[line.schedule]}` : ''}</span>
                           </div>
                           {line.notes && <p className="text-xs text-gray-400 mt-1 italic">{line.notes}</p>}
+                          {line.recRatePrevious != null && (
+                            <p className="text-xs text-amber-700 mt-1 flex items-center gap-1">
+                              <AlertTriangle size={10} />
+                              Rate changed from {line.recRatePrevious} by {line.recRateUpdatedByName ?? 'tech'}
+                              {line.recRateUpdatedAt ? ` on ${new Date(line.recRateUpdatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
+                            </p>
+                          )}
                         </div>
                       </div>
                       {canEdit && !isReadOnly && (

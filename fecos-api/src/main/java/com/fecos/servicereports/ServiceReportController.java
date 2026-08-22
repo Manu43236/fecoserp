@@ -57,6 +57,35 @@ public class ServiceReportController {
         return ResponseEntity.ok(ApiResponse.ok(service.getByStop(stopId)));
     }
 
+    // Mobile — submit full treatment report for a stop (Phase 2)
+    @PostMapping("/api/v1/service-visits/{visitId}/stops/{stopId}/treatment-report")
+    @PreAuthorize("hasRole('SERVICE_TECH')")
+    public ResponseEntity<ApiResponse<TreatmentReportResponse>> submitTreatmentReport(
+            @PathVariable UUID visitId,
+            @PathVariable UUID stopId,
+            @RequestBody TreatmentReportRequest req) {
+        return ResponseEntity.ok(ApiResponse.ok(service.submitTreatmentReport(visitId, stopId, req)));
+    }
+
+    // Mobile + Web — get treatment report for a stop
+    @GetMapping("/api/v1/service-visits/{visitId}/stops/{stopId}/treatment-report")
+    @PreAuthorize("hasAnyRole('SERVICE_TECH','ADMIN','MANAGER','ACCOUNT_REP')")
+    public ResponseEntity<ApiResponse<TreatmentReportResponse>> getTreatmentReport(
+            @PathVariable UUID visitId,
+            @PathVariable UUID stopId) {
+        return ResponseEntity.ok(ApiResponse.ok(service.getTreatmentReport(stopId)));
+    }
+
+    // Web — manager/admin acknowledges a SOAR flag
+    @PostMapping("/api/v1/service-visits/{visitId}/stops/{stopId}/treatment-report/acknowledge")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    public ResponseEntity<ApiResponse<TreatmentReportResponse>> acknowledgeSoar(
+            @PathVariable UUID visitId,
+            @PathVariable UUID stopId,
+            @RequestBody SoarAckRequest req) {
+        return ResponseEntity.ok(ApiResponse.ok(service.acknowledgeSoar(stopId, req)));
+    }
+
     // Web — admin/manager view all reports
     @GetMapping("/api/v1/service-reports")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP')")

@@ -7,6 +7,7 @@ public record MyVisitStopResponse(
         UUID wellId,
         String wellName,
         String leaseName,
+        String clientName,
         int sequence,
         String status,
         boolean sampleCollected,

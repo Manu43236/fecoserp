@@ -12,6 +12,9 @@ public record TreatmentPlanLineResponse(
         UUID productId,
         String productName,
         BigDecimal recRate,
+        BigDecimal recRatePrevious,
+        String recRateUpdatedByName,
+        Instant recRateUpdatedAt,
         TreatmentPlanMethod method,
         TreatmentPlanSchedule schedule,
         String notes,
@@ -27,13 +30,18 @@ public record TreatmentPlanLineResponse(
         UUID pumpId,
         String pumpSerial
 ) {
-    public static TreatmentPlanLineResponse from(TreatmentPlanLineEntity l, String productName, BigDecimal calculatedLevelPct, boolean pumpDeployed, UUID pumpId, String pumpSerial) {
+    public static TreatmentPlanLineResponse from(TreatmentPlanLineEntity l, String productName,
+            BigDecimal calculatedLevelPct, boolean pumpDeployed, UUID pumpId, String pumpSerial,
+            String recRateUpdatedByName) {
         return new TreatmentPlanLineResponse(
                 l.getId(),
                 l.getProgramId(),
                 l.getProductId(),
                 productName,
                 l.getRecRate(),
+                l.getRecRatePrevious(),
+                recRateUpdatedByName,
+                l.getRecRateUpdatedAt(),
                 l.getMethod(),
                 l.getSchedule(),
                 l.getNotes(),

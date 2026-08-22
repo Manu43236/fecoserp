@@ -1,10 +1,12 @@
 package com.fecos.servicevisits;
 
+import com.fecos.clients.ClientRepository;
 import com.fecos.leases.LeaseRepository;
 import com.fecos.programs.TreatmentPlanEntity;
 import com.fecos.programs.TreatmentPlanRepository;
 import com.fecos.programs.TreatmentPlanSchedule;
 import com.fecos.programs.TreatmentPlanStatus;
+import com.fecos.servicereports.ServiceReportRepository;
 import com.fecos.users.UserRepository;
 import com.fecos.wells.WellEntity;
 import com.fecos.wells.WellRepository;
@@ -28,7 +30,9 @@ public class ServiceVisitService {
     private final UserRepository userRepo;
     private final WellRepository wellRepo;
     private final LeaseRepository leaseRepo;
+    private final ClientRepository clientRepo;
     private final TreatmentPlanRepository planRepo;
+    private final ServiceReportRepository reportRepo;
 
     // ── List ─────────────────────────────────────────────────────────────────
 
@@ -208,13 +212,26 @@ public class ServiceVisitService {
     }
 
     private ServiceVisitStopResponse toStopResponse(ServiceVisitStopEntity s) {
-        String wellName  = wellRepo.findById(s.getWellId()).map(WellEntity::getWellName).orElse("—");
-        String leaseName = wellRepo.findById(s.getWellId())
-                .flatMap(w -> leaseRepo.findById(w.getLeaseId()))
-                .map(l -> l.getLeaseName()).orElse("—");
+        WellEntity well = wellRepo.findById(s.getWellId()).orElse(null);
+        String wellName   = well != null ? well.getWellName() : "—";
+        String leaseName  = "—";
+        String clientName = "—";
+        if (well != null) {
+            var lease = leaseRepo.findById(well.getLeaseId()).orElse(null);
+            if (lease != null) {
+                leaseName  = lease.getLeaseName();
+                clientName = clientRepo.findById(lease.getClientId())
+                        .map(c -> c.getCompanyName()).orElse("—");
+            }
+        }
+        var report           = reportRepo.findByServiceVisitStopIdAndIsDeletedFalse(s.getId());
+        boolean hasSoar          = report.map(r -> r.isSoar()).orElse(false);
+        boolean soarAcknowledged = report.map(r -> r.getSoarAckAt() != null).orElse(false);
+        boolean hasReport        = report.isPresent();
         return new ServiceVisitStopResponse(
-                s.getId(), s.getWellId(), wellName, leaseName,
-                s.getSequence(), s.getStatus(), s.isSampleCollected(), s.getNotes()
+                s.getId(), s.getWellId(), wellName, leaseName, clientName,
+                s.getSequence(), s.getStatus(), s.isSampleCollected(),
+                hasSoar, soarAcknowledged, hasReport, s.getNotes()
         );
     }
 

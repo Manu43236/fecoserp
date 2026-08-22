@@ -10,6 +10,8 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
+// V59: rec_rate_previous, rec_rate_updated_by, rec_rate_updated_at are audit columns set by mobile service tech
+
 @Getter
 @Setter
 @Entity
@@ -57,4 +59,13 @@ public class TreatmentPlanLineEntity extends TenantAwareEntity {
 
     @Column(name = "third_party_serial", length = 100)
     private String thirdPartySerial;
+
+    @Column(name = "rec_rate_previous", precision = 12, scale = 4)
+    private BigDecimal recRatePrevious;
+
+    @Column(name = "rec_rate_updated_by")
+    private UUID recRateUpdatedBy;
+
+    @Column(name = "rec_rate_updated_at")
+    private Instant recRateUpdatedAt;
 }

@@ -41,4 +41,49 @@ public class ServiceReportEntity extends TenantAwareEntity {
 
     @Column(name = "submitted_at")
     private Instant submittedAt;
+
+    @Column(name = "performed_at")
+    private Instant performedAt;
+
+    @Column(name = "gps_lat", precision = 10, scale = 7)
+    private BigDecimal gpsLat;
+
+    @Column(name = "gps_lng", precision = 10, scale = 7)
+    private BigDecimal gpsLng;
+
+    @Column(name = "gps_captured_at")
+    private Instant gpsCapturedAt;
+
+    @Column(name = "photo_url", length = 500)
+    private String photoUrl;
+
+    @Column(name = "photo_captured_at")
+    private Instant photoCapturedAt;
+
+    @Column(name = "soar_note", columnDefinition = "TEXT")
+    private String soarNote;
+
+    @Column(name = "soar_ack_by")
+    private UUID soarAckBy;
+
+    @Column(name = "soar_ack_at")
+    private Instant soarAckAt;
+
+    @Column(name = "soar_ack_note", columnDefinition = "TEXT")
+    private String soarAckNote;
+
+    @Column(name = "sample_type", length = 50)
+    private String sampleType;
+
+    @Column(name = "sample_notes", columnDefinition = "TEXT")
+    private String sampleNotes;
+
+    @Column(name = "signature_url", length = 500)
+    private String signatureUrl;
+
+    @Column(name = "signer_name", length = 100)
+    private String signerName;
+
+    @Column(name = "signed_at")
+    private Instant signedAt;
 }

@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { X, Plus, ClipboardList, ChevronRight, Trash2, CheckCircle2, FlaskConical } from 'lucide-react'
+import { X, Plus, ClipboardList, ChevronRight, Trash2, FlaskConical, AlertTriangle, FileText, MapPin, Camera, PenLine } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { serviceVisitsApi } from '@/api/serviceVisits'
-import type { ServiceVisit, ServiceVisitStop, VisitStatus, VisitStopStatus, DueWell } from '@/api/serviceVisits'
+import type { ServiceVisit, ServiceVisitStop, VisitStatus, VisitStopStatus, DueWell, TreatmentReport } from '@/api/serviceVisits'
 import { usersApi } from '@/api/users'
 import type { UserRecord } from '@/api/users'
 import { SearchableDropdown } from '@/components/ui/SearchableDropdown'
@@ -129,8 +129,9 @@ function VisitDrawer({ visit, onClose, onRefresh, wellOpts }: {
   visit: ServiceVisit; onClose: () => void; onRefresh: () => void; wellOpts: { value: string; label: string }[]
 }) {
   const qc = useQueryClient()
-  const [addingWell, setAddingWell] = useState(false)
-  const [newWellId,  setNewWellId]  = useState('')
+  const [addingWell,    setAddingWell]    = useState(false)
+  const [newWellId,     setNewWellId]     = useState('')
+  const [reportStop,    setReportStop]    = useState<ServiceVisitStop | null>(null)
 
   const { data: dueData } = useQuery({
     queryKey: ['due-wells', visit.visitDate],
@@ -266,6 +267,7 @@ function VisitDrawer({ visit, onClose, onRefresh, wellOpts }: {
                     onRemove={() => removeStopMutation.mutate(stop.id)}
                     onStatusChange={s => updateStopMutation.mutate({ stopId: stop.id, data: { status: s } })}
                     onSampleToggle={() => updateStopMutation.mutate({ stopId: stop.id, data: { sampleCollected: !stop.sampleCollected } })}
+                    onViewReport={() => setReportStop(stop)}
                   />
                 ))}
               </div>
@@ -309,18 +311,28 @@ function VisitDrawer({ visit, onClose, onRefresh, wellOpts }: {
           )}
         </div>
       </div>
+
+      {reportStop && (
+        <TreatmentReportDrawer
+          visitId={visit.id}
+          stopId={reportStop.id}
+          onClose={() => setReportStop(null)}
+          onAcknowledged={onRefresh}
+        />
+      )}
     </div>
   )
 }
 
 // ── Stop Card ──────────────────────────────────────────────────────────────────
 
-function StopCard({ stop, index, canEdit, onRemove, onStatusChange, onSampleToggle }: {
+function StopCard({ stop, index, canEdit, onRemove, onStatusChange, onSampleToggle, onViewReport }: {
   stop: ServiceVisitStop; index: number; canEdit: boolean
-  onRemove: () => void; onStatusChange: (s: VisitStopStatus) => void; onSampleToggle: () => void
+  onRemove: () => void; onStatusChange: (s: VisitStopStatus) => void
+  onSampleToggle: () => void; onViewReport: () => void
 }) {
   return (
-    <div className="border border-gray-200 rounded-xl p-3 bg-white">
+    <div className={`border rounded-xl p-3 bg-white ${stop.hasSoar && !stop.soarAcknowledged ? 'border-red-200' : stop.hasSoar ? 'border-amber-200' : 'border-gray-200'}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-start gap-2.5">
           <span className="w-5 h-5 rounded-full bg-gray-100 text-gray-600 text-xs font-semibold flex items-center justify-center shrink-0 mt-0.5">
@@ -328,7 +340,17 @@ function StopCard({ stop, index, canEdit, onRemove, onStatusChange, onSampleTogg
           </span>
           <div>
             <p className="text-sm font-medium text-gray-900">{stop.wellName}</p>
-            <p className="text-xs text-gray-500">{stop.leaseName}</p>
+            <p className="text-xs text-gray-500">{stop.leaseName} · {stop.clientName}</p>
+            {stop.hasSoar && !stop.soarAcknowledged && (
+              <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-700">
+                <AlertTriangle size={10} /> SOAR — Needs Acknowledgement
+              </span>
+            )}
+            {stop.hasSoar && stop.soarAcknowledged && (
+              <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-700">
+                <AlertTriangle size={10} /> SOAR — Acknowledged
+              </span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
@@ -341,7 +363,7 @@ function StopCard({ stop, index, canEdit, onRemove, onStatusChange, onSampleTogg
       </div>
 
       {/* Controls */}
-      <div className="mt-2.5 flex items-center gap-3 flex-wrap">
+      <div className="mt-2.5 flex items-center gap-2 flex-wrap">
         {canEdit ? (
           <select value={stop.status}
             onChange={e => onStatusChange(e.target.value as VisitStopStatus)}
@@ -361,6 +383,221 @@ function StopCard({ stop, index, canEdit, onRemove, onStatusChange, onSampleTogg
           <FlaskConical size={11} />
           {stop.sampleCollected ? 'Sample Collected' : 'Sample'}
         </button>
+
+        {stop.hasReport && (
+          <button onClick={onViewReport}
+            className="flex items-center gap-1 h-7 px-2.5 text-xs font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+            <FileText size={11} /> View Report
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Treatment Report Drawer ────────────────────────────────────────────────────
+
+function TreatmentReportDrawer({ visitId, stopId, onClose, onAcknowledged }: {
+  visitId: string; stopId: string; onClose: () => void; onAcknowledged: () => void
+}) {
+  const qc = useQueryClient()
+  const [ackNote, setAckNote] = useState('')
+  const [showAckForm, setShowAckForm] = useState(false)
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['treatment-report', stopId],
+    queryFn: () => serviceVisitsApi.getTreatmentReport(visitId, stopId).then(r => r.data?.data as TreatmentReport),
+  })
+
+  const ackMutation = useMutation({
+    mutationFn: () => serviceVisitsApi.acknowledgeSoar(visitId, stopId, ackNote),
+    onSuccess: () => {
+      toast.success('SOAR acknowledged')
+      qc.invalidateQueries({ queryKey: ['treatment-report', stopId] })
+      qc.invalidateQueries({ queryKey: ['service-visits'] })
+      setShowAckForm(false)
+      onAcknowledged()
+    },
+    onError: () => toast.error('Failed to acknowledge'),
+  })
+
+  const fmt = (iso: string | null) => iso
+    ? new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+    : '—'
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="fixed inset-0 bg-black/20" />
+      <div className="relative w-[560px] h-full bg-white shadow-xl flex flex-col">
+        <div className="flex items-center justify-between px-5 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900">Treatment Report</h2>
+            {data && <p className="text-xs text-gray-500">{data.wellName} · {data.leaseName}</p>}
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
+          {isLoading ? (
+            <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />
+            ))}</div>
+          ) : !data ? (
+            <p className="text-sm text-gray-400 text-center py-10">Report not found</p>
+          ) : (
+            <>
+              {/* Meta */}
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div><p className="text-xs text-gray-500">Tech</p><p className="font-medium text-gray-900">{data.techName}</p></div>
+                <div><p className="text-xs text-gray-500">Client</p><p className="font-medium text-gray-900">{data.clientName}</p></div>
+                <div><p className="text-xs text-gray-500">Performed At</p><p className="font-medium text-gray-900">{fmt(data.performedAt)}</p></div>
+                <div><p className="text-xs text-gray-500">Submitted At</p><p className="font-medium text-gray-900">{fmt(data.submittedAt)}</p></div>
+              </div>
+
+              {/* SOAR */}
+              {data.soar && (
+                <div className={`p-3 rounded-xl border ${data.soarAckAt ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200'}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle size={14} className={data.soarAckAt ? 'text-amber-600' : 'text-red-600'} />
+                      <p className={`text-sm font-semibold ${data.soarAckAt ? 'text-amber-700' : 'text-red-700'}`}>
+                        SOAR — Special Observation / Action Required
+                      </p>
+                    </div>
+                    {!data.soarAckAt && !showAckForm && (
+                      <button onClick={() => setShowAckForm(true)}
+                        className="h-7 px-3 text-xs font-semibold rounded-lg text-white shrink-0"
+                        style={{ backgroundColor: 'var(--color-primary)' }}>
+                        Acknowledge
+                      </button>
+                    )}
+                  </div>
+
+                  {data.soarNote && <p className={`text-sm mt-1.5 ${data.soarAckAt ? 'text-amber-800' : 'text-red-800'}`}>{data.soarNote}</p>}
+
+                  {/* Ack form */}
+                  {showAckForm && (
+                    <div className="mt-3 space-y-2">
+                      <textarea
+                        value={ackNote}
+                        onChange={e => setAckNote(e.target.value)}
+                        rows={2}
+                        placeholder="Describe action taken (e.g. Maintenance crew dispatched)…"
+                        className="w-full px-3 py-2 text-sm border border-red-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-red-200 bg-white"
+                      />
+                      <div className="flex gap-2">
+                        <button onClick={() => ackMutation.mutate()} disabled={!ackNote.trim() || ackMutation.isPending}
+                          className="h-8 px-4 text-xs font-semibold rounded-lg text-white disabled:opacity-60"
+                          style={{ backgroundColor: 'var(--color-primary)' }}>
+                          {ackMutation.isPending ? 'Saving…' : 'Confirm Acknowledgement'}
+                        </button>
+                        <button onClick={() => setShowAckForm(false)}
+                          className="h-8 px-3 text-xs rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Ack record */}
+                  {data.soarAckAt && (
+                    <div className="mt-2 pt-2 border-t border-amber-200">
+                      <p className="text-xs font-semibold text-amber-700">Acknowledged by {data.soarAckByName} · {fmt(data.soarAckAt)}</p>
+                      {data.soarAckNote && <p className="text-xs text-amber-800 mt-0.5">{data.soarAckNote}</p>}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* GPS */}
+              {data.gpsLat && (
+                <div className="flex items-center gap-2 text-sm text-gray-700">
+                  <MapPin size={14} className="text-gray-400 shrink-0" />
+                  <span>{data.gpsLat.toFixed(6)}, {data.gpsLng?.toFixed(6)}</span>
+                  <span className="text-xs text-gray-400">· captured {fmt(data.gpsCapturedAt)}</span>
+                </div>
+              )}
+
+              {/* Photo */}
+              {data.photoUrl && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Camera size={14} className="text-gray-400" />
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Photo</p>
+                  </div>
+                  <img src={data.photoUrl} alt="Site photo" className="w-full rounded-xl object-cover max-h-64 border border-gray-200" />
+                  {data.photoCapturedAt && <p className="text-xs text-gray-400 mt-1">Captured {fmt(data.photoCapturedAt)}</p>}
+                </div>
+              )}
+
+              {/* Treatment Lines */}
+              {data.lines.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Treatment Lines</p>
+                  <div className="space-y-2">
+                    {data.lines.map(l => (
+                      <div key={l.id} className="border border-gray-200 rounded-xl p-3 text-sm">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-medium text-gray-900">{l.method}</span>
+                          {l.method === 'CI' && l.onRate !== null && (
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${l.onRate ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                              {l.onRate ? 'On Rate' : 'Off Rate'}
+                            </span>
+                          )}
+                          {l.method === 'BATCH' && (
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${l.applied ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                              {l.applied ? 'Applied' : 'Not Applied'}
+                            </span>
+                          )}
+                        </div>
+                        {l.method === 'CI' && (
+                          <div className="grid grid-cols-3 gap-2 text-xs text-gray-600 mt-1">
+                            <div><span className="text-gray-400">Pump</span><br />{l.pumpRunning ? 'Running' : 'Not Running'}</div>
+                            <div><span className="text-gray-400">Rate Found</span><br />{l.rateFound ?? '—'}</div>
+                            <div><span className="text-gray-400">Rate Set To</span><br />{l.rateSetTo ?? '—'}</div>
+                          </div>
+                        )}
+                        {l.notes && <p className="text-xs text-gray-500 mt-1.5">{l.notes}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Sample */}
+              {data.sampleType && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Sample</p>
+                  <p className="text-sm text-gray-900">{data.sampleType}</p>
+                  {data.sampleNotes && <p className="text-sm text-gray-600">{data.sampleNotes}</p>}
+                </div>
+              )}
+
+              {/* Signature */}
+              {data.signerName && (
+                <div className="p-3 rounded-xl bg-gray-50 border border-gray-200">
+                  <div className="flex items-center gap-2 mb-1">
+                    <PenLine size={13} className="text-gray-400" />
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Signature</p>
+                  </div>
+                  {data.signatureUrl && (
+                    <img src={data.signatureUrl} alt="Signature" className="h-16 object-contain mb-1" />
+                  )}
+                  <p className="text-sm text-gray-700">{data.signerName}</p>
+                  <p className="text-xs text-gray-400">{fmt(data.signedAt)}</p>
+                </div>
+              )}
+
+              {/* Notes */}
+              {data.notes && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Notes</p>
+                  <p className="text-sm text-gray-700">{data.notes}</p>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -479,12 +716,24 @@ export default function ServiceVisitsPage() {
                 </td>
                 <td className="px-4 py-3 text-gray-700">{v.techName}</td>
                 <td className="px-4 py-3 text-gray-700">
-                  <span className="inline-flex items-center gap-1">
-                    <ClipboardList size={13} className="text-gray-400" />
-                    {v.stops.length} {v.stops.length === 1 ? 'well' : 'wells'}
+                  <span className="inline-flex items-center gap-1.5 flex-wrap">
+                    <span className="inline-flex items-center gap-1">
+                      <ClipboardList size={13} className="text-gray-400" />
+                      {v.stops.length} {v.stops.length === 1 ? 'well' : 'wells'}
+                    </span>
                     {v.stops.filter(s => s.sampleCollected).length > 0 && (
-                      <span className="ml-1 text-xs text-blue-600 font-medium">
+                      <span className="text-xs text-blue-600 font-medium">
                         · {v.stops.filter(s => s.sampleCollected).length} sample{v.stops.filter(s => s.sampleCollected).length > 1 ? 's' : ''}
+                      </span>
+                    )}
+                    {v.stops.some(s => s.hasSoar && !s.soarAcknowledged) && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-700">
+                        <AlertTriangle size={10} /> SOAR
+                      </span>
+                    )}
+                    {v.stops.some(s => s.hasSoar && s.soarAcknowledged) && !v.stops.some(s => s.hasSoar && !s.soarAcknowledged) && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-700">
+                        <AlertTriangle size={10} /> SOAR ✓
                       </span>
                     )}
                   </span>

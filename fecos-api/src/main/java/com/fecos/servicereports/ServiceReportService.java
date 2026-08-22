@@ -1,6 +1,8 @@
 package com.fecos.servicereports;
 
+import com.fecos.clients.ClientRepository;
 import com.fecos.leases.LeaseRepository;
+import com.fecos.programs.TreatmentPlanLineRepository;
 import com.fecos.servicevisits.ServiceVisitRepository;
 import com.fecos.servicevisits.ServiceVisitStopRepository;
 import com.fecos.servicevisits.ServiceVisitStopStatus;
@@ -25,11 +27,14 @@ public class ServiceReportService {
 
     private final ServiceReportRepository reportRepo;
     private final ServiceReportChemicalRepository chemRepo;
+    private final ServiceReportTreatmentLineRepository treatLineRepo;
     private final ServiceVisitStopRepository stopRepo;
     private final ServiceVisitRepository visitRepo;
     private final UserRepository userRepo;
     private final WellRepository wellRepo;
     private final LeaseRepository leaseRepo;
+    private final ClientRepository clientRepo;
+    private final TreatmentPlanLineRepository planLineRepo;
 
     // ── Submit report for a stop ──────────────────────────────────────────────
 
@@ -178,6 +183,126 @@ public class ServiceReportService {
                 .toList();
     }
 
+    // ── Submit treatment report for a stop (mobile Phase 2) ──────────────────
+
+    @Transactional
+    public TreatmentReportResponse submitTreatmentReport(UUID visitId, UUID stopId, TreatmentReportRequest req) {
+        UUID tenantId = currentTenantId();
+        UUID userId   = currentUserId();
+
+        stopRepo.findByIdAndTenantIdAndIsDeletedFalse(stopId, tenantId)
+                .orElseThrow(() -> new RuntimeException("Stop not found"));
+
+        // upsert the service_reports header row
+        ServiceReportEntity report = reportRepo
+                .findByServiceVisitStopIdAndIsDeletedFalse(stopId)
+                .orElseGet(() -> {
+                    ServiceReportEntity r = new ServiceReportEntity();
+                    r.setId(UUID.randomUUID());
+                    r.setTenantId(tenantId);
+                    r.setServiceVisitStopId(stopId);
+                    r.setCreatedBy(userId);
+                    return r;
+                });
+
+        report.setPerformedAt(req.performedAt());
+        report.setGpsLat(req.gpsLat());
+        report.setGpsLng(req.gpsLng());
+        report.setGpsCapturedAt(req.gpsCapturedAt());
+        report.setPhotoUrl(req.photoUrl());
+        report.setPhotoCapturedAt(req.photoCapturedAt());
+        report.setSoar(req.soar());
+        report.setSoarNote(req.soarNote());
+        report.setSampleType(req.sampleType());
+        report.setSampleNotes(req.sampleNotes());
+        report.setSignatureUrl(req.signatureUrl());
+        report.setSignerName(req.signerName());
+        report.setSignedAt(req.signedAt());
+        report.setNotes(req.notes());
+        report.setSubmittedAt(Instant.now());
+        reportRepo.save(report);
+
+        // replace treatment lines
+        treatLineRepo.findAllByServiceReportIdAndIsDeletedFalseOrderBySortOrderAsc(report.getId())
+                .forEach(l -> { l.setDeleted(true); treatLineRepo.save(l); });
+
+        if (req.lines() != null) {
+            for (TreatmentReportRequest.TreatmentLineRequest lr : req.lines()) {
+                ServiceReportTreatmentLineEntity line = new ServiceReportTreatmentLineEntity();
+                line.setId(UUID.randomUUID());
+                line.setTenantId(tenantId);
+                line.setServiceReportId(report.getId());
+                line.setPlanLineId(lr.planLineId());
+                line.setTankId(lr.tankId());
+                line.setMethod(lr.method());
+                line.setPumpRunning(lr.pumpRunning());
+                line.setRateFound(lr.rateFound());
+                line.setRateSetTo(lr.rateSetTo());
+                line.setOnRate(lr.onRate());
+                line.setApplied(lr.applied());
+                line.setNotes(lr.notes());
+                line.setRecordedAt(lr.recordedAt());
+                line.setSortOrder(lr.sortOrder());
+                line.setCreatedBy(userId);
+                treatLineRepo.save(line);
+
+                // update rec rate in treatment plan line if changed
+                if ("CI".equalsIgnoreCase(lr.method()) && lr.rateSetTo() != null && lr.planLineId() != null) {
+                    planLineRepo.findById(lr.planLineId()).ifPresent(pl -> {
+                        if (pl.getRecRate().compareTo(lr.rateSetTo()) != 0) {
+                            pl.setRecRatePrevious(pl.getRecRate());
+                            pl.setRecRate(lr.rateSetTo());
+                            pl.setRecRateUpdatedBy(userId);
+                            pl.setRecRateUpdatedAt(Instant.now());
+                            planLineRepo.save(pl);
+                        }
+                    });
+                }
+            }
+        }
+
+        // mark stop completed
+        stopRepo.findByIdAndTenantIdAndIsDeletedFalse(stopId, tenantId).ifPresent(s -> {
+            s.setStatus(ServiceVisitStopStatus.COMPLETED);
+            stopRepo.save(s);
+        });
+
+        return toTreatmentReportResponse(report);
+    }
+
+    // ── Acknowledge SOAR (web - manager/admin) ────────────────────────────────
+
+    @Transactional
+    public TreatmentReportResponse acknowledgeSoar(UUID stopId, SoarAckRequest req) {
+        UUID tenantId = currentTenantId();
+        UUID userId   = currentUserId();
+
+        ServiceReportEntity report = reportRepo
+                .findByServiceVisitStopIdAndIsDeletedFalse(stopId)
+                .orElseThrow(() -> new RuntimeException("No report filed for this stop"));
+        if (!report.getTenantId().equals(tenantId)) throw new RuntimeException("Not found");
+        if (!report.isSoar()) throw new RuntimeException("This stop does not have a SOAR flag");
+
+        report.setSoarAckBy(userId);
+        report.setSoarAckAt(Instant.now());
+        report.setSoarAckNote(req.ackNote());
+        reportRepo.save(report);
+
+        return toTreatmentReportResponse(report);
+    }
+
+    // ── Get treatment report for a stop (mobile + web) ────────────────────────
+
+    @Transactional(readOnly = true)
+    public TreatmentReportResponse getTreatmentReport(UUID stopId) {
+        UUID tenantId = currentTenantId();
+        ServiceReportEntity report = reportRepo
+                .findByServiceVisitStopIdAndIsDeletedFalse(stopId)
+                .orElseThrow(() -> new RuntimeException("No report filed for this stop"));
+        if (!report.getTenantId().equals(tenantId)) throw new RuntimeException("Not found");
+        return toTreatmentReportResponse(report);
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private MyVisitResponse toMyVisitResponse(com.fecos.servicevisits.ServiceVisitEntity v) {
@@ -186,20 +311,71 @@ public class ServiceReportService {
                         .stream()
                         .map(s -> {
                             WellEntity well = wellRepo.findById(s.getWellId()).orElse(null);
-                            String wellName  = well != null ? well.getWellName() : "—";
-                            String leaseName = well != null
-                                    ? leaseRepo.findById(well.getLeaseId()).map(l -> l.getLeaseName()).orElse("—")
-                                    : "—";
+                            String wellName   = well != null ? well.getWellName() : "—";
+                            String leaseName  = "—";
+                            String clientName = "—";
+                            if (well != null) {
+                                var lease = leaseRepo.findById(well.getLeaseId()).orElse(null);
+                                if (lease != null) {
+                                    leaseName  = lease.getLeaseName();
+                                    clientName = clientRepo.findById(lease.getClientId())
+                                            .map(c -> c.getCompanyName()).orElse("—");
+                                }
+                            }
                             boolean hasReport = reportRepo
                                     .findByServiceVisitStopIdAndIsDeletedFalse(s.getId())
                                     .isPresent();
                             return new MyVisitStopResponse(
-                                    s.getId(), s.getWellId(), wellName, leaseName,
+                                    s.getId(), s.getWellId(), wellName, leaseName, clientName,
                                     s.getSequence(), s.getStatus().name(),
                                     s.isSampleCollected(), hasReport
                             );
                         }).toList();
         return new MyVisitResponse(v.getId(), v.getVisitDate().toString(), v.getStatus().name(), stops);
+    }
+
+    private TreatmentReportResponse toTreatmentReportResponse(ServiceReportEntity r) {
+        List<TreatmentReportResponse.TreatmentLineResponse> lines =
+                treatLineRepo.findAllByServiceReportIdAndIsDeletedFalseOrderBySortOrderAsc(r.getId())
+                        .stream()
+                        .map(l -> new TreatmentReportResponse.TreatmentLineResponse(
+                                l.getId(), l.getPlanLineId(), l.getTankId(), l.getMethod(),
+                                l.getPumpRunning(), l.getRateFound(), l.getRateSetTo(),
+                                l.getOnRate(), l.getApplied(), l.getNotes(),
+                                l.getRecordedAt(), l.getSortOrder()
+                        )).toList();
+
+        String wellName = "—", leaseName = "—", clientName = "—", techName = "—";
+        var stop = stopRepo.findByIdAndTenantIdAndIsDeletedFalse(r.getServiceVisitStopId(), r.getTenantId()).orElse(null);
+        if (stop != null) {
+            WellEntity well = wellRepo.findById(stop.getWellId()).orElse(null);
+            if (well != null) {
+                wellName = well.getWellName();
+                var lease = leaseRepo.findById(well.getLeaseId()).orElse(null);
+                if (lease != null) {
+                    leaseName  = lease.getLeaseName();
+                    clientName = clientRepo.findById(lease.getClientId())
+                            .map(c -> c.getCompanyName()).orElse("—");
+                }
+            }
+            var visit = visitRepo.findByIdAndTenantIdAndIsDeletedFalse(stop.getServiceVisitId(), r.getTenantId()).orElse(null);
+            if (visit != null) techName = userRepo.findById(visit.getTechId()).map(u -> u.getFullName()).orElse("—");
+        }
+
+        String soarAckByName = r.getSoarAckBy() != null
+                ? userRepo.findById(r.getSoarAckBy()).map(u -> u.getFullName()).orElse(null)
+                : null;
+        String soarAckAtStr = r.getSoarAckAt() != null ? r.getSoarAckAt().toString() : null;
+
+        return new TreatmentReportResponse(
+                r.getId(), r.getServiceVisitStopId(), wellName, leaseName, clientName, techName,
+                r.getPerformedAt(), r.getGpsLat(), r.getGpsLng(), r.getGpsCapturedAt(),
+                r.getPhotoUrl(), r.getPhotoCapturedAt(),
+                r.isSoar(), r.getSoarNote(), soarAckByName, soarAckAtStr, r.getSoarAckNote(),
+                r.getSampleType(), r.getSampleNotes(),
+                r.getSignatureUrl(), r.getSignerName(), r.getSignedAt(),
+                r.getNotes(), r.getSubmittedAt(), lines
+        );
     }
 
     private ServiceReportResponse toResponse(ServiceReportEntity r) {

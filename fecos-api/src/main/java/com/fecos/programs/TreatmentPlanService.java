@@ -306,7 +306,10 @@ public class TreatmentPlanService {
                                 pumpSerial = pump.get().getSerialNumber();
                             }
                         }
-                        return TreatmentPlanLineResponse.from(l, productName, calcThirdPartyLevel(l), pumpDeployed, pumpId, pumpSerial);
+                        String updatedByName = l.getRecRateUpdatedBy() != null
+                                ? userRepository.findById(l.getRecRateUpdatedBy()).map(u -> u.getFullName()).orElse(null)
+                                : null;
+                        return TreatmentPlanLineResponse.from(l, productName, calcThirdPartyLevel(l), pumpDeployed, pumpId, pumpSerial, updatedByName);
                     })
                     .toList();
         }

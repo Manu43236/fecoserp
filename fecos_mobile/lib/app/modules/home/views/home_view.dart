@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:fecos_mobile/app/data/models/dashboard_data.dart';
+import 'package:fecos_mobile/app/modules/service_visit/controllers/service_visit_controller.dart';
 import 'package:fecos_mobile/app/theme/app_theme.dart';
 import 'package:fecos_mobile/app/widgets/fecos_shimmer.dart';
 import 'package:fecos_mobile/app/routes/app_pages.dart';
@@ -23,102 +25,12 @@ class HomeView extends GetView<HomeController> {
           ),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                // Pre-trip card
-                _SectionLabel(
-                  icon: Icons.checklist_rounded,
-                  label: 'Pre-Trip Inspection',
-                  onTap: () => Get.toNamed(Routes.preTrip),
-                ),
-                const SizedBox(height: 10),
-                _ComingSoonCard(
-                  height: 88,
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: AppColors.warning.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(Icons.directions_car_rounded,
-                            color: AppColors.warning, size: 22),
-                      ),
-                      const SizedBox(width: 14),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            FecosShimmer(height: 13, width: 140, borderRadius: 4),
-                            SizedBox(height: 8),
-                            FecosShimmer(height: 11, borderRadius: 4),
-                          ],
-                        ),
-                      ),
-                      const _ComingSoonBadge(),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Today's stats row
-                _SectionLabel(
-                  icon: Icons.bar_chart_rounded,
-                  label: "Today's Overview",
-                ),
-                const SizedBox(height: 10),
-                const FecosShimmerStatRow(count: 3),
-
-                const SizedBox(height: 24),
-
-                // Visit summary
-                _SectionLabel(
-                  icon: Icons.science_rounded,
-                  label: "Today's Visits",
-                  onTap: () => Get.toNamed(
-                    Routes.serviceVisit,
-                    parameters: {'id': 'list'},
-                  ),
-                ),
-                const SizedBox(height: 10),
-                const FecosShimmerCard(height: 90),
-                const SizedBox(height: 10),
-                const FecosShimmerCard(height: 90),
-
-                const SizedBox(height: 24),
-
-                // Upcoming
-                _SectionLabel(
-                  icon: Icons.calendar_month_rounded,
-                  label: 'Upcoming',
-                ),
-                const SizedBox(height: 10),
-                const _ComingSoonCard(
-                  height: 120,
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.calendar_today_rounded,
-                            size: 32, color: AppColors.textHint),
-                        SizedBox(height: 8),
-                        Text(
-                          'Upcoming schedule — Coming Soon',
-                          style: TextStyle(
-                            color: AppColors.textHint,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ]),
-            ),
+            sliver: Obx(() {
+              if (controller.isLoading.value) return _LoadingSkeleton();
+              if (controller.hasError.value) return _ErrorState(onRetry: controller.load);
+              final data = controller.dashboard.value!;
+              return _DashboardContent(data: data, upcoming: controller.upcoming);
+            }),
           ),
         ],
       ),
@@ -126,13 +38,348 @@ class HomeView extends GetView<HomeController> {
   }
 }
 
+// ── Dashboard content (loaded) ───────────────────────────────────────────────
+
+class _DashboardContent extends StatelessWidget {
+  const _DashboardContent({required this.data, required this.upcoming});
+  final DashboardData data;
+  final List<MyVisit> upcoming;
+
+  @override
+  Widget build(BuildContext context) => SliverList(
+        delegate: SliverChildListDelegate([
+          _SectionLabel(icon: Icons.bar_chart_rounded, label: "Today's Overview"),
+          const SizedBox(height: 10),
+          _StatRow(data: data),
+
+          const SizedBox(height: 24),
+
+          _SectionLabel(
+            icon: Icons.science_rounded,
+            label: "Today's Visits",
+            onTap: () => Get.toNamed(Routes.serviceVisit),
+          ),
+          const SizedBox(height: 10),
+          _VisitsSummaryCard(data: data),
+
+          const SizedBox(height: 24),
+
+          _SectionLabel(icon: Icons.calendar_month_rounded, label: 'Upcoming'),
+          const SizedBox(height: 10),
+          _UpcomingSection(visits: upcoming),
+        ]),
+      );
+}
+
+// ── Stat row ──────────────────────────────────────────────────────────────────
+
+class _StatRow extends StatelessWidget {
+  const _StatRow({required this.data});
+  final DashboardData data;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        children: [
+          Expanded(
+            child: _StatCard(
+              value: '${data.visitsTotal}',
+              label: 'Visits',
+              icon: Icons.calendar_today_rounded,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _StatCard(
+              value: '${data.stopsCompleted}',
+              label: 'Completed',
+              icon: Icons.check_circle_rounded,
+              color: AppColors.success,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _StatCard(
+              value: '${data.stopsTotal - data.stopsCompleted}',
+              label: 'Remaining',
+              icon: Icons.pending_rounded,
+              color: AppColors.warning,
+            ),
+          ),
+        ],
+      );
+}
+
+class _StatCard extends StatelessWidget {
+  const _StatCard({
+    required this.value,
+    required this.label,
+    required this.icon,
+    required this.color,
+  });
+
+  final String value;
+  final String label;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceCard,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 18, color: color),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+// ── Visits summary card ───────────────────────────────────────────────────────
+
+class _VisitsSummaryCard extends StatelessWidget {
+  const _VisitsSummaryCard({required this.data});
+  final DashboardData data;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: () => Get.toNamed(Routes.serviceVisit),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceCard,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Text(
+                    'Wells to service today',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${data.stopsCompleted}/${data.stopsTotal} stops',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: data.stopsTotal > 0
+                      ? data.stopsCompleted / data.stopsTotal
+                      : 0,
+                  backgroundColor: AppColors.border,
+                  valueColor:
+                      const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                  minHeight: 6,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Icon(Icons.arrow_forward_rounded,
+                      size: 14, color: AppColors.primary),
+                  const SizedBox(width: 6),
+                  const Text(
+                    'View my visits',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+}
+
+// ── Upcoming section ──────────────────────────────────────────────────────────
+
+class _UpcomingSection extends StatelessWidget {
+  const _UpcomingSection({required this.visits});
+  final List<MyVisit> visits;
+
+  String _dateLabel(String visitDate) {
+    final date = DateTime.parse(visitDate);
+    final today = DateTime.now();
+    final tomorrow = today.add(const Duration(days: 1));
+    if (date.year == tomorrow.year &&
+        date.month == tomorrow.month &&
+        date.day == tomorrow.day) {
+      return 'Tomorrow';
+    }
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return '${days[date.weekday - 1]}, ${months[date.month - 1]} ${date.day}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (visits.isEmpty) {
+      return Container(
+        height: 88,
+        decoration: BoxDecoration(
+          color: AppColors.surfaceCard,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: const Center(
+          child: Text(
+            'No upcoming visits scheduled',
+            style: TextStyle(fontSize: 13, color: AppColors.textHint),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: visits.map((visit) {
+        final stopCount = visit.stops.length;
+        return Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceCard,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: ListTile(
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+            leading: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.calendar_today_rounded,
+                  size: 18, color: AppColors.primary),
+            ),
+            title: Text(
+              _dateLabel(visit.visitDate),
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            subtitle: Text(
+              '$stopCount well${stopCount == 1 ? '' : 's'} to service',
+              style: const TextStyle(
+                  fontSize: 12, color: AppColors.textSecondary),
+            ),
+            trailing: const Icon(Icons.chevron_right_rounded,
+                size: 20, color: AppColors.textHint),
+            onTap: () => Get.toNamed(Routes.serviceVisit),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+// ── Loading skeleton ──────────────────────────────────────────────────────────
+
+class _LoadingSkeleton extends SliverToBoxAdapter {
+  _LoadingSkeleton()
+      : super(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const _SectionLabel(icon: Icons.bar_chart_rounded, label: "Today's Overview"),
+              const SizedBox(height: 10),
+              const FecosShimmerStatRow(count: 3),
+              const SizedBox(height: 24),
+              const _SectionLabel(icon: Icons.science_rounded, label: "Today's Visits"),
+              const SizedBox(height: 10),
+              const FecosShimmerCard(height: 90),
+            ],
+          ),
+        );
+}
+
+// ── Error state ───────────────────────────────────────────────────────────────
+
+class _ErrorState extends StatelessWidget {
+  const _ErrorState({required this.onRetry});
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) => SliverToBoxAdapter(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 60),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.wifi_off_rounded,
+                    size: 48, color: AppColors.textHint),
+                const SizedBox(height: 16),
+                const Text(
+                  'Could not load dashboard',
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: onRetry,
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+}
+
 // ── Greeting sliver app bar ──────────────────────────────────────────────────
 
 class _GreetingAppBar extends StatelessWidget {
-  const _GreetingAppBar({
-    required this.firstName,
-    required this.connectivity,
-  });
+  const _GreetingAppBar({required this.firstName, required this.connectivity});
 
   final String firstName;
   final dynamic connectivity;
@@ -159,9 +406,42 @@ class _GreetingAppBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SliverAppBar(
-        expandedHeight: 130,
+        expandedHeight: 90,
         pinned: true,
         backgroundColor: AppColors.dark,
+        automaticallyImplyLeading: false,
+        actions: [
+          Obx(() {
+            final online = connectivity.isOnline.value as bool;
+            return Container(
+              margin: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: online
+                    ? AppColors.success.withValues(alpha: 0.18)
+                    : AppColors.danger.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.circle,
+                      size: 7,
+                      color: online ? AppColors.success : AppColors.danger),
+                  const SizedBox(width: 5),
+                  Text(
+                    online ? 'Online' : 'Offline',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
         flexibleSpace: FlexibleSpaceBar(
           background: Container(
             decoration: const BoxDecoration(
@@ -171,7 +451,7 @@ class _GreetingAppBar extends StatelessWidget {
                 colors: [AppColors.dark, AppColors.primary],
               ),
             ),
-            padding: const EdgeInsets.fromLTRB(20, 56, 20, 20),
+            padding: const EdgeInsets.fromLTRB(20, 52, 20, 14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.end,
@@ -180,76 +460,30 @@ class _GreetingAppBar extends StatelessWidget {
                   '$_greeting, $firstName',
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 22,
+                    fontSize: 20,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 Text(
                   _todayLabel,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.75),
-                    fontSize: 13,
+                    color: Colors.white.withValues(alpha: 0.72),
+                    fontSize: 12,
                   ),
                 ),
               ],
             ),
           ),
-          title: Obx(() {
-            final online = connectivity.isOnline.value as bool;
-            return Row(
-              children: [
-                const Text(
-                  'Home',
-                  style: TextStyle(color: Colors.white, fontSize: 17),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: online
-                        ? AppColors.success.withValues(alpha: 0.2)
-                        : AppColors.danger.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.circle,
-                        size: 7,
-                        color: online ? AppColors.success : AppColors.danger,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        online ? 'Online' : 'Offline',
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            );
-          }),
-          titlePadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
           collapseMode: CollapseMode.parallax,
         ),
       );
 }
 
-// ── Section label row ────────────────────────────────────────────────────────
+// ── Section label ─────────────────────────────────────────────────────────────
 
 class _SectionLabel extends StatelessWidget {
-  const _SectionLabel({
-    required this.icon,
-    required this.label,
-    this.onTap,
-  });
+  const _SectionLabel({required this.icon, required this.label, this.onTap});
 
   final IconData icon;
   final String label;
@@ -286,49 +520,3 @@ class _SectionLabel extends StatelessWidget {
       );
 }
 
-// ── Coming soon card wrapper ─────────────────────────────────────────────────
-
-class _ComingSoonCard extends StatelessWidget {
-  const _ComingSoonCard({required this.height, required this.child});
-
-  final double height;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        height: height,
-        decoration: BoxDecoration(
-          color: AppColors.surfaceCard,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border),
-        ),
-        padding: const EdgeInsets.all(14),
-        child: child,
-      );
-}
-
-// ── Coming soon badge ────────────────────────────────────────────────────────
-
-class _ComingSoonBadge extends StatelessWidget {
-  const _ComingSoonBadge();
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-        decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: AppColors.primary.withValues(alpha: 0.2),
-          ),
-        ),
-        child: const Text(
-          'Coming Soon',
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            color: AppColors.primary,
-          ),
-        ),
-      );
-}
