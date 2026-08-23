@@ -655,18 +655,32 @@ function VisitDrawer({ visit, onClose, onRefresh, wellOpts }: {
                 )}
 
                 {/* Signature */}
-                {reportData.signerName && (
+                {(reportData.signatureUrl || reportData.signerName) && (
                   <div>
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                       <PenLine size={12} /> Operator Signature
                     </p>
-                    <div className="border border-gray-200 rounded-xl p-3 bg-gray-50">
-                      {reportData.signatureUrl && (
-                        <img src={reportData.signatureUrl} alt="Signature"
-                          className="h-20 object-contain mb-2 bg-white rounded-lg border border-gray-200 px-2" />
-                      )}
-                      <p className="text-sm font-semibold text-gray-900">{reportData.signerName}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">Signed {fmt(reportData.signedAt)}</p>
+                    <div className="border border-gray-200 rounded-xl overflow-hidden">
+                      <div className="bg-gray-50 flex items-center justify-center min-h-[90px] border-b border-gray-200 p-3">
+                        {reportData.signatureUrl ? (
+                          <img src={reportData.signatureUrl} alt="Signature"
+                            className="max-h-20 object-contain" />
+                        ) : (
+                          <PenLine size={24} className="text-gray-300" />
+                        )}
+                      </div>
+                      <div className="px-3 py-2.5 flex items-center justify-between bg-white">
+                        <div>
+                          <p className="text-xs text-gray-400">Operator</p>
+                          <p className="text-sm font-semibold text-gray-900">{reportData.signerName ?? '—'}</p>
+                        </div>
+                        {reportData.signedAt && (
+                          <div className="text-right">
+                            <p className="text-xs text-gray-400">Signed</p>
+                            <p className="text-xs font-medium text-gray-600">{fmt(reportData.signedAt)}</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
