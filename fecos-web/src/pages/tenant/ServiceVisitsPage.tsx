@@ -542,6 +542,12 @@ function VisitDrawer({ visit, onClose, onRefresh, wellOpts }: {
                 )}
 
                 {/* Treatment Lines */}
+                {reportData.lines.length === 0 && (
+                  <div className="flex items-start gap-2.5 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+                    <span className="mt-0.5">⚠</span>
+                    <span>No treatment line data was submitted with this report. The service tech may have encountered a plan loading error on the app.</span>
+                  </div>
+                )}
                 {reportData.lines.length > 0 && (
                   <div>
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Treatment Lines</p>
