@@ -184,28 +184,72 @@ class _ReportBody extends StatelessWidget {
         ],
 
         // Sample
-        if (report.sampleType != null) ...[
-          _SectionLabel('SAMPLE'),
-          _Card(
+        if (report.sampleType != null ||
+            report.sampleNotes != null ||
+            report.samplePhotoUrl != null) ...[
+          _SectionLabel('SAMPLE COLLECTION'),
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.blue.shade100),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _MetaRow('Type', report.sampleType!),
-                if (report.sampleNotes != null)
-                  _MetaRow('Notes', report.sampleNotes!),
-                if (report.samplePhotoUrl != null) ...[
-                  const SizedBox(height: 8),
+                if (report.sampleType != null || report.sampleNotes != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (report.sampleType != null) ...[
+                          Text('Sample Type',
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.blue.shade400,
+                                  fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 2),
+                          Text(report.sampleType!,
+                              style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 8),
+                        ],
+                        if (report.sampleNotes != null) ...[
+                          Text('Special Notes',
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.blue.shade400,
+                                  fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 2),
+                          Text(report.sampleNotes!,
+                              style: const TextStyle(fontSize: 13)),
+                        ],
+                      ],
+                    ),
+                  ),
+                if (report.samplePhotoUrl != null)
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: const Radius.circular(12),
+                      bottomRight: const Radius.circular(12),
+                      topLeft: (report.sampleType == null && report.sampleNotes == null)
+                          ? const Radius.circular(12)
+                          : Radius.zero,
+                      topRight: (report.sampleType == null && report.sampleNotes == null)
+                          ? const Radius.circular(12)
+                          : Radius.zero,
+                    ),
                     child: Image.network(
                       report.samplePhotoUrl!,
-                      height: 160,
+                      height: 180,
                       width: double.infinity,
                       fit: BoxFit.cover,
                       errorBuilder: (_, _, _) => _PhotoError(),
                     ),
                   ),
-                ],
               ],
             ),
           ),
@@ -214,28 +258,93 @@ class _ReportBody extends StatelessWidget {
 
         // Signature
         if (report.signatureUrl != null || report.signerName != null) ...[
-          _SectionLabel('SIGNATURE'),
-          _Card(
+          _SectionLabel('OPERATOR SIGNATURE'),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (report.signatureUrl != null) ...[
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      report.signatureUrl!,
-                      height: 100,
-                      width: double.infinity,
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, _, _) => _PhotoError(),
-                    ),
+                // Signature canvas area
+                Container(
+                  width: double.infinity,
+                  height: 110,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(12)),
+                    border: Border(
+                        bottom:
+                            BorderSide(color: Colors.grey.shade200)),
                   ),
-                  const SizedBox(height: 8),
-                ],
-                if (report.signerName != null)
-                  _MetaRow('Signed by', report.signerName!),
-                if (report.signedAt != null)
-                  _MetaRow('Signed at', _fmt(report.signedAt)),
+                  child: report.signatureUrl != null
+                      ? ClipRRect(
+                          borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(12)),
+                          child: Image.network(
+                            report.signatureUrl!,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, _, _) => const Center(
+                              child: Icon(Icons.draw_outlined,
+                                  color: Colors.grey, size: 32),
+                            ),
+                          ),
+                        )
+                      : const Center(
+                          child: Icon(Icons.draw_outlined,
+                              color: Colors.grey, size: 32),
+                        ),
+                ),
+                // Operator info row
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.person_outline,
+                          size: 16, color: Colors.grey),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Operator',
+                                style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey,
+                                    fontWeight: FontWeight.w500)),
+                            Text(
+                              report.signerName ?? '—',
+                              style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (report.signedAt != null)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            const Text('Signed at',
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey,
+                                    fontWeight: FontWeight.w500)),
+                            Text(
+                              _fmt(report.signedAt),
+                              style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF374151)),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),

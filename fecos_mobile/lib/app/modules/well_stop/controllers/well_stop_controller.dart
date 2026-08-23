@@ -146,6 +146,7 @@ class WellStopController extends GetxController {
   // plan lines
   final planLines = <PlanLine>[].obs;
   final planLoading = true.obs;
+  final planLoadError = Rxn<String>();
 
   // GPS
   final gpsLat = Rxn<double>();
@@ -230,11 +231,16 @@ class WellStopController extends GetxController {
           pl.onRate.value = true;
         }
       }
-    } on dio_pkg.DioException {
-      // no plan — still show SOAR / sample / notes
+    } catch (e) {
+      planLoadError.value = 'Could not load treatment plan. Tap to retry.';
     } finally {
       planLoading.value = false;
     }
+  }
+
+  void retryLoadPlan() {
+    planLoadError.value = null;
+    _loadPlanLines();
   }
 
   // ── GPS ───────────────────────────────────────────────────────────────────

@@ -31,7 +31,36 @@ class WellStopView extends GetView<WellStopController> {
             children: [
               _StopHeader(stop: controller.stop),
               const SizedBox(height: 16),
-              if (controller.planLines.isEmpty)
+              if (controller.planLoadError.value != null)
+                GestureDetector(
+                  onTap: controller.retryLoadPlan,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.error_outline,
+                            color: Colors.red.shade400, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            controller.planLoadError.value!,
+                            style: TextStyle(
+                                color: Colors.red.shade700, fontSize: 13),
+                          ),
+                        ),
+                        Icon(Icons.refresh,
+                            color: Colors.red.shade400, size: 18),
+                      ],
+                    ),
+                  ),
+                )
+              else if (controller.planLines.isEmpty)
                 _InfoCard(
                   icon: Icons.info_outline,
                   message: 'No active treatment plan for this well.',
