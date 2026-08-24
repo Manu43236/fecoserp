@@ -906,6 +906,7 @@ function defaultDateTo() {
 }
 
 export default function ServiceVisitsPage() {
+  const [searchText,   setSearchText]   = useState('')
   const [dateFrom,     setDateFrom]     = useState(defaultDateFrom)
   const [dateTo,       setDateTo]       = useState(defaultDateTo)
   const [statusFilter, setStatusFilter] = useState<VisitStatus | 'ALL'>('ALL')
@@ -913,9 +914,6 @@ export default function ServiceVisitsPage() {
   const [page,         setPage]         = useState(0)
   const [showPanel,    setShowPanel]    = useState(false)
   const [activeVisit,  setActiveVisit]  = useState<ServiceVisit | null>(null)
-
-  // committed filters — only update when user clicks Search
-  const [committed, setCommitted] = useState({ dateFrom: defaultDateFrom(), dateTo: defaultDateTo(), status: 'ALL' as VisitStatus | 'ALL', techId: '' })
 
   const qc = useQueryClient()
 
@@ -936,14 +934,14 @@ export default function ServiceVisitsPage() {
   const wellOpts = (wellsData ?? []).map((w: { id: string; wellName: string }) => ({ value: w.id, label: w.wellName }))
 
   const { data, isLoading } = useQuery({
-    queryKey: ['service-visits', page, committed],
+    queryKey: ['service-visits', page, statusFilter, techFilter, dateFrom, dateTo],
     queryFn:  () => serviceVisitsApi.list({
       page,
       size: 20,
-      status:   committed.status !== 'ALL' ? committed.status : undefined,
-      techId:   committed.techId || undefined,
-      dateFrom: committed.dateFrom || undefined,
-      dateTo:   committed.dateTo   || undefined,
+      status:   statusFilter !== 'ALL' ? statusFilter : undefined,
+      techId:   techFilter || undefined,
+      dateFrom: dateFrom || undefined,
+      dateTo:   dateTo   || undefined,
     }).then(r => r.data?.data),
   })
 
@@ -951,10 +949,14 @@ export default function ServiceVisitsPage() {
   const totalPages: number     = data?.totalPages ?? 0
   const totalElements: number  = data?.totalElements ?? 0
 
-  const search = () => {
-    setPage(0)
-    setCommitted({ dateFrom, dateTo, status: statusFilter, techId: techFilter })
-  }
+  const filteredVisits = useMemo(() =>
+    searchText
+      ? visits.filter(v =>
+          (v.name ?? '').toLowerCase().includes(searchText.toLowerCase()) ||
+          v.techName.toLowerCase().includes(searchText.toLowerCase())
+        )
+      : visits
+  , [visits, searchText])
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ['service-visits'] })
@@ -980,24 +982,28 @@ export default function ServiceVisitsPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
+        <div className="relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input type="text" placeholder="Search visits…" value={searchText}
+            onChange={e => setSearchText(e.target.value)}
+            className="h-9 pl-8 pr-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] w-48" />
+        </div>
         <div className="flex items-center gap-2">
           <label className="text-xs text-gray-500 whitespace-nowrap">From</label>
           <input type="date" value={dateFrom}
-            onChange={e => setDateFrom(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && search()}
+            onChange={e => { setDateFrom(e.target.value); setPage(0) }}
             className="h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]" />
         </div>
         <div className="flex items-center gap-2">
           <label className="text-xs text-gray-500 whitespace-nowrap">To</label>
           <input type="date" value={dateTo}
-            onChange={e => setDateTo(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && search()}
+            onChange={e => { setDateTo(e.target.value); setPage(0) }}
             className="h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]" />
         </div>
         <div className="w-44">
           <SearchableDropdown
             value={techFilter}
-            onChange={v => setTechFilter(v ?? '')}
+            onChange={v => { setTechFilter(v ?? ''); setPage(0) }}
             options={techOpts}
             placeholder="All Techs"
             showClear={true}
@@ -1006,17 +1012,12 @@ export default function ServiceVisitsPage() {
         <div className="w-40">
           <SearchableDropdown
             value={statusFilter === 'ALL' ? '' : statusFilter}
-            onChange={v => setStatusFilter((v as VisitStatus) || 'ALL')}
+            onChange={v => { setStatusFilter((v as VisitStatus) || 'ALL'); setPage(0) }}
             options={STATUS_OPTS}
             placeholder="All Statuses"
             showClear={true}
           />
         </div>
-        <button onClick={search}
-          className="flex items-center gap-1.5 h-9 px-4 text-sm font-semibold rounded-lg text-white"
-          style={{ backgroundColor: 'var(--color-primary)' }}>
-          <Search size={14} /> Search
-        </button>
       </div>
 
       {/* Table */}
@@ -1036,9 +1037,9 @@ export default function ServiceVisitsPage() {
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i}><td colSpan={5} className="px-4 py-3"><div className="h-4 bg-gray-100 rounded animate-pulse w-3/4" /></td></tr>
               ))
-            ) : visits.length === 0 ? (
+            ) : filteredVisits.length === 0 ? (
               <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-gray-400">No service visits found</td></tr>
-            ) : visits.map(v => (
+            ) : filteredVisits.map(v => (
               <tr key={v.id} onClick={() => setActiveVisit(v)}
                 className="hover:bg-gray-50 cursor-pointer transition-colors">
                 <td className="px-4 py-3">
