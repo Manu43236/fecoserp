@@ -20,7 +20,8 @@ public interface ServiceVisitRepository extends JpaRepository<ServiceVisitEntity
               AND v.isDeleted = false
               AND (:status IS NULL OR v.status = :status)
               AND (:techId IS NULL OR v.techId = :techId)
-              AND (:date IS NULL OR v.visitDate = :date)
+              AND (:dateFrom IS NULL OR v.visitDate >= :dateFrom)
+              AND (:dateTo IS NULL OR v.visitDate <= :dateTo)
             ORDER BY v.visitDate DESC, v.createdAt DESC
             """,
         countQuery = """
@@ -29,14 +30,16 @@ public interface ServiceVisitRepository extends JpaRepository<ServiceVisitEntity
               AND v.isDeleted = false
               AND (:status IS NULL OR v.status = :status)
               AND (:techId IS NULL OR v.techId = :techId)
-              AND (:date IS NULL OR v.visitDate = :date)
+              AND (:dateFrom IS NULL OR v.visitDate >= :dateFrom)
+              AND (:dateTo IS NULL OR v.visitDate <= :dateTo)
             """
     )
     Page<ServiceVisitEntity> search(
             @Param("tenantId") UUID tenantId,
             @Param("status") ServiceVisitStatus status,
             @Param("techId") UUID techId,
-            @Param("date") LocalDate date,
+            @Param("dateFrom") LocalDate dateFrom,
+            @Param("dateTo") LocalDate dateTo,
             Pageable pageable);
 
     Optional<ServiceVisitEntity> findByIdAndTenantIdAndIsDeletedFalse(UUID id, UUID tenantId);

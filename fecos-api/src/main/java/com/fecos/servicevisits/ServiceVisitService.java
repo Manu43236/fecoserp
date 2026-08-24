@@ -38,9 +38,9 @@ public class ServiceVisitService {
 
     @Transactional(readOnly = true)
     public Page<ServiceVisitResponse> list(int page, int size, ServiceVisitStatus status,
-                                           UUID techId, LocalDate date) {
+                                           UUID techId, LocalDate dateFrom, LocalDate dateTo) {
         UUID tenantId = currentTenantId();
-        return visitRepo.search(tenantId, status, techId, date, PageRequest.of(page, size))
+        return visitRepo.search(tenantId, status, techId, dateFrom, dateTo, PageRequest.of(page, size))
                 .map(v -> toResponse(v, true));
     }
 

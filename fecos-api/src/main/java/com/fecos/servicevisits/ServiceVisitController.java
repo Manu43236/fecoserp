@@ -26,8 +26,9 @@ public class ServiceVisitController {
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) ServiceVisitStatus status,
             @RequestParam(required = false) UUID techId,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return ResponseEntity.ok(ApiResponse.ok(service.list(page, size, status, techId, date)));
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo) {
+        return ResponseEntity.ok(ApiResponse.ok(service.list(page, size, status, techId, dateFrom, dateTo)));
     }
 
     @GetMapping("/due-wells")

@@ -91,7 +91,7 @@ export interface DueWell {
 }
 
 export const serviceVisitsApi = {
-  list: (params?: { status?: VisitStatus; techId?: string; date?: string; page?: number; size?: number }) =>
+  list: (params?: { status?: VisitStatus; techId?: string; dateFrom?: string; dateTo?: string; page?: number; size?: number }) =>
     api.get('/api/v1/service-visits', { params }),
   get:    (id: string) => api.get(`/api/v1/service-visits/${id}`),
   create: (data: { name: string; techId: string; visitDate: string; notes?: string; wellIds: string[] }) =>

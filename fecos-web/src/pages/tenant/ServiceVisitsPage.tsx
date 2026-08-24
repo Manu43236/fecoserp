@@ -894,14 +894,28 @@ function StopCard({ stop, index, canEdit, onRemove, onStatusChange, onViewReport
 
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
+function defaultDateFrom() {
+  const d = new Date()
+  d.setDate(d.getDate() - 14)
+  return d.toISOString().split('T')[0]
+}
+function defaultDateTo() {
+  const d = new Date()
+  d.setDate(d.getDate() + 30)
+  return d.toISOString().split('T')[0]
+}
+
 export default function ServiceVisitsPage() {
-  const today = new Date().toISOString().split('T')[0]
-  const [dateFilter,   setDateFilter]   = useState(today)
+  const [dateFrom,     setDateFrom]     = useState(defaultDateFrom)
+  const [dateTo,       setDateTo]       = useState(defaultDateTo)
   const [statusFilter, setStatusFilter] = useState<VisitStatus | 'ALL'>('ALL')
   const [techFilter,   setTechFilter]   = useState('')
   const [page,         setPage]         = useState(0)
   const [showPanel,    setShowPanel]    = useState(false)
   const [activeVisit,  setActiveVisit]  = useState<ServiceVisit | null>(null)
+
+  // committed filters — only update when user clicks Search
+  const [committed, setCommitted] = useState({ dateFrom: defaultDateFrom(), dateTo: defaultDateTo(), status: 'ALL' as VisitStatus | 'ALL', techId: '' })
 
   const qc = useQueryClient()
 
@@ -922,18 +936,25 @@ export default function ServiceVisitsPage() {
   const wellOpts = (wellsData ?? []).map((w: { id: string; wellName: string }) => ({ value: w.id, label: w.wellName }))
 
   const { data, isLoading } = useQuery({
-    queryKey: ['service-visits', page, statusFilter, techFilter, dateFilter],
+    queryKey: ['service-visits', page, committed],
     queryFn:  () => serviceVisitsApi.list({
       page,
       size: 20,
-      status:  statusFilter !== 'ALL' ? statusFilter : undefined,
-      techId:  techFilter   || undefined,
-      date:    dateFilter   || undefined,
+      status:   committed.status !== 'ALL' ? committed.status : undefined,
+      techId:   committed.techId || undefined,
+      dateFrom: committed.dateFrom || undefined,
+      dateTo:   committed.dateTo   || undefined,
     }).then(r => r.data?.data),
   })
 
   const visits: ServiceVisit[] = data?.content ?? []
   const totalPages: number     = data?.totalPages ?? 0
+  const totalElements: number  = data?.totalElements ?? 0
+
+  const search = () => {
+    setPage(0)
+    setCommitted({ dateFrom, dateTo, status: statusFilter, techId: techFilter })
+  }
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ['service-visits'] })
@@ -955,27 +976,44 @@ export default function ServiceVisitsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <input type="date" value={dateFilter} onChange={e => { setDateFilter(e.target.value); setPage(0) }}
-          className="h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]" />
-        <div className="w-48">
+      <div className="flex items-center gap-2 flex-wrap bg-white border border-gray-200 rounded-xl px-4 py-3">
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-gray-500 whitespace-nowrap">From</label>
+          <input type="date" value={dateFrom}
+            onChange={e => setDateFrom(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && search()}
+            className="h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]" />
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-gray-500 whitespace-nowrap">To</label>
+          <input type="date" value={dateTo}
+            onChange={e => setDateTo(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && search()}
+            className="h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]" />
+        </div>
+        <div className="w-44">
           <SearchableDropdown
             value={techFilter}
-            onChange={v => { setTechFilter(v ?? ''); setPage(0) }}
+            onChange={v => setTechFilter(v ?? '')}
             options={techOpts}
             placeholder="All Techs"
             showClear={true}
           />
         </div>
-        <div className="w-44">
+        <div className="w-40">
           <SearchableDropdown
             value={statusFilter === 'ALL' ? '' : statusFilter}
-            onChange={v => { setStatusFilter((v as VisitStatus) || 'ALL'); setPage(0) }}
+            onChange={v => setStatusFilter((v as VisitStatus) || 'ALL')}
             options={STATUS_OPTS}
             placeholder="All Statuses"
             showClear={true}
           />
         </div>
+        <button onClick={search}
+          className="flex items-center gap-1.5 h-9 px-4 text-sm font-semibold rounded-lg text-white ml-auto"
+          style={{ backgroundColor: 'var(--color-primary)' }}>
+          <Search size={14} /> Search
+        </button>
       </div>
 
       {/* Table */}
@@ -1031,17 +1069,21 @@ export default function ServiceVisitsPage() {
         </table>
 
         {/* Pagination */}
-        {totalPages > 1 && (
+        {visits.length > 0 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
-            <button onClick={() => setPage(p => p - 1)} disabled={page === 0}
-              className="h-8 px-3 text-sm rounded-lg border border-gray-200 text-gray-600 disabled:opacity-40 hover:bg-gray-50">
-              Previous
-            </button>
-            <span className="text-xs text-gray-500">Page {page + 1} of {totalPages}</span>
-            <button onClick={() => setPage(p => p + 1)} disabled={page >= totalPages - 1}
-              className="h-8 px-3 text-sm rounded-lg border border-gray-200 text-gray-600 disabled:opacity-40 hover:bg-gray-50">
-              Next
-            </button>
+            <span className="text-xs text-gray-500">
+              {totalElements} visit{totalElements !== 1 ? 's' : ''} · Page {page + 1} of {Math.max(totalPages, 1)}
+            </span>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setPage(p => p - 1)} disabled={page === 0}
+                className="h-8 px-3 text-sm rounded-lg border border-gray-200 text-gray-600 disabled:opacity-40 hover:bg-gray-50">
+                Previous
+              </button>
+              <button onClick={() => setPage(p => p + 1)} disabled={page >= totalPages - 1}
+                className="h-8 px-3 text-sm rounded-lg border border-gray-200 text-gray-600 disabled:opacity-40 hover:bg-gray-50">
+                Next
+              </button>
+            </div>
           </div>
         )}
       </div>
