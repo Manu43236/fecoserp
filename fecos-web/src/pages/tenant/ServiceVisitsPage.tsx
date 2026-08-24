@@ -78,8 +78,9 @@ function printReportPdf(r: TreatmentReport) {
     img.photo { width: 100%; border-radius: 10px; object-fit: cover; max-height: 260px; border: 1px solid #e5e7eb; margin-top: 6px; }
     .soar { background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
     .soar-ack { background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 10px 12px; }
-    @media print { body { padding: 16px; } }
+    @media print { body { padding: 16px; } @page { margin: 1cm; } }
   </style>
+  <script>window.onload = function() { window.print(); window.onafterprint = function() { window.close(); } }</script>
   </head><body>
   <h1>Treatment Report</h1>
   <div class="sub">${r.wellName} · ${r.leaseName} · ${r.clientName}</div>
@@ -422,7 +423,7 @@ function VisitDrawer({ visit, onClose, onRefresh, wellOpts }: {
                 <button onClick={() => printReportPdf(reportData)}
                   className="flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg border text-gray-600 hover:bg-gray-50 transition-colors"
                   style={{ borderColor: 'rgba(0,0,0,0.15)' }}>
-                  <FileText size={13} /> View PDF
+                  <FileText size={13} /> Download PDF
                 </button>
               )}
               <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
