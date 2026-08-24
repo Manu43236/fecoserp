@@ -894,21 +894,10 @@ function StopCard({ stop, index, canEdit, onRemove, onStatusChange, onViewReport
 
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
-function defaultDateFrom() {
-  const d = new Date()
-  d.setDate(d.getDate() - 14)
-  return d.toISOString().split('T')[0]
-}
-function defaultDateTo() {
-  const d = new Date()
-  d.setDate(d.getDate() + 30)
-  return d.toISOString().split('T')[0]
-}
-
 export default function ServiceVisitsPage() {
   const [searchText,   setSearchText]   = useState('')
-  const [dateFrom,     setDateFrom]     = useState(defaultDateFrom)
-  const [dateTo,       setDateTo]       = useState(defaultDateTo)
+  const [dateFrom,     setDateFrom]     = useState('')
+  const [dateTo,       setDateTo]       = useState('')
   const [statusFilter, setStatusFilter] = useState<VisitStatus | 'ALL'>('ALL')
   const [techFilter,   setTechFilter]   = useState('')
   const [page,         setPage]         = useState(0)
@@ -990,15 +979,31 @@ export default function ServiceVisitsPage() {
         </div>
         <div className="flex items-center gap-2">
           <label className="text-xs text-gray-500 whitespace-nowrap">From</label>
-          <input type="date" value={dateFrom}
-            onChange={e => { setDateFrom(e.target.value); setPage(0) }}
-            className="h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]" />
+          <div className="relative">
+            <input type="date" value={dateFrom}
+              onChange={e => { setDateFrom(e.target.value); setPage(0) }}
+              className="h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] pr-7" />
+            {dateFrom && (
+              <button onClick={() => { setDateFrom(''); setPage(0) }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                <X size={13} />
+              </button>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <label className="text-xs text-gray-500 whitespace-nowrap">To</label>
-          <input type="date" value={dateTo}
-            onChange={e => { setDateTo(e.target.value); setPage(0) }}
-            className="h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]" />
+          <div className="relative">
+            <input type="date" value={dateTo}
+              onChange={e => { setDateTo(e.target.value); setPage(0) }}
+              className="h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] pr-7" />
+            {dateTo && (
+              <button onClick={() => { setDateTo(''); setPage(0) }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                <X size={13} />
+              </button>
+            )}
+          </div>
         </div>
         <div className="w-44">
           <SearchableDropdown
