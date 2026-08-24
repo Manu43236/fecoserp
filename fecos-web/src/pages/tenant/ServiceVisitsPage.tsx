@@ -967,7 +967,10 @@ export default function ServiceVisitsPage() {
     <div className="p-6 space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">Service Visits</h1>
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">Service Visits</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{totalElements} visit{totalElements !== 1 ? 's' : ''} total</p>
+        </div>
         <button onClick={() => setShowPanel(true)}
           className="flex items-center gap-2 h-9 px-4 text-sm font-semibold rounded-lg text-white"
           style={{ backgroundColor: 'var(--color-primary)' }}>
@@ -976,7 +979,7 @@ export default function ServiceVisitsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-2 flex-wrap bg-white border border-gray-200 rounded-xl px-4 py-3">
+      <div className="flex flex-wrap gap-3">
         <div className="flex items-center gap-2">
           <label className="text-xs text-gray-500 whitespace-nowrap">From</label>
           <input type="date" value={dateFrom}
@@ -1010,7 +1013,7 @@ export default function ServiceVisitsPage() {
           />
         </div>
         <button onClick={search}
-          className="flex items-center gap-1.5 h-9 px-4 text-sm font-semibold rounded-lg text-white ml-auto"
+          className="flex items-center gap-1.5 h-9 px-4 text-sm font-semibold rounded-lg text-white"
           style={{ backgroundColor: 'var(--color-primary)' }}>
           <Search size={14} /> Search
         </button>
