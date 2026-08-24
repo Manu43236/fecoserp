@@ -6,6 +6,7 @@ import com.fecos.programs.TreatmentPlanLineRepository;
 import com.fecos.servicevisits.ServiceVisitRepository;
 import com.fecos.servicevisits.ServiceVisitStopRepository;
 import com.fecos.servicevisits.ServiceVisitStopStatus;
+import com.fecos.tanks.TankRepository;
 import com.fecos.users.UserRepository;
 import com.fecos.wells.WellEntity;
 import com.fecos.wells.WellRepository;
@@ -35,6 +36,7 @@ public class ServiceReportService {
     private final LeaseRepository leaseRepo;
     private final ClientRepository clientRepo;
     private final TreatmentPlanLineRepository planLineRepo;
+    private final TankRepository tankRepo;
 
     // ── Submit report for a stop ──────────────────────────────────────────────
 
@@ -340,18 +342,24 @@ public class ServiceReportService {
         List<TreatmentReportResponse.TreatmentLineResponse> lines =
                 treatLineRepo.findAllByServiceReportIdAndIsDeletedFalseOrderBySortOrderAsc(r.getId())
                         .stream()
-                        .map(l -> new TreatmentReportResponse.TreatmentLineResponse(
-                                l.getId(), l.getPlanLineId(), l.getTankId(),
-                                null, null, // tankSerial/tankCapacityGallons not stored on report
-                                l.getProductName(),
-                                l.getMethod(),
-                                l.getPumpRunning(), l.getPumpDownReason(),
-                                l.getRateFound(), l.getRateSetTo(), l.getOnRate(),
-                                l.getDeviationReason(),
-                                l.getApplied(), l.getQuantityApplied(),
-                                l.getTankLevelPct(),
-                                l.getNotes(), l.getRecordedAt(), l.getSortOrder()
-                        )).toList();
+                        .map(l -> {
+                            var tank = l.getTankId() != null
+                                    ? tankRepo.findById(l.getTankId()).orElse(null)
+                                    : null;
+                            return new TreatmentReportResponse.TreatmentLineResponse(
+                                    l.getId(), l.getPlanLineId(), l.getTankId(),
+                                    tank != null ? tank.getSerialNumber() : null,
+                                    tank != null ? tank.getCapacityGallons() : null,
+                                    l.getProductName(),
+                                    l.getMethod(),
+                                    l.getPumpRunning(), l.getPumpDownReason(),
+                                    l.getRateFound(), l.getRateSetTo(), l.getOnRate(),
+                                    l.getDeviationReason(),
+                                    l.getApplied(), l.getQuantityApplied(),
+                                    l.getTankLevelPct(),
+                                    l.getNotes(), l.getRecordedAt(), l.getSortOrder()
+                            );
+                        }).toList();
 
         String wellName = "—", leaseName = "—", clientName = "—", techName = "—";
         var stop = stopRepo.findByIdAndTenantIdAndIsDeletedFalse(r.getServiceVisitStopId(), r.getTenantId()).orElse(null);
