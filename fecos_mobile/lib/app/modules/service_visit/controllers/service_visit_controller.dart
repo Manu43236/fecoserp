@@ -90,6 +90,25 @@ class ServiceVisitController extends GetxController {
     }
   }
 
+  Future<MyVisit?> startVisit(String visitId) async {
+    try {
+      await _dio.patch(
+        '/service-visits/$visitId',
+        data: {'status': 'IN_PROGRESS'},
+      );
+      await loadVisits();
+      final s = state.value;
+      if (s is AsyncSuccess<List<MyVisit>>) {
+        return s.data.firstWhereOrNull((v) => v.id == visitId);
+      }
+      return null;
+    } on Exception {
+      Get.snackbar('Error', 'Failed to start visit',
+          snackPosition: SnackPosition.BOTTOM);
+      return null;
+    }
+  }
+
   String _fmt(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 

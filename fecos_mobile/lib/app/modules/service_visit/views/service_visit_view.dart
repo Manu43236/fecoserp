@@ -124,10 +124,7 @@ class _VisitCard extends StatelessWidget {
     return Card(
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () => Get.toNamed(
-          Routes.serviceVisit.replaceFirst(':id', visit.id),
-          arguments: visit,
-        ),
+        onTap: () => _handleTap(context),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -172,6 +169,51 @@ class _VisitCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _handleTap(BuildContext context) async {
+    if (visit.status == 'SCHEDULED') {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16)),
+          title: const Text('Start Service Visit'),
+          content: Text(
+            'Ready to begin the visit for ${_formatDate(visit.visitDate)}?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Not yet'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('Start Visit'),
+            ),
+          ],
+        ),
+      );
+      if (confirm != true) return;
+      final ctrl = Get.find<ServiceVisitController>();
+      final updated = await ctrl.startVisit(visit.id);
+      if (updated == null) return;
+      Get.toNamed(
+        Routes.serviceVisit.replaceFirst(':id', updated.id),
+        arguments: updated,
+      );
+    } else {
+      Get.toNamed(
+        Routes.serviceVisit.replaceFirst(':id', visit.id),
+        arguments: visit,
+      );
+    }
   }
 
   String _formatDate(String date) {
