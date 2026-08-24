@@ -28,7 +28,10 @@ services:
         condition: service_healthy
 
   web:
-    image: ${DOCKERHUB_USERNAME}/fecos-web:latest
+    build:
+      context: ./fecos-web
+      args:
+        VITE_API_URL: ${VITE_API_URL}
     restart: always
 
   nginx:

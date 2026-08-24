@@ -69,6 +69,7 @@ class ServiceVisitController extends GetxController {
   final _dio = Get.find<DioService>().dio;
 
   final state = Rx<AsyncState<List<MyVisit>>>(const AsyncLoading());
+  final selectedDate = Rx<DateTime>(DateTime.now());
 
   @override
   void onInit() {
@@ -76,15 +77,25 @@ class ServiceVisitController extends GetxController {
     loadVisits();
   }
 
-  Future<void> loadVisits() async {
+  Future<void> loadVisits({DateTime? date}) async {
+    if (date != null) selectedDate.value = date;
     state.value = const AsyncLoading();
     try {
-      final today = DateTime.now().toIso8601String().split('T').first;
-      final res = await _dio.get('/my-visits', queryParameters: {'date': today});
+      final dateStr = _fmt(selectedDate.value);
+      final res = await _dio.get('/my-visits', queryParameters: {'date': dateStr});
       final list = (res.data['data'] as List).map((v) => MyVisit.fromJson(v)).toList();
       state.value = AsyncSuccess(list);
     } on Exception catch (e) {
       state.value = AsyncError(e.toString());
     }
+  }
+
+  String _fmt(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  bool get isToday {
+    final now = DateTime.now();
+    final d = selectedDate.value;
+    return d.year == now.year && d.month == now.month && d.day == now.day;
   }
 }

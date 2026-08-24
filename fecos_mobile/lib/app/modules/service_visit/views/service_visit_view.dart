@@ -7,6 +7,13 @@ import '../controllers/service_visit_controller.dart';
 
 const _primary = Color(0xFF751903);
 
+const _months = [
+  '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+String _monthName(int m) => _months[m];
+String _fmtLabel(DateTime d) => '${_monthName(d.month)} ${d.day}, ${d.year}';
+
 class ServiceVisitView extends GetView<ServiceVisitController> {
   const ServiceVisitView({super.key});
 
@@ -20,10 +27,30 @@ class ServiceVisitView extends GetView<ServiceVisitController> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Visits Today'),
+        title: Obx(() {
+          final d = controller.selectedDate.value;
+          final label = controller.isToday
+              ? 'Today'
+              : '${_monthName(d.month)} ${d.day}, ${d.year}';
+          return Text('My Visits — $label');
+        }),
         backgroundColor: _primary,
         foregroundColor: Colors.white,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.calendar_today_outlined),
+            tooltip: 'Pick date',
+            onPressed: () async {
+              final now = DateTime.now();
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: controller.selectedDate.value,
+                firstDate: DateTime(now.year - 1),
+                lastDate: now,
+              );
+              if (picked != null) controller.loadVisits(date: picked);
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: controller.loadVisits,
@@ -55,9 +82,14 @@ class ServiceVisitView extends GetView<ServiceVisitController> {
                     Icon(Icons.check_circle_outline,
                         size: 64, color: Colors.grey[400]),
                     const SizedBox(height: 12),
-                    Text('No visits scheduled for today',
-                        style: TextStyle(
-                            color: Colors.grey[600], fontSize: 16)),
+                    Obx(() {
+                      final label = controller.isToday
+                          ? 'today'
+                          : _fmtLabel(controller.selectedDate.value);
+                      return Text('No visits scheduled for $label',
+                          style: TextStyle(
+                              color: Colors.grey[600], fontSize: 16));
+                    }),
                   ],
                 ),
               ),
