@@ -970,7 +970,7 @@ export default function ServiceVisitsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3 items-center">
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input type="text" placeholder="Search visits…" value={searchText}
@@ -979,31 +979,15 @@ export default function ServiceVisitsPage() {
         </div>
         <div className="flex items-center gap-2">
           <label className="text-xs text-gray-500 whitespace-nowrap">From</label>
-          <div className="relative">
-            <input type="date" value={dateFrom}
-              onChange={e => { setDateFrom(e.target.value); setPage(0) }}
-              className="h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] pr-7" />
-            {dateFrom && (
-              <button onClick={() => { setDateFrom(''); setPage(0) }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                <X size={13} />
-              </button>
-            )}
-          </div>
+          <input type="date" value={dateFrom}
+            onChange={e => { setDateFrom(e.target.value); setPage(0) }}
+            className="h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]" />
         </div>
         <div className="flex items-center gap-2">
           <label className="text-xs text-gray-500 whitespace-nowrap">To</label>
-          <div className="relative">
-            <input type="date" value={dateTo}
-              onChange={e => { setDateTo(e.target.value); setPage(0) }}
-              className="h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] pr-7" />
-            {dateTo && (
-              <button onClick={() => { setDateTo(''); setPage(0) }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                <X size={13} />
-              </button>
-            )}
-          </div>
+          <input type="date" value={dateTo}
+            onChange={e => { setDateTo(e.target.value); setPage(0) }}
+            className="h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]" />
         </div>
         <div className="w-44">
           <SearchableDropdown
@@ -1023,6 +1007,12 @@ export default function ServiceVisitsPage() {
             showClear={true}
           />
         </div>
+        {(searchText || dateFrom || dateTo || techFilter || statusFilter !== 'ALL') && (
+          <button onClick={() => { setSearchText(''); setDateFrom(''); setDateTo(''); setTechFilter(''); setStatusFilter('ALL'); setPage(0) }}
+            className="flex items-center gap-1.5 h-9 px-3 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+            <X size={13} /> Clear
+          </button>
+        )}
       </div>
 
       {/* Table */}
