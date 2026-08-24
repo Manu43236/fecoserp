@@ -133,7 +133,7 @@ public class ServiceReportService {
         LocalDate today = LocalDate.now();
 
         List<com.fecos.servicevisits.ServiceVisitEntity> visits =
-                visitRepo.search(tenantId, null, techId, today, PageRequest.of(0, 100))
+                visitRepo.search(tenantId, null, techId, today, today, PageRequest.of(0, 100))
                         .getContent();
 
         int visitsTotal    = visits.size();
@@ -163,7 +163,7 @@ public class ServiceReportService {
                 ? java.time.LocalDate.parse(date)
                 : java.time.LocalDate.now();
 
-        return visitRepo.search(tenantId, null, techId, visitDate, PageRequest.of(0, 50))
+        return visitRepo.search(tenantId, null, techId, visitDate, visitDate, PageRequest.of(0, 50))
                 .getContent().stream()
                 .map(this::toMyVisitResponse)
                 .toList();
