@@ -190,9 +190,10 @@ function VisitPanel({ onClose, onSaved, stUsers }: {
   onClose: () => void; onSaved: () => void; stUsers: UserRecord[]
 }) {
   const today = new Date().toISOString().split('T')[0]
-  const [form, setForm]           = useState({ name: '', techId: '', visitDate: today, notes: '' })
+  const [form, setForm]               = useState({ name: '', techId: '', visitDate: today, notes: '' })
+  const [clientName, setClientName]   = useState('')
+  const [leaseId, setLeaseId]         = useState('')
   const [selectedWellIds, setSelectedWellIds] = useState<string[]>([])
-  const [wellSearch, setWellSearch]           = useState('')
 
   const { data: wellsData } = useQuery({
     queryKey: ['wells-all'],
@@ -200,17 +201,33 @@ function VisitPanel({ onClose, onSaved, stUsers }: {
   })
   const allWells: WellRecord[] = wellsData ?? []
 
-  const filteredWells = useMemo(() => {
-    const q = wellSearch.toLowerCase()
-    return q ? allWells.filter(w =>
-      w.wellName.toLowerCase().includes(q) ||
-      (w.leaseName ?? '').toLowerCase().includes(q) ||
-      (w.clientName ?? '').toLowerCase().includes(q)
-    ) : allWells
-  }, [allWells, wellSearch])
+  // Unique clients
+  const clientOpts = useMemo(() => {
+    const seen = new Set<string>()
+    return allWells
+      .filter(w => w.clientName && !seen.has(w.clientName) && seen.add(w.clientName))
+      .map(w => ({ value: w.clientName!, label: w.clientName! }))
+  }, [allWells])
+
+  // Leases for selected client
+  const leaseOpts = useMemo(() => {
+    if (!clientName) return []
+    const seen = new Set<string>()
+    return allWells
+      .filter(w => w.clientName === clientName && !seen.has(w.leaseId) && seen.add(w.leaseId))
+      .map(w => ({ value: w.leaseId, label: w.leaseName ?? w.leaseId }))
+  }, [allWells, clientName])
+
+  // Wells for selected lease
+  const leaseWells = useMemo(() =>
+    leaseId ? allWells.filter(w => w.leaseId === leaseId) : []
+  , [allWells, leaseId])
 
   const toggleWell = (id: string) =>
     setSelectedWellIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+
+  const selectAll = () => setSelectedWellIds(leaseWells.map(w => w.id))
+  const clearAll  = () => setSelectedWellIds([])
 
   const mutation = useMutation({
     mutationFn: () => serviceVisitsApi.create({
@@ -224,12 +241,16 @@ function VisitPanel({ onClose, onSaved, stUsers }: {
   const techOpts = stUsers.map(u => ({ value: u.id, label: u.fullName }))
 
   const submit = () => {
-    if (!form.name.trim())  return toast.error('Enter a schedule name')
-    if (!form.techId)        return toast.error('Select a service tech')
-    if (!form.visitDate)     return toast.error('Select a date')
+    if (!form.name.trim())           return toast.error('Enter a schedule name')
+    if (!form.techId)                return toast.error('Select a service tech')
+    if (!form.visitDate)             return toast.error('Select a date')
+    if (!clientName)                 return toast.error('Select a client')
+    if (!leaseId)                    return toast.error('Select a lease')
     if (selectedWellIds.length === 0) return toast.error('Select at least one well')
     mutation.mutate()
   }
+
+  const inputCls = 'w-full h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]'
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -245,66 +266,80 @@ function VisitPanel({ onClose, onSaved, stUsers }: {
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">Schedule Name *</label>
             <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              placeholder="e.g. North District – Week 34"
-              className="w-full h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]" />
+              placeholder="e.g. North District – Week 34" className={inputCls} />
           </div>
 
           {/* Tech */}
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">Service Tech *</label>
-            <SearchableDropdown
-              value={form.techId}
+            <SearchableDropdown value={form.techId}
               onChange={v => setForm(f => ({ ...f, techId: v ?? '' }))}
-              options={techOpts}
-              placeholder="Select service tech…"
-              showClear={false}
-            />
+              options={techOpts} placeholder="Select service tech…" showClear={false} />
           </div>
 
           {/* Date */}
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">Visit Date *</label>
             <input type="date" value={form.visitDate}
-              onChange={e => setForm(f => ({ ...f, visitDate: e.target.value }))}
-              className="w-full h-9 px-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]" />
+              onChange={e => setForm(f => ({ ...f, visitDate: e.target.value }))} className={inputCls} />
+          </div>
+
+          <div style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }} />
+
+          {/* Client */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Client *</label>
+            <SearchableDropdown value={clientName}
+              onChange={v => { setClientName(v ?? ''); setLeaseId(''); setSelectedWellIds([]) }}
+              options={clientOpts} placeholder="Select client…" showClear={false} />
+          </div>
+
+          {/* Lease */}
+          <div>
+            <label className={`block text-xs font-medium mb-1 ${clientName ? 'text-gray-700' : 'text-gray-400'}`}>
+              Lease *
+            </label>
+            <SearchableDropdown value={leaseId}
+              onChange={v => { setLeaseId(v ?? ''); setSelectedWellIds([]) }}
+              options={leaseOpts} placeholder={clientName ? 'Select lease…' : 'Select a client first'}
+              showClear={false} />
           </div>
 
           {/* Wells */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-medium text-gray-700">Wells *</label>
-              {selectedWellIds.length > 0 && (
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-full text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
-                  {selectedWellIds.length} selected
-                </span>
-              )}
-            </div>
-            <div className="relative mb-2">
-              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input value={wellSearch} onChange={e => setWellSearch(e.target.value)}
-                placeholder="Search wells…"
-                className="w-full h-8 pl-8 pr-3 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]" />
-            </div>
-            <div className="border border-gray-200 rounded-lg overflow-hidden max-h-52 overflow-y-auto">
-              {filteredWells.length === 0 ? (
-                <p className="text-xs text-gray-400 text-center py-6">No wells found</p>
-              ) : filteredWells.map(w => {
-                const checked = selectedWellIds.includes(w.id)
-                return (
-                  <button key={w.id} type="button" onClick={() => toggleWell(w.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors border-b border-gray-100 last:border-0 ${checked ? 'bg-[var(--color-primary)]/5' : 'hover:bg-gray-50'}`}>
-                    {checked
-                      ? <CheckSquare size={15} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
-                      : <Square size={15} className="text-gray-300 shrink-0" />}
-                    <div className="min-w-0">
+          {leaseId && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-medium text-gray-700">
+                  Wells * <span className="text-gray-400 font-normal">({leaseWells.length} available)</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  {selectedWellIds.length > 0 && (
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
+                      {selectedWellIds.length} selected
+                    </span>
+                  )}
+                  {selectedWellIds.length < leaseWells.length
+                    ? <button onClick={selectAll} className="text-xs text-[var(--color-primary)] hover:underline">All</button>
+                    : <button onClick={clearAll}  className="text-xs text-gray-400 hover:underline">Clear</button>
+                  }
+                </div>
+              </div>
+              <div className="border border-gray-200 rounded-lg overflow-hidden max-h-52 overflow-y-auto">
+                {leaseWells.map(w => {
+                  const checked = selectedWellIds.includes(w.id)
+                  return (
+                    <button key={w.id} type="button" onClick={() => toggleWell(w.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors border-b border-gray-100 last:border-0 ${checked ? 'bg-[var(--color-primary)]/5' : 'hover:bg-gray-50'}`}>
+                      {checked
+                        ? <CheckSquare size={15} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+                        : <Square size={15} className="text-gray-300 shrink-0" />}
                       <p className="text-xs font-semibold text-gray-900 truncate">{w.wellName}</p>
-                      <p className="text-xs text-gray-400 truncate">{w.leaseName ?? ''}{w.clientName ? ` · ${w.clientName}` : ''}</p>
-                    </div>
-                  </button>
-                )
-              })}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Notes */}
           <div>
