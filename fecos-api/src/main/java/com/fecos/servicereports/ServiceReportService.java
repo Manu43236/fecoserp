@@ -219,7 +219,7 @@ public class ServiceReportService {
         report.setSignedAt(req.signedAt());
         report.setNotes(req.notes());
         report.setSubmittedAt(Instant.now());
-        reportRepo.save(report);
+        report = reportRepo.save(report); // capture returned managed instance — ID may differ from pre-merge entity
 
         // replace treatment lines
         treatLineRepo.findAllByServiceReportIdAndIsDeletedFalseOrderBySortOrderAsc(report.getId())
