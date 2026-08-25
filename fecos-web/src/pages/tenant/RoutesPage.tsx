@@ -421,7 +421,7 @@ function RouteDrawer({ route, onClose, onEdit, canEdit }: {
                 Cancel Route
               </button>
             )}
-            {canEdit && (r.status === 'COMPLETED' || r.status === 'CANCELLED') && (
+            {canEdit && r.status === 'CANCELLED' && (
               <button
                 onClick={() => { if (confirm('Permanently delete this route? This cannot be undone.')) deleteMutation.mutate() }}
                 disabled={deleteMutation.isPending}
@@ -471,7 +471,7 @@ function RouteDrawer({ route, onClose, onEdit, canEdit }: {
                       <p className="text-sm font-semibold text-gray-900">{stop.leaseName ?? '—'}</p>
                       <p className="text-xs text-gray-500">{stop.wellName ?? '—'}</p>
                     </div>
-                    {canEdit && (
+                    {canEdit && r.status === 'PLANNED' && (
                       <button
                         onClick={() => removeStopMutation.mutate(stop.id)}
                         disabled={removeStopMutation.isPending}
@@ -489,7 +489,7 @@ function RouteDrawer({ route, onClose, onEdit, canEdit }: {
                           <Package size={11} className="text-gray-400 shrink-0" />
                           <span className="text-xs text-gray-700 flex-1">{item.productName ?? '—'}</span>
                           <span className="text-xs text-gray-500">{item.quantity} {item.unit}</span>
-                          {canEdit && (
+                          {canEdit && r.status === 'PLANNED' && (
                             <button
                               onClick={() => removeItemMutation.mutate({ stopId: stop.id, itemId: item.id })}
                               className="w-5 h-5 rounded flex items-center justify-center text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shrink-0">
