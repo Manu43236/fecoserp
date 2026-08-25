@@ -83,4 +83,18 @@ public class RouteController {
             @PathVariable UUID id, @PathVariable UUID stopId, @PathVariable UUID itemId) {
         return ResponseEntity.ok(ApiResponse.ok("Item removed", routeService.removeItem(id, stopId, itemId)));
     }
+
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','TRUCK_DRIVER')")
+    public ResponseEntity<ApiResponse<RouteResponse>> updateStatus(
+            @PathVariable UUID id, @RequestParam RouteStatus status) {
+        return ResponseEntity.ok(ApiResponse.ok("Status updated", routeService.updateStatus(id, status)));
+    }
+
+    @PatchMapping("/{id}/stops/{stopId}/status")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','TRUCK_DRIVER')")
+    public ResponseEntity<ApiResponse<RouteResponse>> updateStopStatus(
+            @PathVariable UUID id, @PathVariable UUID stopId, @RequestParam RouteStopStatus status) {
+        return ResponseEntity.ok(ApiResponse.ok("Stop status updated", routeService.updateStopStatus(id, stopId, status)));
+    }
 }

@@ -56,4 +56,6 @@ public interface ServiceVisitRepository extends JpaRepository<ServiceVisitEntity
             @Param("tenantId") UUID tenantId,
             @Param("techId") UUID techId,
             @Param("from") LocalDate from);
+
+    long countByTenantIdAndStatusAndVisitDateAndIsDeletedFalse(UUID tenantId, ServiceVisitStatus status, LocalDate visitDate);
 }

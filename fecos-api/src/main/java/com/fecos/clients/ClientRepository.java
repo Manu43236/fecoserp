@@ -30,4 +30,6 @@ public interface ClientRepository extends JpaRepository<ClientEntity, UUID> {
     Optional<ClientEntity> findByIdAndTenantIdAndIsDeletedFalse(UUID id, UUID tenantId);
 
     boolean existsByCompanyNameAndTenantIdAndIsDeletedFalse(String companyName, UUID tenantId);
+
+    long countByTenantIdAndIsDeletedFalse(UUID tenantId);
 }

@@ -29,4 +29,6 @@ public interface RouteRepository extends JpaRepository<RouteEntity, UUID> {
             Pageable pageable);
 
     Optional<RouteEntity> findByIdAndTenantIdAndIsDeletedFalse(UUID id, UUID tenantId);
+
+    long countByTenantIdAndStatusAndRouteDateAndIsDeletedFalse(UUID tenantId, RouteStatus status, java.time.LocalDate routeDate);
 }

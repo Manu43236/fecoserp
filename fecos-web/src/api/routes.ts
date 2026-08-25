@@ -70,6 +70,8 @@ export const routesApi = {
   delete:     (id: string) => api.delete<ApiResponse<void>>(`/api/v1/routes/${id}`),
   addStop:    (id: string, data: RouteStopPayload) => api.post<ApiResponse<RouteRecord>>(`/api/v1/routes/${id}/stops`, data),
   removeStop: (id: string, stopId: string) => api.delete<ApiResponse<RouteRecord>>(`/api/v1/routes/${id}/stops/${stopId}`),
-  addItem:    (id: string, stopId: string, data: RouteStopItemPayload) => api.post<ApiResponse<RouteRecord>>(`/api/v1/routes/${id}/stops/${stopId}/items`, data),
-  removeItem: (id: string, stopId: string, itemId: string) => api.delete<ApiResponse<RouteRecord>>(`/api/v1/routes/${id}/stops/${stopId}/items/${itemId}`),
+  addItem:        (id: string, stopId: string, data: RouteStopItemPayload) => api.post<ApiResponse<RouteRecord>>(`/api/v1/routes/${id}/stops/${stopId}/items`, data),
+  removeItem:     (id: string, stopId: string, itemId: string) => api.delete<ApiResponse<RouteRecord>>(`/api/v1/routes/${id}/stops/${stopId}/items/${itemId}`),
+  updateStatus:   (id: string, status: RouteStatus) => api.patch<ApiResponse<RouteRecord>>(`/api/v1/routes/${id}/status`, null, { params: { status } }),
+  updateStopStatus: (id: string, stopId: string, status: RouteStopStatus) => api.patch<ApiResponse<RouteRecord>>(`/api/v1/routes/${id}/stops/${stopId}/status`, null, { params: { status } }),
 }

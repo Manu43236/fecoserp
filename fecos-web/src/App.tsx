@@ -25,11 +25,15 @@ import PlansPage from '@/pages/tenant/PlansPage'
 import RoutesPage from '@/pages/tenant/RoutesPage'
 import LabPage from '@/pages/tenant/LabPage'
 import ApprovalsPage from '@/pages/tenant/ApprovalsPage'
+import PortfolioPage from '@/pages/tenant/PortfolioPage'
 import TanksPage from '@/pages/tenant/TanksPage'
 import QCPage from '@/pages/tenant/QCPage'
 import PumpShopPage from '@/pages/tenant/PumpShopPage'
 import VehiclesPage from '@/pages/tenant/VehiclesPage'
 import ServiceVisitsPage from '@/pages/tenant/ServiceVisitsPage'
+import DeliveriesPage from '@/pages/tenant/DeliveriesPage'
+import DashboardPage from '@/pages/tenant/DashboardPage'
+import FieldActivityPage from '@/pages/tenant/FieldActivityPage'
 
 const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -149,9 +153,9 @@ function TenantRoutes() {
         </Route>
         <Route element={<AuthGuard />}>
           <Route element={<AppLayout />}>
-            <Route path="/dashboard"        element={<PlaceholderPage title="Dashboard" />} />
-            <Route path="/field-activity"   element={<PlaceholderPage title="Field Activity" />} />
-            <Route path="/deliveries"       element={<PlaceholderPage title="Deliveries" />} />
+            <Route path="/dashboard"        element={<DashboardPage />} />
+            <Route path="/field-activity"   element={<FieldActivityPage />} />
+            <Route path="/deliveries"       element={<DeliveriesPage />} />
             <Route path="/clients"          element={<ClientsPage />} />
             <Route path="/leases"           element={<LeasesPage />} />
             <Route path="/wells"            element={<WellsPage />} />
@@ -171,7 +175,7 @@ function TenantRoutes() {
             <Route path="/users"            element={<UsersPage />} />
             <Route path="/masters"          element={<MastersPage />} />
             <Route path="/products"         element={<ProductsPage />} />
-            <Route path="/rep/portfolio"    element={<PlaceholderPage title="Portfolio" />} />
+            <Route path="/rep/portfolio"    element={<PortfolioPage />} />
             <Route path="/rep/approvals"    element={<ApprovalsPage />} />
           </Route>
         </Route>

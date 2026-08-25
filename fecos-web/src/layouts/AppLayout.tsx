@@ -55,11 +55,15 @@ const navByRole: Record<string, NavItem[]> = {
     { label: 'QC',  path: '/qc',        icon: CheckCircle2 },
   ],
   ACCOUNT_REP: [
+    { label: 'Approvals', path: '/rep/approvals', icon: CheckCircle2  },
+    { label: 'Clients',   path: '/clients',       icon: Building2     },
     { label: 'Lab',       path: '/lab/queue',     icon: TestTube      },
     { label: 'Portfolio', path: '/rep/portfolio', icon: Briefcase     },
     { label: 'Programs',  path: '/plans',         icon: ClipboardList },
     { label: 'Reports',   path: '/reports',       icon: BarChart3     },
+    { label: 'Schedule',  path: '/schedule',      icon: CalendarDays  },
     { label: 'Tanks',     path: '/tanks',         icon: Cylinder      },
+    { label: 'Wells',     path: '/wells',         icon: Drill         },
   ],
 }
 

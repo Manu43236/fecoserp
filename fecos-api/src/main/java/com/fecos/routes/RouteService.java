@@ -138,6 +138,23 @@ public class RouteService {
         return toResponse(r, true);
     }
 
+    @Transactional
+    public RouteResponse updateStatus(UUID routeId, RouteStatus status) {
+        RouteEntity r = findForTenant(routeId);
+        r.setStatus(status);
+        return toResponse(routeRepository.save(r), true);
+    }
+
+    @Transactional
+    public RouteResponse updateStopStatus(UUID routeId, UUID stopId, RouteStopStatus status) {
+        RouteEntity r = findForTenant(routeId);
+        RouteStopEntity stop = stopRepository.findByIdAndRouteIdAndIsDeletedFalse(stopId, routeId)
+                .orElseThrow(() -> new EntityNotFoundException("Stop not found"));
+        stop.setStatus(status);
+        stopRepository.save(stop);
+        return toResponse(r, true);
+    }
+
     private void apply(RouteEntity r, RouteRequest req) {
         r.setDriverId(req.getDriverId());
         r.setTruckNumber(req.getTruckNumber());

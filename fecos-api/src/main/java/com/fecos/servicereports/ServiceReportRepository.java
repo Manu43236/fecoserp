@@ -29,4 +29,6 @@ public interface ServiceReportRepository extends JpaRepository<ServiceReportEnti
             """
     )
     Page<ServiceReportEntity> findAllByTenant(@Param("tenantId") UUID tenantId, Pageable pageable);
+
+    long countByTenantIdAndSoarTrueAndSoarAckByIsNullAndIsDeletedFalse(UUID tenantId);
 }

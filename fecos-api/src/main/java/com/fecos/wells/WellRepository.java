@@ -33,4 +33,6 @@ public interface WellRepository extends JpaRepository<WellEntity, UUID> {
     Optional<WellEntity> findByIdAndTenantIdAndIsDeletedFalse(UUID id, UUID tenantId);
 
     long countByLeaseIdAndTenantIdAndIsDeletedFalse(UUID leaseId, UUID tenantId);
+
+    long countByTenantIdAndIsDeletedFalse(UUID tenantId);
 }
