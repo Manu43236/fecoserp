@@ -14,7 +14,7 @@ public class RouteRequest {
     @NotNull(message = "Driver is required")
     private UUID driverId;
 
-    private String truckNumber;
+    private UUID vehicleId;
 
     @NotNull(message = "Route date is required")
     private LocalDate routeDate;

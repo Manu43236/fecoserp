@@ -17,6 +17,9 @@ public class RouteEntity extends TenantAwareEntity {
     @Column(name = "driver_id", nullable = false)
     private UUID driverId;
 
+    @Column(name = "vehicle_id")
+    private UUID vehicleId;
+
     @Column(name = "truck_number", length = 50)
     private String truckNumber;
 

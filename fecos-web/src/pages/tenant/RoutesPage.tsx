@@ -10,10 +10,11 @@ import { leasesApi, type LeaseRecord } from '@/api/leases'
 import { wellsApi, type WellRecord } from '@/api/wells'
 import { productsApi } from '@/api/products'
 import { productUnitsApi } from '@/api/productUnits'
+import { vehiclesApi, type Vehicle } from '@/api/vehicles'
 import { SearchableDropdown, type DropdownOption } from '@/components/ui/SearchableDropdown'
 import { useAuthStore } from '@/store/authStore'
 import api from '@/lib/axios'
-import type { ApiResponse } from '@/types'
+import type { ApiResponse, PageResponse } from '@/types'
 
 const PAGE_SIZE = 20
 
@@ -41,11 +42,11 @@ const STATUS_OPTIONS: DropdownOption[] = Object.entries(STATUS_COLOR).map(([v, s
 
 // ── Route form schema ──────────────────────────────────────────────────────────
 const routeSchema = z.object({
-  driverId:    z.string().min(1, 'Driver is required'),
-  truckNumber: z.string().optional().or(z.literal('')),
-  routeDate:   z.string().min(1, 'Date is required'),
-  status:      z.enum(['PLANNED', 'DISPATCHED', 'IN_PROGRESS', 'COMPLETED']),
-  notes:       z.string().optional().or(z.literal('')),
+  driverId:  z.string().min(1, 'Driver is required'),
+  vehicleId: z.string().optional().or(z.literal('')),
+  routeDate: z.string().min(1, 'Date is required'),
+  status:    z.enum(['PLANNED', 'DISPATCHED', 'IN_PROGRESS', 'COMPLETED']),
+  notes:     z.string().optional().or(z.literal('')),
 })
 type RouteFormData = z.infer<typeof routeSchema>
 
@@ -62,13 +63,22 @@ function RouteFormPanel({ open, onClose, route, driverOptions }: {
   const { handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<RouteFormData>({
     resolver: zodResolver(routeSchema),
     defaultValues: {
-      driverId:    route?.driverId    ?? '',
-      truckNumber: route?.truckNumber ?? '',
-      routeDate:   route?.routeDate   ?? '',
-      status:      route?.status      ?? 'PLANNED',
-      notes:       route?.notes       ?? '',
+      driverId:  route?.driverId   ?? '',
+      vehicleId: route?.vehicleId  ?? '',
+      routeDate: route?.routeDate  ?? '',
+      status:    route?.status     ?? 'PLANNED',
+      notes:     route?.notes      ?? '',
     },
   })
+
+  const { data: vehiclesData } = useQuery({
+    queryKey: ['vehicles-available'],
+    queryFn: () => vehiclesApi.list({ size: 200 }).then(r => (r.data as ApiResponse<PageResponse<Vehicle>>).data?.content ?? []),
+  })
+  const vehicleOptions: DropdownOption[] = (vehiclesData ?? []).map(v => ({
+    value: v.id,
+    label: `${v.licensePlate} — ${v.make} ${v.model} ${v.year}`,
+  }))
 
   const mutation = useMutation({
     mutationFn: (data: RoutePayload) =>
@@ -84,11 +94,11 @@ function RouteFormPanel({ open, onClose, route, driverOptions }: {
 
   function onSubmit(data: RouteFormData) {
     mutation.mutate({
-      driverId:    data.driverId,
-      truckNumber: data.truckNumber || undefined,
-      routeDate:   data.routeDate,
-      status:      data.status,
-      notes:       data.notes || undefined,
+      driverId:  data.driverId,
+      vehicleId: data.vehicleId || undefined,
+      routeDate: data.routeDate,
+      status:    data.status,
+      notes:     data.notes || undefined,
     })
   }
 
@@ -140,15 +150,16 @@ function RouteFormPanel({ open, onClose, route, driverOptions }: {
               {errors.driverId && <p className="text-red-500 text-xs">{errors.driverId.message}</p>}
             </div>
 
-            {/* Truck # */}
+            {/* Vehicle */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Truck Number</label>
-              <input
-                type="text"
-                value={watch('truckNumber') ?? ''}
-                onChange={e => setValue('truckNumber', e.target.value)}
-                placeholder="e.g. TX-4821"
-                className="w-full h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2"
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Vehicle / Truck</label>
+              <SearchableDropdown
+                value={watch('vehicleId') || null}
+                onChange={v => setValue('vehicleId', v ?? '')}
+                options={vehicleOptions}
+                placeholder="Select vehicle"
+                searchPlaceholder="Search by plate or make…"
+                showClear={true}
               />
             </div>
 
@@ -298,11 +309,11 @@ function RouteDrawer({ route, onClose, onEdit, canEdit }: {
 
   const cancelMutation = useMutation({
     mutationFn: () => routesApi.update(route.id, {
-      driverId:    r.driverId,
-      truckNumber: r.truckNumber ?? undefined,
-      routeDate:   r.routeDate,
-      status:      'CANCELLED',
-      notes:       r.notes ?? undefined,
+      driverId:  r.driverId,
+      vehicleId: r.vehicleId ?? undefined,
+      routeDate: r.routeDate,
+      status:    'CANCELLED',
+      notes:     r.notes ?? undefined,
     }),
     onSuccess: () => {
       toast.success('Route cancelled')
@@ -665,11 +676,11 @@ function BoardView({ boardDate, onDateChange, canEdit, onSelectRoute, driverOpti
   const advanceMutation = useMutation({
     mutationFn: ({ route, next }: { route: RouteRecord; next: RouteStatus }) =>
       routesApi.update(route.id, {
-        driverId:    route.driverId,
-        truckNumber: route.truckNumber ?? undefined,
-        routeDate:   route.routeDate,
-        status:      next,
-        notes:       route.notes ?? undefined,
+        driverId:  route.driverId,
+        vehicleId: route.vehicleId ?? undefined,
+        routeDate: route.routeDate,
+        status:    next,
+        notes:     route.notes ?? undefined,
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['routes-board', boardDate] }),
     onError:   () => toast.error('Failed to update status'),

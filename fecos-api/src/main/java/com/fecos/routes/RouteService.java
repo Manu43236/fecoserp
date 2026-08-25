@@ -3,6 +3,7 @@ package com.fecos.routes;
 import com.fecos.leases.LeaseRepository;
 import com.fecos.products.ProductRepository;
 import com.fecos.users.UserRepository;
+import com.fecos.vehicles.VehicleRepository;
 import com.fecos.wells.WellRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class RouteService {
     private final RouteStopRepository stopRepository;
     private final RouteStopItemRepository itemRepository;
     private final UserRepository userRepository;
+    private final VehicleRepository vehicleRepository;
     private final LeaseRepository leaseRepository;
     private final WellRepository wellRepository;
     private final ProductRepository productRepository;
@@ -157,7 +159,11 @@ public class RouteService {
 
     private void apply(RouteEntity r, RouteRequest req) {
         r.setDriverId(req.getDriverId());
-        r.setTruckNumber(req.getTruckNumber());
+        r.setVehicleId(req.getVehicleId());
+        r.setTruckNumber(req.getVehicleId() != null
+                ? vehicleRepository.findById(req.getVehicleId())
+                        .map(v -> v.getLicensePlate()).orElse(null)
+                : null);
         r.setRouteDate(req.getRouteDate());
         r.setStatus(req.getStatus() != null ? req.getStatus() : RouteStatus.PLANNED);
         r.setNotes(req.getNotes());

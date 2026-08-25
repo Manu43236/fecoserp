@@ -9,6 +9,7 @@ public record RouteResponse(
         UUID id,
         UUID driverId,
         String driverName,
+        UUID vehicleId,
         String truckNumber,
         LocalDate routeDate,
         RouteStatus status,
@@ -19,7 +20,8 @@ public record RouteResponse(
 ) {
     public static RouteResponse from(RouteEntity e, String driverName, int stopCount, List<RouteStopResponse> stops) {
         return new RouteResponse(
-                e.getId(), e.getDriverId(), driverName, e.getTruckNumber(),
+                e.getId(), e.getDriverId(), driverName,
+                e.getVehicleId(), e.getTruckNumber(),
                 e.getRouteDate(), e.getStatus(), e.getNotes(), stopCount, stops, e.getCreatedAt()
         );
     }
