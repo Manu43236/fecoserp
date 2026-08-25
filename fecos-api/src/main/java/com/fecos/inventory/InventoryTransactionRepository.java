@@ -11,6 +11,10 @@ import java.util.UUID;
 
 public interface InventoryTransactionRepository extends JpaRepository<InventoryTransactionEntity, UUID> {
 
+    List<InventoryTransactionEntity> findByTenantIdAndReferenceIdAndReferenceTypeAndIsDeletedFalse(
+            UUID tenantId, UUID referenceId, String referenceType);
+
+
     @Query("""
             SELECT t FROM InventoryTransactionEntity t
             WHERE t.tenantId = :tenantId AND t.isDeleted = false

@@ -1,5 +1,7 @@
 package com.fecos.routes;
 
+import com.fecos.inventory.InventoryService;
+import com.fecos.inventory.WarehouseRepository;
 import com.fecos.leases.LeaseRepository;
 import com.fecos.products.ProductRepository;
 import com.fecos.users.UserRepository;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -26,9 +29,11 @@ public class RouteService {
     private final RouteStopItemRepository itemRepository;
     private final UserRepository userRepository;
     private final VehicleRepository vehicleRepository;
+    private final WarehouseRepository warehouseRepository;
     private final LeaseRepository leaseRepository;
     private final WellRepository wellRepository;
     private final ProductRepository productRepository;
+    private final InventoryService inventoryService;
 
     public Page<RouteResponse> list(RouteStatus status, UUID driverId, LocalDate routeDate, int page, int size) {
         UUID tenantId = currentTenantId();
@@ -53,8 +58,21 @@ public class RouteService {
     @Transactional
     public RouteResponse update(UUID id, RouteRequest req) {
         RouteEntity r = findForTenant(id);
+        RouteStatus prevStatus = r.getStatus();
         apply(r, req);
-        return toResponse(routeRepository.save(r), true);
+        RouteEntity saved = routeRepository.save(r);
+
+        if (prevStatus != RouteStatus.DISPATCHED && saved.getStatus() == RouteStatus.DISPATCHED
+                && saved.getWarehouseId() != null) {
+            issueInventoryForRoute(saved);
+        }
+        if (saved.getStatus() == RouteStatus.CANCELLED
+                && (prevStatus == RouteStatus.DISPATCHED || prevStatus == RouteStatus.IN_PROGRESS)) {
+            inventoryService.reverseRouteIssues(
+                    saved.getTenantId(), currentUserId(), currentUserName(), saved.getId());
+        }
+
+        return toResponse(saved, true);
     }
 
     @Transactional
@@ -143,8 +161,21 @@ public class RouteService {
     @Transactional
     public RouteResponse updateStatus(UUID routeId, RouteStatus status) {
         RouteEntity r = findForTenant(routeId);
+        RouteStatus prevStatus = r.getStatus();
         r.setStatus(status);
-        return toResponse(routeRepository.save(r), true);
+        RouteEntity saved = routeRepository.save(r);
+
+        if (prevStatus != RouteStatus.DISPATCHED && status == RouteStatus.DISPATCHED
+                && saved.getWarehouseId() != null) {
+            issueInventoryForRoute(saved);
+        }
+        if (status == RouteStatus.CANCELLED
+                && (prevStatus == RouteStatus.DISPATCHED || prevStatus == RouteStatus.IN_PROGRESS)) {
+            inventoryService.reverseRouteIssues(
+                    saved.getTenantId(), currentUserId(), currentUserName(), saved.getId());
+        }
+
+        return toResponse(saved, true);
     }
 
     @Transactional
@@ -164,14 +195,41 @@ public class RouteService {
                 ? vehicleRepository.findById(req.getVehicleId())
                         .map(v -> v.getLicensePlate()).orElse(null)
                 : null);
+        r.setWarehouseId(req.getWarehouseId());
         r.setRouteDate(req.getRouteDate());
         r.setStatus(req.getStatus() != null ? req.getStatus() : RouteStatus.PLANNED);
         r.setNotes(req.getNotes());
     }
 
+    private void issueInventoryForRoute(RouteEntity r) {
+        List<RouteStopEntity> stops = stopRepository
+                .findAllByRouteIdAndIsDeletedFalseOrderBySequenceOrderAsc(r.getId());
+        List<InventoryService.RouteIssueItem> items = new ArrayList<>();
+        for (RouteStopEntity stop : stops) {
+            String wellName = wellRepository.findByIdAndTenantIdAndIsDeletedFalse(stop.getWellId(), r.getTenantId())
+                    .map(w -> w.getWellName()).orElse("Well");
+            for (RouteStopItemEntity item : itemRepository
+                    .findAllByStopIdAndIsDeletedFalseOrderByCreatedAtAsc(stop.getId())) {
+                items.add(new InventoryService.RouteIssueItem(
+                        item.getProductId(), item.getQuantity(), item.getUnit(),
+                        stop.getSequenceOrder(), wellName));
+            }
+        }
+        if (!items.isEmpty()) {
+            inventoryService.issueForRoute(
+                    r.getTenantId(), currentUserId(), currentUserName(),
+                    r.getWarehouseId(), r.getId(), r.getRouteDate(), items);
+        }
+    }
+
     private RouteResponse toResponse(RouteEntity r, boolean includeStops) {
         String driverName = userRepository.findById(r.getDriverId())
                 .map(u -> u.getFullName()).orElse(null);
+
+        String warehouseName = r.getWarehouseId() != null
+                ? warehouseRepository.findByIdAndTenantIdAndIsDeletedFalse(r.getWarehouseId(), r.getTenantId())
+                        .map(w -> w.getName()).orElse(null)
+                : null;
 
         int stopCount = stopRepository.countByRouteIdAndIsDeletedFalse(r.getId());
 
@@ -198,7 +256,7 @@ public class RouteService {
                     .toList();
         }
 
-        return RouteResponse.from(r, driverName, stopCount, stops);
+        return RouteResponse.from(r, driverName, warehouseName, stopCount, stops);
     }
 
     private RouteEntity findForTenant(UUID id) {
@@ -215,5 +273,10 @@ public class RouteService {
 
     private UUID currentUserId() {
         return UUID.fromString(SecurityContextHolder.getContext().getAuthentication().getName());
+    }
+
+    private String currentUserName() {
+        return userRepository.findById(currentUserId())
+                .map(u -> u.getFullName()).orElse("System");
     }
 }

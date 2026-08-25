@@ -30,6 +30,9 @@ public class RouteEntity extends TenantAwareEntity {
     @Column(name = "status", nullable = false, length = 20)
     private RouteStatus status = RouteStatus.PLANNED;
 
+    @Column(name = "warehouse_id")
+    private UUID warehouseId;
+
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
 }

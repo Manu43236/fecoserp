@@ -33,6 +33,8 @@ export interface RouteRecord {
   driverName: string | null
   vehicleId: string | null
   truckNumber: string | null
+  warehouseId: string | null
+  warehouseName: string | null
   routeDate: string
   status: RouteStatus
   notes: string | null
@@ -44,6 +46,7 @@ export interface RouteRecord {
 export interface RoutePayload {
   driverId: string
   vehicleId?: string
+  warehouseId?: string
   routeDate: string
   status?: RouteStatus
   notes?: string

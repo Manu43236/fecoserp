@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -99,6 +101,55 @@ public class InventoryService {
         tx.setQuantity(qty);
 
         return InventoryTransactionResponse.from(txRepository.save(tx), warehouseName, productName);
+    }
+
+    public record RouteIssueItem(UUID productId, BigDecimal quantity, String unit, int stopSeq, String wellName) {}
+
+    @Transactional
+    public void issueForRoute(UUID tenantId, UUID userId, String createdByName,
+                              UUID warehouseId, UUID routeId, LocalDate routeDate,
+                              List<RouteIssueItem> items) {
+        for (RouteIssueItem item : items) {
+            String productName = productRepository.findById(item.productId())
+                    .map(p -> p.getName()).orElse("");
+
+            InventoryTransactionEntity tx = new InventoryTransactionEntity();
+            tx.setTenantId(tenantId);
+            tx.setCreatedBy(userId);
+            tx.setCreatedByName(createdByName);
+            tx.setWarehouseId(warehouseId);
+            tx.setProductId(item.productId());
+            tx.setType(InventoryTransactionType.ISSUE);
+            tx.setQuantity(item.quantity().negate());
+            tx.setUnit(item.unit());
+            tx.setNotes("Route dispatch – Stop #" + item.stopSeq() + ": " + item.wellName());
+            tx.setTransactionDate(routeDate);
+            tx.setReferenceType("ROUTE");
+            tx.setReferenceId(routeId);
+            txRepository.save(tx);
+        }
+    }
+
+    @Transactional
+    public void reverseRouteIssues(UUID tenantId, UUID userId, String createdByName, UUID routeId) {
+        List<InventoryTransactionEntity> issued = txRepository
+                .findByTenantIdAndReferenceIdAndReferenceTypeAndIsDeletedFalse(tenantId, routeId, "ROUTE");
+        for (InventoryTransactionEntity issue : issued) {
+            InventoryTransactionEntity reversal = new InventoryTransactionEntity();
+            reversal.setTenantId(tenantId);
+            reversal.setCreatedBy(userId);
+            reversal.setCreatedByName(createdByName);
+            reversal.setWarehouseId(issue.getWarehouseId());
+            reversal.setProductId(issue.getProductId());
+            reversal.setType(InventoryTransactionType.RECEIPT);
+            reversal.setQuantity(issue.getQuantity().negate()); // issue qty is negative → reversal is positive
+            reversal.setUnit(issue.getUnit());
+            reversal.setNotes("Route cancelled – reversal of dispatch");
+            reversal.setTransactionDate(LocalDate.now());
+            reversal.setReferenceType("ROUTE_REVERSAL");
+            reversal.setReferenceId(routeId);
+            txRepository.save(reversal);
+        }
     }
 
     private UUID currentTenantId() {

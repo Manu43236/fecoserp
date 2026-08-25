@@ -16,6 +16,8 @@ public class RouteRequest {
 
     private UUID vehicleId;
 
+    private UUID warehouseId;
+
     @NotNull(message = "Route date is required")
     private LocalDate routeDate;
 

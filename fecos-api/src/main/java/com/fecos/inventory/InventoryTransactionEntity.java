@@ -42,4 +42,10 @@ public class InventoryTransactionEntity extends TenantAwareEntity {
 
     @Column(name = "transaction_date", nullable = false)
     private LocalDate transactionDate;
+
+    @Column(name = "reference_type", length = 30)
+    private String referenceType;
+
+    @Column(name = "reference_id")
+    private UUID referenceId;
 }

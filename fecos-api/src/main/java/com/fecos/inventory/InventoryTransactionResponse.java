@@ -26,6 +26,8 @@ public class InventoryTransactionResponse {
     private UUID createdBy;
     private String createdByName;
     private Instant createdAt;
+    private String referenceType;
+    private UUID referenceId;
 
     public static InventoryTransactionResponse from(
             InventoryTransactionEntity t, String warehouseName, String productName) {
@@ -44,6 +46,8 @@ public class InventoryTransactionResponse {
         r.createdBy       = t.getCreatedBy();
         r.createdByName   = t.getCreatedByName();
         r.createdAt       = t.getCreatedAt();
+        r.referenceType   = t.getReferenceType();
+        r.referenceId     = t.getReferenceId();
         return r;
     }
 }

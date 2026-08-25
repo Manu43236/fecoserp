@@ -27,6 +27,8 @@ export interface TransactionRecord {
   createdBy: string
   createdByName: string | null
   createdAt: string
+  referenceType: string | null
+  referenceId: string | null
 }
 
 export interface TransactionPayload {
