@@ -17,7 +17,9 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            set -e
             cd /app/fecos
-            git pull origin main
+            git fetch origin main
+            git reset --hard FETCH_HEAD
             docker compose -f docker-compose.prod.yml --env-file .env up --build -d api
             docker image prune -f
