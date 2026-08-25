@@ -11,7 +11,6 @@ import { labApi, type LabSampleRecord } from '@/api/lab'
 import { serviceVisitsApi, type ServiceVisit } from '@/api/serviceVisits'
 import { useAuthStore } from '@/store/authStore'
 import { Skeleton } from '@/components/ui/Skeleton'
-import { cn } from '@/lib/utils'
 
 // ── Plan status config ────────────────────────────────────────────────────────
 const PLAN_STATUS: Record<PlanStatus, { label: string; color: string; icon: React.ElementType }> = {
@@ -27,7 +26,7 @@ const PLAN_STATUS: Record<PlanStatus, { label: string; color: string; icon: Reac
 function PlanBadge({ status }: { status: PlanStatus }) {
   const cfg = PLAN_STATUS[status] ?? PLAN_STATUS.INACTIVE
   return (
-    <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold', cfg.color)}>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${cfg.color}`}>
       <cfg.icon size={10} />
       {cfg.label}
     </span>
@@ -226,13 +225,12 @@ function ScheduleTab({ clientName }: { clientName: string }) {
                     <AlertTriangle size={10} /> SOAR
                   </span>
                 )}
-                <span className={cn(
-                  'text-xs font-medium px-1.5 py-0.5 rounded',
+                <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${
                   v.status === 'COMPLETED' ? 'bg-green-50 text-green-700'
                     : v.status === 'IN_PROGRESS' ? 'bg-blue-50 text-blue-700'
                     : v.status === 'CANCELLED' ? 'bg-red-50 text-red-700'
                     : 'bg-gray-100 text-gray-600'
-                )}>
+                }`}>
                   {v.status.replace('_', ' ')}
                 </span>
               </div>
@@ -313,12 +311,9 @@ function ClientDrawer({
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={cn(
-                'flex-1 py-2.5 text-sm font-medium transition-colors border-b-2',
-                tab === t.key
-                  ? 'border-current'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              )}
+              className={`flex-1 py-2.5 text-sm font-medium transition-colors border-b-2 ${
+                tab === t.key ? 'border-current' : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
               style={tab === t.key ? { color: 'var(--color-primary)', borderColor: 'var(--color-primary)' } : {}}
             >
               {t.label}
