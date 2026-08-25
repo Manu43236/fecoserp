@@ -353,6 +353,17 @@ function RouteDrawer({ route, onClose, onEdit, canEdit }: {
     onError: () => toast.error('Failed to cancel route'),
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: () => routesApi.delete(route.id),
+    onSuccess: () => {
+      toast.success('Route deleted')
+      qc.invalidateQueries({ queryKey: ['routes'] })
+      qc.invalidateQueries({ queryKey: ['routes-board'] })
+      onClose()
+    },
+    onError: () => toast.error('Failed to delete route'),
+  })
+
   function resetStopForm() {
     setShowStopForm(false)
     setSelectedLeaseId(null)
@@ -397,17 +408,25 @@ function RouteDrawer({ route, onClose, onEdit, canEdit }: {
           </div>
           <div className="flex items-center gap-2">
             <StatusBadge status={r.status} />
-            {canEdit && (
+            {canEdit && r.status === 'PLANNED' && (
               <button onClick={onEdit} className="h-8 px-3 text-xs font-medium rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors">
                 Edit
               </button>
             )}
-            {canEdit && r.status !== 'CANCELLED' && (
+            {canEdit && (r.status === 'PLANNED' || r.status === 'DISPATCHED' || r.status === 'IN_PROGRESS') && (
               <button
                 onClick={() => { if (confirm('Cancel this route?')) cancelMutation.mutate() }}
                 disabled={cancelMutation.isPending}
                 className="h-8 px-3 text-xs font-medium rounded-lg border border-red-100 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-60">
                 Cancel Route
+              </button>
+            )}
+            {canEdit && (r.status === 'COMPLETED' || r.status === 'CANCELLED') && (
+              <button
+                onClick={() => { if (confirm('Permanently delete this route? This cannot be undone.')) deleteMutation.mutate() }}
+                disabled={deleteMutation.isPending}
+                className="h-8 px-3 text-xs font-medium rounded-lg border border-red-100 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-60">
+                {deleteMutation.isPending ? 'Deleting…' : 'Delete Route'}
               </button>
             )}
           </div>
