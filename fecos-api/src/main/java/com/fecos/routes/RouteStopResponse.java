@@ -13,12 +13,17 @@ public record RouteStopResponse(
         int sequenceOrder,
         RouteStopStatus status,
         String notes,
-        List<RouteStopItemResponse> items
+        List<RouteStopItemResponse> items,
+        Double deliveryLat,
+        Double deliveryLng,
+        String deliveryPhotoUrl,
+        java.time.LocalDateTime deliveredAt
 ) {
     public static RouteStopResponse from(RouteStopEntity e, String leaseName, String wellName, List<RouteStopItemResponse> items) {
         return new RouteStopResponse(
                 e.getId(), e.getRouteId(), e.getLeaseId(), leaseName,
-                e.getWellId(), wellName, e.getSequenceOrder(), e.getStatus(), e.getNotes(), items
+                e.getWellId(), wellName, e.getSequenceOrder(), e.getStatus(), e.getNotes(), items,
+                e.getDeliveryLat(), e.getDeliveryLng(), e.getDeliveryPhotoUrl(), e.getDeliveredAt()
         );
     }
 }

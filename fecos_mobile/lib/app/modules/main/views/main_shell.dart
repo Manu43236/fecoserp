@@ -1,33 +1,59 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:fecos_mobile/app/data/models/user_model.dart';
+import 'package:fecos_mobile/app/modules/auth/controllers/auth_controller.dart';
 import 'package:fecos_mobile/app/theme/app_theme.dart';
 import 'package:fecos_mobile/app/modules/main/controllers/main_controller.dart';
 import 'package:fecos_mobile/app/modules/home/views/home_view.dart';
 import 'package:fecos_mobile/app/modules/service_visit/views/service_visit_view.dart';
+import 'package:fecos_mobile/app/modules/delivery/views/my_routes_view.dart';
 import 'package:fecos_mobile/app/modules/profile/views/profile_view.dart';
 
 class MainShell extends GetView<MainController> {
   const MainShell({super.key});
 
-  static const _tabs = [HomeView(), ServiceVisitView(), ProfileView()];
+  bool get _isTruckDriver =>
+      Get.find<AuthController>().user.value?.role == UserRole.truckDriver;
 
-  static const _items = [
-    BottomNavigationBarItem(
-      icon: Icon(Icons.home_outlined),
-      activeIcon: Icon(Icons.home_rounded),
-      label: 'Home',
-    ),
-    BottomNavigationBarItem(
-      icon: Icon(Icons.science_outlined),
-      activeIcon: Icon(Icons.science_rounded),
-      label: 'My Visits',
-    ),
-    BottomNavigationBarItem(
-      icon: Icon(Icons.person_outline_rounded),
-      activeIcon: Icon(Icons.person_rounded),
-      label: 'Profile',
-    ),
-  ];
+  List<Widget> get _tabs => _isTruckDriver
+      ? const [HomeView(), MyRoutesView(), ProfileView()]
+      : const [HomeView(), ServiceVisitView(), ProfileView()];
+
+  List<BottomNavigationBarItem> get _items => _isTruckDriver
+      ? const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home_rounded),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.local_shipping_outlined),
+            activeIcon: Icon(Icons.local_shipping_rounded),
+            label: 'My Routes',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline_rounded),
+            activeIcon: Icon(Icons.person_rounded),
+            label: 'Profile',
+          ),
+        ]
+      : const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home_rounded),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.science_outlined),
+            activeIcon: Icon(Icons.science_rounded),
+            label: 'My Visits',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline_rounded),
+            activeIcon: Icon(Icons.person_rounded),
+            label: 'Profile',
+          ),
+        ];
 
   @override
   Widget build(BuildContext context) => Obx(
@@ -38,6 +64,7 @@ class MainShell extends GetView<MainController> {
           ),
           bottomNavigationBar: _NavBar(
             currentIndex: controller.tabIndex.value,
+            items: _items,
             onTap: controller.changeTab,
           ),
         ),
@@ -45,9 +72,10 @@ class MainShell extends GetView<MainController> {
 }
 
 class _NavBar extends StatelessWidget {
-  const _NavBar({required this.currentIndex, required this.onTap});
+  const _NavBar({required this.currentIndex, required this.items, required this.onTap});
 
   final int currentIndex;
+  final List<BottomNavigationBarItem> items;
   final ValueChanged<int> onTap;
 
   @override
@@ -75,7 +103,7 @@ class _NavBar extends StatelessWidget {
             fontSize: 11,
           ),
           unselectedLabelStyle: const TextStyle(fontSize: 11),
-          items: MainShell._items,
+          items: items,
         ),
       );
 }

@@ -94,7 +94,12 @@ public class RouteController {
     @PatchMapping("/{id}/stops/{stopId}/status")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','TRUCK_DRIVER')")
     public ResponseEntity<ApiResponse<RouteResponse>> updateStopStatus(
-            @PathVariable UUID id, @PathVariable UUID stopId, @RequestParam RouteStopStatus status) {
-        return ResponseEntity.ok(ApiResponse.ok("Stop status updated", routeService.updateStopStatus(id, stopId, status)));
+            @PathVariable UUID id, @PathVariable UUID stopId,
+            @RequestParam RouteStopStatus status,
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lng,
+            @RequestParam(required = false) String photoUrl) {
+        return ResponseEntity.ok(ApiResponse.ok("Stop status updated",
+                routeService.updateStopStatus(id, stopId, status, lat, lng, photoUrl)));
     }
 }

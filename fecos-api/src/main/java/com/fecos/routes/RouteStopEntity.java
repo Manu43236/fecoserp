@@ -31,4 +31,16 @@ public class RouteStopEntity extends TenantAwareEntity {
 
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
+
+    @Column(name = "delivery_lat")
+    private Double deliveryLat;
+
+    @Column(name = "delivery_lng")
+    private Double deliveryLng;
+
+    @Column(name = "delivery_photo_url", columnDefinition = "TEXT")
+    private String deliveryPhotoUrl;
+
+    @Column(name = "delivered_at")
+    private java.time.LocalDateTime deliveredAt;
 }

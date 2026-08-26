@@ -20,7 +20,7 @@ enum UserRole {
 
   bool get isMobileRole =>
       this == truckDriver || this == serviceTech
-      || this == accountRep || this == manager;
+      || this == manager;
 }
 
 class UserModel {

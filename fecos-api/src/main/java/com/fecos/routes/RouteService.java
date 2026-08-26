@@ -179,11 +179,18 @@ public class RouteService {
     }
 
     @Transactional
-    public RouteResponse updateStopStatus(UUID routeId, UUID stopId, RouteStopStatus status) {
+    public RouteResponse updateStopStatus(UUID routeId, UUID stopId, RouteStopStatus status,
+                                          Double lat, Double lng, String photoUrl) {
         RouteEntity r = findForTenant(routeId);
         RouteStopEntity stop = stopRepository.findByIdAndRouteIdAndIsDeletedFalse(stopId, routeId)
                 .orElseThrow(() -> new EntityNotFoundException("Stop not found"));
         stop.setStatus(status);
+        if (status == RouteStopStatus.COMPLETED) {
+            if (lat != null) stop.setDeliveryLat(lat);
+            if (lng != null) stop.setDeliveryLng(lng);
+            if (photoUrl != null) stop.setDeliveryPhotoUrl(photoUrl);
+            stop.setDeliveredAt(java.time.LocalDateTime.now());
+        }
         stopRepository.save(stop);
         return toResponse(r, true);
     }
