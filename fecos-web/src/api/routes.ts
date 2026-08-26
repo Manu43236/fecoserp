@@ -25,6 +25,10 @@ export interface RouteStopRecord {
   status: RouteStopStatus
   notes: string | null
   items: RouteStopItemRecord[]
+  deliveryPhotoUrl: string | null
+  deliveryLat: number | null
+  deliveryLng: number | null
+  deliveredAt: string | null
 }
 
 export interface RouteRecord {

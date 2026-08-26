@@ -561,6 +561,20 @@ function RouteDrawer({ route, onClose, onEdit, canEdit }: {
                   {stop.notes && (
                     <p className="px-4 pb-2 text-xs text-gray-400 italic">{stop.notes}</p>
                   )}
+                  {stop.deliveryPhotoUrl && (
+                    <div className="px-4 pb-3">
+                      <img
+                        src={stop.deliveryPhotoUrl}
+                        alt="Delivery proof"
+                        className="w-full rounded-lg object-cover max-h-48 border border-gray-200"
+                      />
+                      {stop.deliveredAt && (
+                        <p className="text-[10px] text-gray-400 mt-1">
+                          Delivered {new Date(stop.deliveredAt).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
