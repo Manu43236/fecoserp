@@ -68,6 +68,7 @@ class DeliveryController extends GetxController {
       final uploadRes = await _dio.post<Map<String, dynamic>>(
         '/uploads/photo',
         data: formData,
+        options: Options(contentType: 'multipart/form-data; boundary=${formData.boundary}'),
       );
       final photoUrl = (uploadRes.data!['data'] as Map<String, dynamic>)['url'] as String;
 
