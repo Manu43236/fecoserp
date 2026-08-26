@@ -28,7 +28,7 @@ class DeliveryController extends GetxController {
     isLoading.value = true;
     hasError.value = false;
     try {
-      final res = await _dio.get<Map<String, dynamic>>('/api/v1/routes/$routeId');
+      final res = await _dio.get<Map<String, dynamic>>('/routes/$routeId');
       route.value = RouteModel.fromJson(res.data!['data'] as Map<String, dynamic>);
     } on DioException {
       hasError.value = true;
@@ -41,7 +41,7 @@ class DeliveryController extends GetxController {
     isUpdating.value = true;
     try {
       final res = await _dio.patch<Map<String, dynamic>>(
-        '/api/v1/routes/$routeId/status',
+        '/routes/$routeId/status',
         queryParameters: {'status': status},
       );
       route.value = RouteModel.fromJson(res.data!['data'] as Map<String, dynamic>);
@@ -66,14 +66,14 @@ class DeliveryController extends GetxController {
             filename: 'delivery_${stopId}_${DateTime.now().millisecondsSinceEpoch}.jpg'),
       });
       final uploadRes = await _dio.post<Map<String, dynamic>>(
-        '/api/v1/uploads/photo',
+        '/uploads/photo',
         data: formData,
       );
       final photoUrl = (uploadRes.data!['data'] as Map<String, dynamic>)['url'] as String;
 
       // 2. Mark stop COMPLETED with proof
       final res = await _dio.patch<Map<String, dynamic>>(
-        '/api/v1/routes/$routeId/stops/$stopId/status',
+        '/routes/$routeId/stops/$stopId/status',
         queryParameters: {
           'status': 'COMPLETED',
           'lat': position.latitude,
@@ -102,7 +102,7 @@ class DeliveryController extends GetxController {
     isUpdating.value = true;
     try {
       final res = await _dio.patch<Map<String, dynamic>>(
-        '/api/v1/routes/$routeId/stops/$stopId/status',
+        '/routes/$routeId/stops/$stopId/status',
         queryParameters: {'status': 'SKIPPED'},
       );
       route.value = RouteModel.fromJson(res.data!['data'] as Map<String, dynamic>);

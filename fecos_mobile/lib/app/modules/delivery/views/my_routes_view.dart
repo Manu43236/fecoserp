@@ -31,7 +31,7 @@ class _MyRoutesViewState extends State<MyRoutesView> {
     try {
       final driverId = Get.find<AuthController>().user.value?.id;
       final res = await _dio.get<Map<String, dynamic>>(
-        '/api/v1/routes',
+        '/routes',
         queryParameters: {
           'size': 50,
           if (driverId != null) 'driverId': driverId,

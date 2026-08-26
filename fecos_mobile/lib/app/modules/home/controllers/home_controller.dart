@@ -65,7 +65,7 @@ class HomeController extends GetxController {
         '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
     final driverId = auth.user.value?.id;
     final res = await _dio.get<Map<String, dynamic>>(
-      '/api/v1/routes',
+      '/routes',
       queryParameters: {
         'routeDate': dateStr,
         'size': 50,
