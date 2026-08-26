@@ -16,7 +16,7 @@ class DioService extends GetxService {
         baseUrl: AppConfig.apiBaseUrl,
         connectTimeout: const Duration(seconds: 15),
         receiveTimeout: const Duration(seconds: 30),
-        headers: {'Content-Type': 'application/json'},
+        contentType: 'application/json',
       ),
     );
     dio.interceptors.add(_authInterceptor());
