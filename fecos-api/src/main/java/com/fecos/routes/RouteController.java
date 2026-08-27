@@ -98,8 +98,39 @@ public class RouteController {
             @RequestParam RouteStopStatus status,
             @RequestParam(required = false) Double lat,
             @RequestParam(required = false) Double lng,
-            @RequestParam(required = false) String photoUrl) {
+            @RequestParam(required = false) String photoUrl,
+            @RequestParam(required = false) String skipReason) {
         return ResponseEntity.ok(ApiResponse.ok("Stop status updated",
-                routeService.updateStopStatus(id, stopId, status, lat, lng, photoUrl)));
+                routeService.updateStopStatus(id, stopId, status, lat, lng, photoUrl, skipReason)));
+    }
+
+    @PostMapping("/{id}/load-confirmation")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','TRUCK_DRIVER')")
+    public ResponseEntity<ApiResponse<RouteResponse>> confirmLoad(
+            @PathVariable UUID id, @RequestBody LoadConfirmationRequest req) {
+        return ResponseEntity.ok(ApiResponse.ok("Load confirmed", routeService.confirmLoad(id, req)));
+    }
+
+    @PatchMapping("/{id}/stops/{stopId}/deliver")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','TRUCK_DRIVER')")
+    public ResponseEntity<ApiResponse<RouteResponse>> deliverStop(
+            @PathVariable UUID id, @PathVariable UUID stopId,
+            @RequestBody DeliverStopRequest req) {
+        return ResponseEntity.ok(ApiResponse.ok("Stop delivered",
+                routeService.deliverStop(id, stopId, req)));
+    }
+
+    @PostMapping("/{id}/pre-trip")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','TRUCK_DRIVER')")
+    public ResponseEntity<ApiResponse<RouteResponse>> submitPreTrip(
+            @PathVariable UUID id, @RequestBody PreTripRequest req) {
+        return ResponseEntity.ok(ApiResponse.ok("Pre-trip submitted", routeService.submitPreTrip(id, req)));
+    }
+
+    @PostMapping("/{id}/return-inventory")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','TRUCK_DRIVER')")
+    public ResponseEntity<ApiResponse<RouteResponse>> returnInventory(
+            @PathVariable UUID id, @RequestBody ReturnInventoryRequest req) {
+        return ResponseEntity.ok(ApiResponse.ok("Route completed", routeService.returnInventory(id, req)));
     }
 }

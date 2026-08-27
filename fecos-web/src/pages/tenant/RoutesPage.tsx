@@ -688,7 +688,9 @@ function RouteDrawer({ route, onClose, onEdit, canEdit }: {
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 function toDateStr(d: Date) {
-  return d.toISOString().split('T')[0]
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${m}-${day}`
 }
 
 function addDays(dateStr: string, n: number) {

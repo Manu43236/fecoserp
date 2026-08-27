@@ -30,4 +30,21 @@ public interface TreatmentPlanLineRepository extends JpaRepository<TreatmentPlan
         ORDER BY p.createdAt DESC
         """)
     List<UUID> findWellIdsByTankId(@org.springframework.data.repository.query.Param("tankId") UUID tankId);
+
+    @org.springframework.data.jpa.repository.Query("""
+        SELECT l FROM TreatmentPlanLineEntity l
+        JOIN TreatmentPlanEntity p ON l.programId = p.id
+        WHERE p.tenantId = :tenantId
+          AND p.wellId = :wellId
+          AND l.productId = :productId
+          AND l.isDeleted = false
+          AND p.isDeleted = false
+          AND p.status = :status
+        ORDER BY p.createdAt DESC
+        """)
+    Optional<TreatmentPlanLineEntity> findActiveLineForWellAndProduct(
+            @org.springframework.data.repository.query.Param("tenantId") UUID tenantId,
+            @org.springframework.data.repository.query.Param("wellId") UUID wellId,
+            @org.springframework.data.repository.query.Param("productId") UUID productId,
+            @org.springframework.data.repository.query.Param("status") TreatmentPlanStatus status);
 }

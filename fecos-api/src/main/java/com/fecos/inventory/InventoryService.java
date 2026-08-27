@@ -131,6 +131,29 @@ public class InventoryService {
     }
 
     @Transactional
+    public void returnForRoute(UUID tenantId, UUID userId, String createdByName,
+                               UUID warehouseId, UUID routeId, LocalDate routeDate,
+                               List<com.fecos.routes.ReturnInventoryRequest.ReturnItem> items) {
+        for (var item : items) {
+            if (item.getQty() == null || item.getQty().compareTo(BigDecimal.ZERO) <= 0) continue;
+            InventoryTransactionEntity tx = new InventoryTransactionEntity();
+            tx.setTenantId(tenantId);
+            tx.setCreatedBy(userId);
+            tx.setCreatedByName(createdByName);
+            tx.setWarehouseId(warehouseId);
+            tx.setProductId(item.getProductId());
+            tx.setType(InventoryTransactionType.RECEIPT);
+            tx.setQuantity(item.getQty());
+            tx.setUnit(item.getUnit());
+            tx.setNotes("Route return – undelivered stock");
+            tx.setTransactionDate(routeDate);
+            tx.setReferenceType("ROUTE_RETURN");
+            tx.setReferenceId(routeId);
+            txRepository.save(tx);
+        }
+    }
+
+    @Transactional
     public void reverseRouteIssues(UUID tenantId, UUID userId, String createdByName, UUID routeId) {
         List<InventoryTransactionEntity> issued = txRepository
                 .findByTenantIdAndReferenceIdAndReferenceTypeAndIsDeletedFalse(tenantId, routeId, "ROUTE");

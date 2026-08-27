@@ -9,13 +9,16 @@ public record RouteStopItemResponse(
         UUID productId,
         String productName,
         BigDecimal quantity,
+        BigDecimal loadedQty,
+        BigDecimal actualQtyDelivered,
         String unit,
         String notes
 ) {
     public static RouteStopItemResponse from(RouteStopItemEntity e, String productName) {
         return new RouteStopItemResponse(
                 e.getId(), e.getStopId(), e.getProductId(),
-                productName, e.getQuantity(), e.getUnit(), e.getNotes()
+                productName, e.getQuantity(), e.getLoadedQty(), e.getActualQtyDelivered(),
+                e.getUnit(), e.getNotes()
         );
     }
 }

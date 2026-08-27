@@ -4,6 +4,11 @@ import com.fecos.inventory.InventoryService;
 import com.fecos.inventory.WarehouseRepository;
 import com.fecos.leases.LeaseRepository;
 import com.fecos.products.ProductRepository;
+import com.fecos.programs.TreatmentPlanLineRepository;
+import com.fecos.programs.TreatmentPlanStatus;
+import com.fecos.tanks.TankEventRequest;
+import com.fecos.tanks.TankEventType;
+import com.fecos.tanks.TankService;
 import com.fecos.users.UserRepository;
 import com.fecos.vehicles.VehicleRepository;
 import com.fecos.wells.WellRepository;
@@ -15,6 +20,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +41,8 @@ public class RouteService {
     private final WellRepository wellRepository;
     private final ProductRepository productRepository;
     private final InventoryService inventoryService;
+    private final TreatmentPlanLineRepository planLineRepository;
+    private final TankService tankService;
 
     public Page<RouteResponse> list(RouteStatus status, UUID driverId, LocalDate routeDate, int page, int size) {
         UUID tenantId = currentTenantId();
@@ -180,7 +189,7 @@ public class RouteService {
 
     @Transactional
     public RouteResponse updateStopStatus(UUID routeId, UUID stopId, RouteStopStatus status,
-                                          Double lat, Double lng, String photoUrl) {
+                                          Double lat, Double lng, String photoUrl, String skipReason) {
         RouteEntity r = findForTenant(routeId);
         RouteStopEntity stop = stopRepository.findByIdAndRouteIdAndIsDeletedFalse(stopId, routeId)
                 .orElseThrow(() -> new EntityNotFoundException("Stop not found"));
@@ -191,7 +200,101 @@ public class RouteService {
             if (photoUrl != null) stop.setDeliveryPhotoUrl(photoUrl);
             stop.setDeliveredAt(java.time.LocalDateTime.now());
         }
+        if (status == RouteStopStatus.SKIPPED && skipReason != null) {
+            stop.setSkipReason(skipReason);
+        }
         stopRepository.save(stop);
+        return toResponse(r, true);
+    }
+
+    @Transactional
+    public RouteResponse confirmLoad(UUID routeId, LoadConfirmationRequest req) {
+        RouteEntity r = findForTenant(routeId);
+
+        if (req.getItems() != null) {
+            for (LoadConfirmationRequest.ItemLoad load : req.getItems()) {
+                itemRepository.findById(load.getItemId()).ifPresent(item -> {
+                    item.setLoadedQty(load.getLoadedQty() != null ? load.getLoadedQty() : item.getQuantity());
+                    itemRepository.save(item);
+                });
+            }
+        }
+
+        r.setLoadConfirmedAt(java.time.LocalDateTime.now());
+        routeRepository.save(r);
+        return toResponse(r, true);
+    }
+
+    @Transactional
+    public RouteResponse deliverStop(UUID routeId, UUID stopId, DeliverStopRequest req) {
+        UUID tenantId = currentTenantId();
+        RouteEntity r = findForTenant(routeId);
+        RouteStopEntity stop = stopRepository.findByIdAndRouteIdAndIsDeletedFalse(stopId, routeId)
+                .orElseThrow(() -> new EntityNotFoundException("Stop not found"));
+
+        stop.setStatus(RouteStopStatus.COMPLETED);
+        if (req.getLat() != null) stop.setDeliveryLat(req.getLat());
+        if (req.getLng() != null) stop.setDeliveryLng(req.getLng());
+        if (req.getPhotoUrl() != null) stop.setDeliveryPhotoUrl(req.getPhotoUrl());
+        stop.setDeliveredAt(java.time.LocalDateTime.now());
+        if (req.getNotes() != null) stop.setNotes(req.getNotes());
+        stopRepository.save(stop);
+
+        if (req.getItems() != null) {
+            for (DeliverStopRequest.ItemDelivery delivery : req.getItems()) {
+                itemRepository.findByIdAndStopIdAndIsDeletedFalse(delivery.getItemId(), stopId)
+                        .ifPresent(item -> {
+                            BigDecimal qty = delivery.getActualQty() != null
+                                    ? delivery.getActualQty() : item.getQuantity();
+                            item.setActualQtyDelivered(qty);
+                            itemRepository.save(item);
+
+                            // Trigger refill on OWN tanks linked via active treatment plan
+                            if (qty.compareTo(BigDecimal.ZERO) > 0) {
+                                planLineRepository.findActiveLineForWellAndProduct(
+                                        tenantId, stop.getWellId(), item.getProductId(),
+                                        TreatmentPlanStatus.ACTIVE)
+                                        .ifPresent(line -> {
+                                            if (line.getTankId() != null) {
+                                                TankEventRequest event = new TankEventRequest();
+                                                event.setEventType(TankEventType.REFILLED);
+                                                event.setAmountGallons(qty);
+                                                event.setEventAt(Instant.now());
+                                                try {
+                                                    tankService.logEvent(line.getTankId(), event);
+                                                } catch (Exception ignored) {
+                                                    // Don't fail delivery if tank refill fails
+                                                }
+                                            }
+                                        });
+                            }
+                        });
+            }
+        }
+
+        return toResponse(r, true);
+    }
+
+    @Transactional
+    public RouteResponse submitPreTrip(UUID routeId, PreTripRequest req) {
+        RouteEntity r = findForTenant(routeId);
+        r.setPreTripConfirmedAt(java.time.LocalDateTime.now());
+        r.setPreTripHasIssues(req.isHasIssues());
+        r.setPreTripNotes(req.getNotes());
+        routeRepository.save(r);
+        return toResponse(r, true);
+    }
+
+    @Transactional
+    public RouteResponse returnInventory(UUID routeId, ReturnInventoryRequest req) {
+        RouteEntity r = findForTenant(routeId);
+        if (req.getItems() != null && !req.getItems().isEmpty() && r.getWarehouseId() != null) {
+            inventoryService.returnForRoute(
+                    r.getTenantId(), currentUserId(), currentUserName(),
+                    r.getWarehouseId(), r.getId(), r.getRouteDate(), req.getItems());
+        }
+        r.setStatus(RouteStatus.COMPLETED);
+        routeRepository.save(r);
         return toResponse(r, true);
     }
 

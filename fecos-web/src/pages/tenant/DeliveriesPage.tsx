@@ -55,7 +55,10 @@ const STATUS_FILTER_OPTIONS: DropdownOption[] = [
 ]
 
 function todayIso() {
-  return new Date().toISOString().slice(0, 10)
+  const d = new Date()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${m}-${day}`
 }
 
 // ── Delivery drawer ───────────────────────────────────────────────────────────
@@ -227,8 +230,8 @@ function DeliveryDrawer({ route, onClose }: { route: RouteRecord; onClose: () =>
 
 export default function DeliveriesPage() {
   const [dateFilter, setDateFilter] = useState(todayIso())
-  const [statusFilter, setStatusFilter] = useState<string>('')
-  const [driverFilter, setDriverFilter] = useState<string>('')
+  const [statusFilter, setStatusFilter] = useState<string | null>(null)
+  const [driverFilter, setDriverFilter] = useState<string | null>(null)
   const [selected, setSelected] = useState<RouteRecord | null>(null)
   const [page, setPage] = useState(0)
 

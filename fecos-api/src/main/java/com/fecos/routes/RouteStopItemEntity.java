@@ -28,4 +28,10 @@ public class RouteStopItemEntity extends TenantAwareEntity {
 
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
+
+    @Column(name = "loaded_qty", precision = 12, scale = 4)
+    private java.math.BigDecimal loadedQty;
+
+    @Column(name = "actual_qty_delivered", precision = 12, scale = 4)
+    private java.math.BigDecimal actualQtyDelivered;
 }

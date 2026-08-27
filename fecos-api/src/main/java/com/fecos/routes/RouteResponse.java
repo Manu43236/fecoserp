@@ -2,6 +2,7 @@ package com.fecos.routes;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -18,7 +19,10 @@ public record RouteResponse(
         String notes,
         int stopCount,
         List<RouteStopResponse> stops,
-        Instant createdAt
+        Instant createdAt,
+        LocalDateTime loadConfirmedAt,
+        LocalDateTime preTripConfirmedAt,
+        Boolean preTripHasIssues
 ) {
     public static RouteResponse from(RouteEntity e, String driverName, String warehouseName,
                                      int stopCount, List<RouteStopResponse> stops) {
@@ -26,7 +30,9 @@ public record RouteResponse(
                 e.getId(), e.getDriverId(), driverName,
                 e.getVehicleId(), e.getTruckNumber(),
                 e.getWarehouseId(), warehouseName,
-                e.getRouteDate(), e.getStatus(), e.getNotes(), stopCount, stops, e.getCreatedAt()
+                e.getRouteDate(), e.getStatus(), e.getNotes(), stopCount, stops,
+                e.getCreatedAt(), e.getLoadConfirmedAt(),
+                e.getPreTripConfirmedAt(), e.getPreTripHasIssues()
         );
     }
 }

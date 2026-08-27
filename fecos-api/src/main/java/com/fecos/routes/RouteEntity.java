@@ -35,4 +35,16 @@ public class RouteEntity extends TenantAwareEntity {
 
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
+
+    @Column(name = "load_confirmed_at")
+    private java.time.LocalDateTime loadConfirmedAt;
+
+    @Column(name = "pre_trip_confirmed_at")
+    private java.time.LocalDateTime preTripConfirmedAt;
+
+    @Column(name = "pre_trip_has_issues")
+    private Boolean preTripHasIssues;
+
+    @Column(name = "pre_trip_notes", columnDefinition = "TEXT")
+    private String preTripNotes;
 }
