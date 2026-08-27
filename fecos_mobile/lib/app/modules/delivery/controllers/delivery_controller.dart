@@ -60,17 +60,18 @@ class DeliveryController extends GetxController {
       String stopId, File photo, Position position) async {
     isUpdating.value = true;
     try {
-      // 1. Upload photo
+      // 1. Upload photo — same pattern as well_stop_controller, no explicit Options
       final formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(photo.path,
-            filename: 'delivery_${stopId}_${DateTime.now().millisecondsSinceEpoch}.jpg'),
+        'file': await MultipartFile.fromFile(
+          photo.path,
+          filename: 'delivery_${DateTime.now().millisecondsSinceEpoch}.jpg',
+        ),
       });
       final uploadRes = await _dio.post<Map<String, dynamic>>(
         '/uploads/photo',
         data: formData,
-        options: Options(contentType: 'multipart/form-data; boundary=${formData.boundary}'),
       );
-      final photoUrl = (uploadRes.data!['data'] as Map<String, dynamic>)['url'] as String;
+      final photoUrl = uploadRes.data!['data']['url'] as String;
 
       // 2. Mark stop COMPLETED with proof
       final res = await _dio.patch<Map<String, dynamic>>(
@@ -84,15 +85,17 @@ class DeliveryController extends GetxController {
       );
       route.value = RouteModel.fromJson(res.data!['data'] as Map<String, dynamic>);
 
-      // Auto-complete route when all stops done
       final r = route.value!;
       if (r.stops.every((s) => !s.isPending) && r.status == 'IN_PROGRESS') {
         await updateRouteStatus('COMPLETED');
       }
       return true;
-    } on DioException {
-      Get.snackbar('Error', 'Could not confirm delivery',
-          snackPosition: SnackPosition.BOTTOM);
+    } on DioException catch (e) {
+      final code = e.response?.statusCode ?? 0;
+      final msg = e.response?.data?['error'] ?? e.message ?? 'Unknown error';
+      Get.snackbar('Error ($code)', msg,
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 6));
       return false;
     } finally {
       isUpdating.value = false;
