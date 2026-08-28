@@ -13,4 +13,6 @@ public interface RouteStopRepository extends JpaRepository<RouteStopEntity, UUID
     Optional<RouteStopEntity> findByIdAndRouteIdAndIsDeletedFalse(UUID id, UUID routeId);
 
     int countByRouteIdAndIsDeletedFalse(UUID routeId);
+
+    int countByRouteIdAndStatusAndIsDeletedFalse(UUID routeId, RouteStopStatus status);
 }

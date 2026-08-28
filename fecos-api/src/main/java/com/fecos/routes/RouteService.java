@@ -342,6 +342,7 @@ public class RouteService {
                 : null;
 
         int stopCount = stopRepository.countByRouteIdAndIsDeletedFalse(r.getId());
+        int completedStopCount = stopRepository.countByRouteIdAndStatusAndIsDeletedFalse(r.getId(), RouteStopStatus.COMPLETED);
 
         List<RouteStopResponse> stops = List.of();
         if (includeStops) {
@@ -366,7 +367,7 @@ public class RouteService {
                     .toList();
         }
 
-        return RouteResponse.from(r, driverName, warehouseName, stopCount, stops);
+        return RouteResponse.from(r, driverName, warehouseName, stopCount, completedStopCount, stops);
     }
 
     private RouteEntity findForTenant(UUID id) {

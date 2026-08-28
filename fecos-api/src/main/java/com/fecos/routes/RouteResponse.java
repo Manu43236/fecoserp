@@ -18,6 +18,7 @@ public record RouteResponse(
         RouteStatus status,
         String notes,
         int stopCount,
+        int completedStopCount,
         List<RouteStopResponse> stops,
         Instant createdAt,
         LocalDateTime loadConfirmedAt,
@@ -25,12 +26,12 @@ public record RouteResponse(
         Boolean preTripHasIssues
 ) {
     public static RouteResponse from(RouteEntity e, String driverName, String warehouseName,
-                                     int stopCount, List<RouteStopResponse> stops) {
+                                     int stopCount, int completedStopCount, List<RouteStopResponse> stops) {
         return new RouteResponse(
                 e.getId(), e.getDriverId(), driverName,
                 e.getVehicleId(), e.getTruckNumber(),
                 e.getWarehouseId(), warehouseName,
-                e.getRouteDate(), e.getStatus(), e.getNotes(), stopCount, stops,
+                e.getRouteDate(), e.getStatus(), e.getNotes(), stopCount, completedStopCount, stops,
                 e.getCreatedAt(), e.getLoadConfirmedAt(),
                 e.getPreTripConfirmedAt(), e.getPreTripHasIssues()
         );
