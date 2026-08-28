@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -14,6 +15,7 @@ public class DeliverStopRequest {
     private Double lng;
     private String photoUrl;
     private String notes;
+    private LocalDateTime deliveredAt;
     private List<ItemDelivery> items;
 
     @Getter

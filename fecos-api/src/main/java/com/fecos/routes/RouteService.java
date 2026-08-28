@@ -236,7 +236,7 @@ public class RouteService {
         if (req.getLat() != null) stop.setDeliveryLat(req.getLat());
         if (req.getLng() != null) stop.setDeliveryLng(req.getLng());
         if (req.getPhotoUrl() != null) stop.setDeliveryPhotoUrl(req.getPhotoUrl());
-        stop.setDeliveredAt(java.time.LocalDateTime.now());
+        stop.setDeliveredAt(req.getDeliveredAt() != null ? req.getDeliveredAt() : java.time.LocalDateTime.now());
         if (req.getNotes() != null) stop.setNotes(req.getNotes());
         stopRepository.save(stop);
 
