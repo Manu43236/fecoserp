@@ -4,6 +4,8 @@ import com.fecos.common.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +19,7 @@ import java.util.UUID;
 public class RouteController {
 
     private final RouteService routeService;
+    private final DeliveryPdfService deliveryPdfService;
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP','TRUCK_DRIVER')")
@@ -132,5 +135,15 @@ public class RouteController {
     public ResponseEntity<ApiResponse<RouteResponse>> returnInventory(
             @PathVariable UUID id, @RequestBody ReturnInventoryRequest req) {
         return ResponseEntity.ok(ApiResponse.ok("Route completed", routeService.returnInventory(id, req)));
+    }
+
+    @GetMapping("/{id}/pdf")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP','TRUCK_DRIVER')")
+    public ResponseEntity<byte[]> pdf(@PathVariable UUID id) {
+        var route = routeService.findById(id);
+        var headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("inline", "delivery-report.pdf");
+        return ResponseEntity.ok().headers(headers).body(deliveryPdfService.generate(route));
     }
 }

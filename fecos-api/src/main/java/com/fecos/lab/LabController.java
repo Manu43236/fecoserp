@@ -5,6 +5,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +20,7 @@ import java.util.UUID;
 public class LabController {
 
     private final LabService labService;
+    private final LabPdfService labPdfService;
 
     @GetMapping("/samples")
     @PreAuthorize("hasAnyRole('ADMIN','LAB_TECH','ACCOUNT_REP','MANAGER')")
@@ -88,5 +91,15 @@ public class LabController {
             @RequestParam(defaultValue = "0")  int page,
             @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(ApiResponse.ok("Alerts retrieved", labService.getAlerts(page, size)));
+    }
+
+    @GetMapping("/samples/{id}/pdf")
+    @PreAuthorize("hasAnyRole('ADMIN','LAB_TECH','ACCOUNT_REP','MANAGER')")
+    public ResponseEntity<byte[]> pdf(@PathVariable UUID id) {
+        var sample = labService.findById(id);
+        var headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("inline", "lab-report.pdf");
+        return ResponseEntity.ok().headers(headers).body(labPdfService.generate(sample));
     }
 }
