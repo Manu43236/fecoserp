@@ -87,6 +87,15 @@ public class AuthService {
                 .build();
     }
 
+    public void changePin(String userId, ChangePinRequest request) {
+        UserEntity user = userRepository.findById(UUID.fromString(userId))
+                .orElseThrow(() -> new BadCredentialsException("User not found"));
+        if (!passwordEncoder.matches(request.getCurrentPin(), user.getPinHash()))
+            throw new BadCredentialsException("Current PIN is incorrect");
+        user.setPinHash(passwordEncoder.encode(request.getNewPin()));
+        userRepository.save(user);
+    }
+
     private UserEntity findUser(String mobileNumber, UUID tenantId) {
         if (tenantId != null) {
             return userRepository.findByMobileNumberAndTenantIdAndIsDeletedFalse(mobileNumber, tenantId)

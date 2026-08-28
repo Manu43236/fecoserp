@@ -23,4 +23,12 @@ public class AuthController {
     public ResponseEntity<ApiResponse<AuthResponse>> me(@AuthenticationPrincipal String userId) {
         return ResponseEntity.ok(ApiResponse.ok(authService.me(userId)));
     }
+
+    @PostMapping("/change-pin")
+    public ResponseEntity<ApiResponse<Void>> changePin(
+            @AuthenticationPrincipal String userId,
+            @Valid @RequestBody ChangePinRequest request) {
+        authService.changePin(userId, request);
+        return ResponseEntity.ok(ApiResponse.ok(null));
+    }
 }
