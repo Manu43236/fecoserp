@@ -115,4 +115,7 @@ export const serviceVisitsApi = {
 
   acknowledgeSoar: (visitId: string, stopId: string, ackNote: string) =>
     api.post<{ data: TreatmentReport }>(`/api/v1/service-visits/${visitId}/stops/${stopId}/treatment-report/acknowledge`, { ackNote }),
+
+  getPdfReport: (visitId: string, stopId: string) =>
+    api.get(`/api/v1/service-visits/${visitId}/stops/${stopId}/treatment-report/pdf`, { responseType: 'blob' }),
 }

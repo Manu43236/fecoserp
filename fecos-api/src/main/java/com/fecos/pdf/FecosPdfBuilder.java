@@ -1,0 +1,155 @@
+package com.fecos.pdf;
+
+import com.lowagie.text.*;
+import com.lowagie.text.pdf.*;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.stereotype.Component;
+
+import java.awt.Color;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+
+/**
+ * Shared PDF builder for all FECOS reports.
+ * Every page gets the FECOS icon watermark centered at 6% opacity.
+ * Usage: FecosPdfBuilder.start(out) → add content → .build()
+ */
+@Component
+public class FecosPdfBuilder {
+
+    // ── Fonts ─────────────────────────────────────────────────────────────────
+
+    public static final Font TITLE   = new Font(Font.HELVETICA, 18, Font.BOLD,   new Color(0x1E, 0x3A, 0x5F));
+    public static final Font HEADING = new Font(Font.HELVETICA, 10, Font.BOLD,   new Color(0x6B, 0x72, 0x80));
+    public static final Font LABEL   = new Font(Font.HELVETICA,  9, Font.NORMAL, new Color(0x6B, 0x72, 0x80));
+    public static final Font VALUE   = new Font(Font.HELVETICA, 10, Font.BOLD,   new Color(0x11, 0x18, 0x27));
+    public static final Font BODY    = new Font(Font.HELVETICA, 10, Font.NORMAL, new Color(0x37, 0x41, 0x51));
+    public static final Font DANGER  = new Font(Font.HELVETICA, 10, Font.BOLD,   new Color(0xDC, 0x26, 0x26));
+    public static final Font SUCCESS = new Font(Font.HELVETICA, 10, Font.BOLD,   new Color(0x15, 0x80, 0x3D));
+
+    // ── Watermark ─────────────────────────────────────────────────────────────
+
+    private final byte[] iconBytes;
+
+    public FecosPdfBuilder() {
+        byte[] bytes = null;
+        try {
+            bytes = new ClassPathResource("fecos_icon.png").getInputStream().readAllBytes();
+        } catch (IOException ignored) {
+            // watermark skipped if icon missing
+        }
+        this.iconBytes = bytes;
+    }
+
+    // ── Builder entry point ───────────────────────────────────────────────────
+
+    public Session start(ByteArrayOutputStream out) throws DocumentException {
+        var doc = new Document(PageSize.A4, 40, 40, 48, 48);
+        var writer = PdfWriter.getInstance(doc, out);
+        if (iconBytes != null) {
+            writer.setPageEvent(new WatermarkEvent(iconBytes));
+        }
+        doc.open();
+        return new Session(doc);
+    }
+
+    // ── Session (fluent API per document) ────────────────────────────────────
+
+    public static final class Session {
+        private final Document doc;
+
+        Session(Document doc) { this.doc = doc; }
+
+        public Session title(String text) throws DocumentException {
+            doc.add(new Paragraph(text, TITLE));
+            return this;
+        }
+
+        public Session subtitle(String text) throws DocumentException {
+            var p = new Paragraph(text, BODY);
+            p.setSpacingAfter(14);
+            doc.add(p);
+            return this;
+        }
+
+        public Session sectionTitle(String text) throws DocumentException {
+            var p = new Paragraph(text.toUpperCase(), HEADING);
+            p.setSpacingBefore(12);
+            p.setSpacingAfter(4);
+            doc.add(p);
+            return this;
+        }
+
+        /** Rows where value == null are silently skipped. */
+        public Session infoTable(String[][] rows) throws DocumentException {
+            var table = new PdfPTable(2);
+            table.setWidthPercentage(100);
+            try { table.setWidths(new float[]{30, 70}); } catch (DocumentException ignored) {}
+            table.setSpacingAfter(6);
+            boolean any = false;
+            for (var row : rows) {
+                if (row[1] == null) continue;
+                var lc = new PdfPCell(new Phrase(row[0], LABEL));
+                lc.setBorder(Rectangle.NO_BORDER); lc.setPadding(3);
+                var vc = new PdfPCell(new Phrase(row[1], VALUE));
+                vc.setBorder(Rectangle.NO_BORDER); vc.setPadding(3);
+                table.addCell(lc); table.addCell(vc);
+                any = true;
+            }
+            if (any) doc.add(table);
+            return this;
+        }
+
+        public Session text(String content) throws DocumentException {
+            var p = new Paragraph(content, BODY);
+            p.setSpacingAfter(6);
+            doc.add(p);
+            return this;
+        }
+
+        public Session spacer() throws DocumentException {
+            var p = new Paragraph(" ");
+            p.setSpacingAfter(4);
+            doc.add(p);
+            return this;
+        }
+
+        public byte[] build() {
+            doc.close();
+            // bytes are in the ByteArrayOutputStream passed to start()
+            return new byte[0]; // caller uses the stream directly
+        }
+    }
+
+    // ── Watermark page event ──────────────────────────────────────────────────
+
+    private static final class WatermarkEvent extends PdfPageEventHelper {
+        private final Image watermark;
+
+        WatermarkEvent(byte[] iconBytes) {
+            try {
+                watermark = Image.getInstance(iconBytes);
+                watermark.scaleToFit(180, 180);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        @Override
+        public void onEndPage(PdfWriter writer, Document document) {
+            try {
+                var canvas = writer.getDirectContentUnder();
+                canvas.saveState();
+                var gs = new PdfGState();
+                gs.setFillOpacity(0.06f);
+                gs.setStrokeOpacity(0.06f);
+                canvas.setGState(gs);
+                float x = (document.getPageSize().getWidth()  - watermark.getScaledWidth())  / 2;
+                float y = (document.getPageSize().getHeight() - watermark.getScaledHeight()) / 2;
+                watermark.setAbsolutePosition(x, y);
+                canvas.addImage(watermark);
+                canvas.restoreState();
+            } catch (Exception ignored) {}
+        }
+    }
+}

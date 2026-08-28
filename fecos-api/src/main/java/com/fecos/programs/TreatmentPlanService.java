@@ -21,6 +21,8 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -336,6 +338,36 @@ public class TreatmentPlanService {
         }
 
         return TreatmentPlanResponse.from(p, wellName, leaseName, clientName, accountRepName, lines, lineCount);
+    }
+
+    public List<PlanHistoryEvent> history(UUID planId) {
+        TreatmentPlanEntity plan = findForTenant(planId);
+        List<TreatmentPlanLineEntity> lines =
+                lineRepository.findAllByProgramIdAndIsDeletedFalseOrderByCreatedAtAsc(planId);
+        List<PlanHistoryEvent> events = new ArrayList<>();
+        events.add(new PlanHistoryEvent("CREATED", "Plan Created", plan.getCreatedAt(), null));
+        if (plan.getStartedAt() != null)
+            events.add(new PlanHistoryEvent("STARTED", "Treatment Started", plan.getStartedAt(), null));
+        if (plan.getPausedAt() != null)
+            events.add(new PlanHistoryEvent("PAUSED", "Treatment Paused", plan.getPausedAt(), null));
+        if (plan.getResumedAt() != null)
+            events.add(new PlanHistoryEvent("RESUMED", "Treatment Resumed", plan.getResumedAt(), null));
+        if (plan.getSupersededAt() != null)
+            events.add(new PlanHistoryEvent("SUPERSEDED", "Plan Superseded", plan.getSupersededAt(), null));
+        for (TreatmentPlanLineEntity line : lines) {
+            if (line.getRecRateUpdatedAt() != null && line.getRecRatePrevious() != null) {
+                String productName = productRepository.findById(line.getProductId())
+                        .map(p -> p.getName()).orElse("Product");
+                String detail = String.format("%s: %.0f → %.0f gal/day",
+                        productName,
+                        line.getRecRatePrevious().doubleValue(),
+                        line.getRecRate().doubleValue());
+                events.add(new PlanHistoryEvent("RATE_CHANGE", "Dosage Updated",
+                        line.getRecRateUpdatedAt(), detail));
+            }
+        }
+        events.sort(Comparator.comparing(PlanHistoryEvent::occurredAt).reversed());
+        return events;
     }
 
     private TreatmentPlanEntity findForTenant(UUID id) {

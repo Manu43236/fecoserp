@@ -3,6 +3,8 @@ package com.fecos.servicereports;
 import com.fecos.common.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +17,7 @@ import java.util.UUID;
 public class ServiceReportController {
 
     private final ServiceReportService service;
+    private final TreatmentPdfService pdfService;
 
     // Mobile — service tech dashboard summary for today
     @GetMapping("/api/v1/service-tech/dashboard")
@@ -74,6 +77,20 @@ public class ServiceReportController {
             @PathVariable UUID visitId,
             @PathVariable UUID stopId) {
         return ResponseEntity.ok(ApiResponse.ok(service.getTreatmentReport(stopId)));
+    }
+
+    // Web + Mobile — download treatment report as PDF
+    @GetMapping("/api/v1/service-visits/{visitId}/stops/{stopId}/treatment-report/pdf")
+    @PreAuthorize("hasAnyRole('SERVICE_TECH','ADMIN','MANAGER','ACCOUNT_REP')")
+    public ResponseEntity<byte[]> getTreatmentReportPdf(
+            @PathVariable UUID visitId,
+            @PathVariable UUID stopId) {
+        var report = service.getTreatmentReport(stopId);
+        var bytes  = pdfService.generate(report);
+        var headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("inline", "treatment-report.pdf");
+        return ResponseEntity.ok().headers(headers).body(bytes);
     }
 
     // Web — manager/admin acknowledges a SOAR flag

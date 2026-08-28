@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -104,5 +105,11 @@ public class TreatmentPlanController {
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP')")
     public ResponseEntity<ApiResponse<TreatmentPlanResponse>> complete(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok("Treatment completed", planService.transition(id, "complete")));
+    }
+
+    @GetMapping("/{id}/history")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP')")
+    public ResponseEntity<ApiResponse<List<PlanHistoryEvent>>> history(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok("History retrieved", planService.history(id)));
     }
 }
