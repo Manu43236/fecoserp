@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:fecos_mobile/app/widgets/fecos_shimmer.dart';
 import '../controllers/well_overview_controller.dart';
 
 const _primary = Color(0xFF751903);
@@ -25,8 +26,7 @@ class WellOverviewView extends GetView<WellOverviewController> {
       ),
       body: Obx(() {
         if (controller.isLoading.value) {
-          return const Center(
-              child: CircularProgressIndicator(color: _primary));
+          return const FecosListShimmer(itemCount: 5, itemHeight: 96);
         }
         if (controller.errorMsg.value != null) {
           return Center(

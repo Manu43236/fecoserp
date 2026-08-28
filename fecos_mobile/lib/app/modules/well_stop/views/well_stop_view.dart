@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:signature/signature.dart';
+import 'package:fecos_mobile/app/widgets/fecos_shimmer.dart';
 import 'package:fecos_mobile/app/modules/service_visit/controllers/service_visit_controller.dart';
 import '../controllers/well_stop_controller.dart';
 
@@ -21,8 +22,7 @@ class WellStopView extends GetView<WellStopController> {
       ),
       body: Obx(() {
         if (controller.planLoading.value) {
-          return const Center(
-              child: CircularProgressIndicator(color: _primary));
+          return const FecosListShimmer(itemCount: 5, itemHeight: 96);
         }
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16),

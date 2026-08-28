@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:fecos_mobile/app/data/models/route_model.dart';
 import 'package:fecos_mobile/app/modules/delivery/controllers/delivery_controller.dart';
+import 'package:fecos_mobile/app/widgets/fecos_shimmer.dart';
 
 class WrapUpView extends StatefulWidget {
   const WrapUpView({super.key});
@@ -81,7 +82,7 @@ class _WrapUpViewState extends State<WrapUpView> {
       body: Obx(() {
         final route = _controller.route.value;
         if (route == null) {
-          return const Center(child: CircularProgressIndicator());
+          return const FecosListShimmer(itemCount: 4, itemHeight: 96);
         }
 
         final delivered = route.stops.where((s) => s.isCompleted).length;

@@ -20,10 +20,16 @@ class HomeController extends GetxController {
   // Truck driver state
   final todayRoutes = <RouteModel>[].obs;
 
+  // Account rep state
+  final arPendingCount = 0.obs;
+  final arClientCount = 0.obs;
+  final arCriticalCount = 0.obs;
+
   final isLoading = true.obs;
   final hasError = false.obs;
 
   bool get isTruckDriver => auth.user.value?.role == UserRole.truckDriver;
+  bool get isAccountRep => auth.user.value?.role == UserRole.accountRep;
 
   @override
   void onInit() {
@@ -37,6 +43,8 @@ class HomeController extends GetxController {
     try {
       if (isTruckDriver) {
         await _loadDriverData();
+      } else if (isAccountRep) {
+        await _loadArData();
       } else {
         await _loadServiceTechData();
       }
@@ -76,5 +84,33 @@ class HomeController extends GetxController {
     todayRoutes.value = content
         .map((e) => RouteModel.fromJson(e as Map<String, dynamic>))
         .toList();
+  }
+
+  Future<void> _loadArData() async {
+    final userId = auth.user.value?.id;
+    final results = await Future.wait([
+      _dio.get<Map<String, dynamic>>(
+        '/lab/pending-approvals',
+        queryParameters: {'size': 200},
+      ),
+      _dio.get<Map<String, dynamic>>(
+        '/clients',
+        queryParameters: {
+          if (userId != null) 'accountRepId': userId,
+          'isActive': true,
+          'size': 200,
+        },
+      ),
+    ]);
+
+    final samples = (results[0].data!['data']['content'] as List);
+    arPendingCount.value = samples.length;
+    arCriticalCount.value = samples.where((s) {
+      final result = (s as Map<String, dynamic>)['result'] as Map<String, dynamic>?;
+      return result?['hasCriticalValues'] as bool? ?? false;
+    }).length;
+
+    final clients = results[1].data!['data']['content'] as List;
+    arClientCount.value = clients.length;
   }
 }

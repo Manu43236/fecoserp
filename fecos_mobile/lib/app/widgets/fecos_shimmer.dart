@@ -81,6 +81,7 @@ class FecosShimmerCard extends StatelessWidget {
           border: Border.all(color: AppColors.border),
         ),
         padding: const EdgeInsets.all(16),
+        child: ClipRect(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
@@ -95,6 +96,7 @@ class FecosShimmerCard extends StatelessWidget {
               ),
             ],
           ],
+        ),
         ),
       );
 }

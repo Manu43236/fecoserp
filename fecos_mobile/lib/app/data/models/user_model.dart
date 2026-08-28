@@ -19,8 +19,8 @@ enum UserRole {
       };
 
   bool get isMobileRole =>
-      this == truckDriver || this == serviceTech
-      || this == manager;
+      this == truckDriver || this == serviceTech ||
+      this == manager || this == accountRep;
 }
 
 class UserModel {
@@ -30,6 +30,7 @@ class UserModel {
     required this.email,
     required this.role,
     this.tenantId,
+    this.tenantName,
   });
 
   final String id;
@@ -37,6 +38,7 @@ class UserModel {
   final String email;
   final UserRole role;
   final String? tenantId;
+  final String? tenantName;
 
   factory UserModel.fromJson(Map<String, dynamic> json) => UserModel(
         id: json['id'] as String,
@@ -44,5 +46,6 @@ class UserModel {
         email: json['email'] as String,
         role: UserRole.fromString(json['role'] as String),
         tenantId: json['tenantId'] as String?,
+        tenantName: json['tenantName'] as String?,
       );
 }

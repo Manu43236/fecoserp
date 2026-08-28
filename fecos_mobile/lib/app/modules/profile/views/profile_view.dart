@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:fecos_mobile/app/theme/app_theme.dart';
-import 'package:fecos_mobile/app/widgets/fecos_shimmer.dart';
 import 'package:fecos_mobile/app/widgets/fecos_dialog.dart';
 import '../controllers/profile_controller.dart';
 
@@ -130,20 +129,9 @@ class ProfileView extends GetView<ProfileController> {
               ),
             ),
 
-            const SizedBox(height: 20),
-
-            // Shimmer preview row
-            const Row(
-              children: [
-                Expanded(child: FecosShimmerCard(height: 72, lineCount: 1)),
-                SizedBox(width: 12),
-                Expanded(child: FecosShimmerCard(height: 72, lineCount: 1)),
-              ],
-            ),
-
             const SizedBox(height: 28),
 
-            // Logout
+            // Sign Out
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
@@ -171,6 +159,64 @@ class ProfileView extends GetView<ProfileController> {
                   side: const BorderSide(color: AppColors.danger),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Delete Account
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () {
+                  final tenantName =
+                      controller.auth.user.value?.tenantName ?? 'your organization\'s';
+                  showDialog<void>(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16)),
+                      title: const Row(
+                        children: [
+                          Icon(Icons.delete_outline_rounded,
+                              color: AppColors.danger, size: 22),
+                          SizedBox(width: 8),
+                          Text('Delete Account',
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.danger)),
+                        ],
+                      ),
+                      content: Text(
+                        'Your delete request to $tenantName admin has been '
+                        'initiated. Your account will be processed within 24 hours.',
+                        style: const TextStyle(
+                            fontSize: 14, color: AppColors.textSecondary),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text('OK',
+                              style: TextStyle(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w600)),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 48),
+                ),
+                child: const Text(
+                  'Delete Account',
+                  style: TextStyle(
+                    color: AppColors.danger,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),

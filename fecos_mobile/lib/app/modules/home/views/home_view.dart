@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:fecos_mobile/app/data/models/dashboard_data.dart';
 import 'package:fecos_mobile/app/data/models/route_model.dart';
 import 'package:fecos_mobile/app/modules/service_visit/controllers/service_visit_controller.dart';
+import 'package:fecos_mobile/app/modules/main/controllers/main_controller.dart';
 import 'package:fecos_mobile/app/theme/app_theme.dart';
 import 'package:fecos_mobile/app/widgets/fecos_shimmer.dart';
 import 'package:fecos_mobile/app/routes/app_pages.dart';
@@ -18,27 +19,39 @@ class HomeView extends GetView<HomeController> {
 
     return Scaffold(
       backgroundColor: AppColors.surface,
-      body: CustomScrollView(
-        slivers: [
-          _GreetingAppBar(
-            firstName: firstName,
-            connectivity: controller.connectivity,
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
-            sliver: Obx(() {
-              if (controller.isLoading.value) return _LoadingSkeleton();
-              if (controller.hasError.value) return _ErrorState(onRetry: controller.load);
-
-              if (controller.isTruckDriver) {
-                return _DriverDashboardContent(routes: controller.todayRoutes);
-              }
-              final data = controller.dashboard.value;
-              if (data == null) return _LoadingSkeleton();
-              return _DashboardContent(data: data, upcoming: controller.upcoming);
-            }),
-          ),
-        ],
+      body: RefreshIndicator(
+        onRefresh: controller.load,
+        color: AppColors.primary,
+        child: CustomScrollView(
+          slivers: [
+            _GreetingAppBar(
+              firstName: firstName,
+              connectivity: controller.connectivity,
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+              sliver: Obx(() {
+                if (controller.isLoading.value) return _LoadingSkeleton();
+                if (controller.hasError.value) {
+                  return _ErrorState(onRetry: controller.load);
+                }
+                if (controller.isTruckDriver) {
+                  return _DriverDashboardContent(routes: controller.todayRoutes);
+                }
+                if (controller.isAccountRep) {
+                  return _ArDashboardContent(
+                    pendingCount: controller.arPendingCount.value,
+                    clientCount: controller.arClientCount.value,
+                    criticalCount: controller.arCriticalCount.value,
+                  );
+                }
+                final data = controller.dashboard.value;
+                if (data == null) return _LoadingSkeleton();
+                return _DashboardContent(data: data, upcoming: controller.upcoming);
+              }),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -790,6 +803,180 @@ class _StatDivider extends StatelessWidget {
   const _StatDivider();
   @override
   Widget build(BuildContext context) => const SizedBox(width: 8);
+}
+
+// ── Account Rep dashboard ─────────────────────────────────────────────────────
+
+class _ArDashboardContent extends StatelessWidget {
+  const _ArDashboardContent({
+    required this.pendingCount,
+    required this.clientCount,
+    required this.criticalCount,
+  });
+
+  final int pendingCount;
+  final int clientCount;
+  final int criticalCount;
+
+  @override
+  Widget build(BuildContext context) => SliverList(
+        delegate: SliverChildListDelegate([
+          // Pending approvals alert banner
+          if (pendingCount > 0) ...[
+            GestureDetector(
+              onTap: () {
+                // Navigate to Lab tab (index 3)
+                Get.find<MainController>().changeTab(3);
+              },
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.warning,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.pending_actions_rounded,
+                        color: Colors.white, size: 22),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '$pendingCount pending approval${pendingCount == 1 ? '' : 's'}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const Text(
+                            'Tap to review lab results',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right_rounded,
+                        color: Colors.white, size: 20),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // Stats row
+          _SectionLabel(icon: Icons.bar_chart_rounded, label: "Overview"),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _StatCard(
+                  value: '$clientCount',
+                  label: 'Clients',
+                  icon: Icons.business_rounded,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _StatCard(
+                  value: '$pendingCount',
+                  label: 'Pending',
+                  icon: Icons.pending_actions_rounded,
+                  color: pendingCount > 0 ? AppColors.warning : AppColors.success,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _StatCard(
+                  value: '$criticalCount',
+                  label: 'Critical',
+                  icon: Icons.warning_amber_rounded,
+                  color: criticalCount > 0 ? AppColors.danger : AppColors.success,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
+          // Quick access
+          const _SectionLabel(icon: Icons.apps_rounded, label: 'Quick Access'),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _ArQuickCard(
+                  icon: Icons.business_rounded,
+                  label: 'Portfolio',
+                  onTap: () => Get.find<MainController>().changeTab(1),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _ArQuickCard(
+                  icon: Icons.assignment_rounded,
+                  label: 'Plans',
+                  onTap: () => Get.find<MainController>().changeTab(2),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _ArQuickCard(
+                  icon: Icons.science_rounded,
+                  label: 'Lab',
+                  onTap: () => Get.find<MainController>().changeTab(3),
+                ),
+              ),
+            ],
+          ),
+        ]),
+      );
+}
+
+class _ArQuickCard extends StatelessWidget {
+  const _ArQuickCard({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceCard,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            children: [
+              Icon(icon, size: 24, color: AppColors.primary),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
 }
 
 // ── Route card (all statuses) ─────────────────────────────────────────────────

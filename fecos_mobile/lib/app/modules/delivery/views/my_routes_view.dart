@@ -6,6 +6,7 @@ import 'package:fecos_mobile/app/data/services/dio_service.dart';
 import 'package:fecos_mobile/app/modules/auth/controllers/auth_controller.dart';
 import 'package:fecos_mobile/app/theme/app_theme.dart';
 import 'package:fecos_mobile/app/routes/app_pages.dart';
+import 'package:fecos_mobile/app/widgets/fecos_shimmer.dart';
 
 class MyRoutesView extends StatefulWidget {
   const MyRoutesView({super.key});
@@ -66,7 +67,7 @@ class _MyRoutesViewState extends State<MyRoutesView> {
           ],
         ),
         body: _loading
-            ? const Center(child: CircularProgressIndicator())
+            ? const FecosListShimmer(itemCount: 5, itemHeight: 96)
             : _error
                 ? Center(
                     child: Column(

@@ -8,52 +8,102 @@ import 'package:fecos_mobile/app/modules/home/views/home_view.dart';
 import 'package:fecos_mobile/app/modules/service_visit/views/service_visit_view.dart';
 import 'package:fecos_mobile/app/modules/delivery/views/my_routes_view.dart';
 import 'package:fecos_mobile/app/modules/profile/views/profile_view.dart';
+import 'package:fecos_mobile/app/modules/ar_portfolio/views/ar_portfolio_view.dart';
+import 'package:fecos_mobile/app/modules/ar_plans/views/ar_plans_view.dart';
+import 'package:fecos_mobile/app/modules/ar_lab/views/ar_lab_view.dart';
 
 class MainShell extends GetView<MainController> {
   const MainShell({super.key});
 
-  bool get _isTruckDriver =>
-      Get.find<AuthController>().user.value?.role == UserRole.truckDriver;
+  UserRole? get _role =>
+      Get.find<AuthController>().user.value?.role;
 
-  List<Widget> get _tabs => _isTruckDriver
-      ? const [HomeView(), MyRoutesView(), ProfileView()]
-      : const [HomeView(), ServiceVisitView(), ProfileView()];
+  bool get _isTruckDriver => _role == UserRole.truckDriver;
+  bool get _isAccountRep => _role == UserRole.accountRep;
 
-  List<BottomNavigationBarItem> get _items => _isTruckDriver
-      ? const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home_rounded),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.local_shipping_outlined),
-            activeIcon: Icon(Icons.local_shipping_rounded),
-            label: 'My Routes',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline_rounded),
-            activeIcon: Icon(Icons.person_rounded),
-            label: 'Profile',
-          ),
-        ]
-      : const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home_rounded),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.science_outlined),
-            activeIcon: Icon(Icons.science_rounded),
-            label: 'My Visits',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline_rounded),
-            activeIcon: Icon(Icons.person_rounded),
-            label: 'Profile',
-          ),
-        ];
+  List<Widget> get _tabs {
+    if (_isTruckDriver) {
+      return const [HomeView(), MyRoutesView(), ProfileView()];
+    }
+    if (_isAccountRep) {
+      return const [
+        HomeView(),
+        ArPortfolioView(),
+        ArPlansView(),
+        ArLabView(),
+        ProfileView(),
+      ];
+    }
+    return const [HomeView(), ServiceVisitView(), ProfileView()];
+  }
+
+  List<BottomNavigationBarItem> get _items {
+    if (_isTruckDriver) {
+      return const [
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home_outlined),
+          activeIcon: Icon(Icons.home_rounded),
+          label: 'Home',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.local_shipping_outlined),
+          activeIcon: Icon(Icons.local_shipping_rounded),
+          label: 'My Routes',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.person_outline_rounded),
+          activeIcon: Icon(Icons.person_rounded),
+          label: 'Profile',
+        ),
+      ];
+    }
+    if (_isAccountRep) {
+      return const [
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home_outlined),
+          activeIcon: Icon(Icons.home_rounded),
+          label: 'Home',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.business_outlined),
+          activeIcon: Icon(Icons.business_rounded),
+          label: 'Portfolio',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.assignment_outlined),
+          activeIcon: Icon(Icons.assignment_rounded),
+          label: 'Plans',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.science_outlined),
+          activeIcon: Icon(Icons.science_rounded),
+          label: 'Lab',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.person_outline_rounded),
+          activeIcon: Icon(Icons.person_rounded),
+          label: 'Profile',
+        ),
+      ];
+    }
+    return const [
+      BottomNavigationBarItem(
+        icon: Icon(Icons.home_outlined),
+        activeIcon: Icon(Icons.home_rounded),
+        label: 'Home',
+      ),
+      BottomNavigationBarItem(
+        icon: Icon(Icons.science_outlined),
+        activeIcon: Icon(Icons.science_rounded),
+        label: 'My Visits',
+      ),
+      BottomNavigationBarItem(
+        icon: Icon(Icons.person_outline_rounded),
+        activeIcon: Icon(Icons.person_rounded),
+        label: 'Profile',
+      ),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) => Obx(
