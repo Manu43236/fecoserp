@@ -1,13 +1,28 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:fecos_mobile/app/data/models/route_model.dart';
 import 'package:fecos_mobile/app/theme/app_theme.dart';
+import 'stop_detail_view.dart';
+import 'load_verification_view.dart';
+import 'pre_trip_view.dart';
+import 'completed_stop_view.dart';
 import '../controllers/delivery_controller.dart';
 
 class DeliveryView extends GetView<DeliveryController> {
   const DeliveryView({super.key});
+
+  Future<void> _openPreTrip() async {
+    final result = await Get.to<bool>(() => const PreTripView());
+    if (result == true) controller.load();
+  }
+
+  Future<void> _openLoadVerification(RouteModel route) async {
+    final result = await Get.to<bool>(
+      () => const LoadVerificationView(),
+      arguments: {'route': route, 'controller': controller},
+    );
+    if (result == true) controller.load();
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -17,20 +32,6 @@ class DeliveryView extends GetView<DeliveryController> {
           foregroundColor: Colors.white,
           title: const Text('Delivery Route',
               style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
-          actions: [
-            Obx(() {
-              final r = controller.route.value;
-              if (r == null || r.status != 'DISPATCHED') return const SizedBox.shrink();
-              return TextButton(
-                onPressed: controller.isUpdating.value
-                    ? null
-                    : () => controller.updateRouteStatus('IN_PROGRESS'),
-                child: const Text('Start',
-                    style: TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.w600)),
-              );
-            }),
-          ],
         ),
         body: Obx(() {
           if (controller.isLoading.value) return const _LoadingSkeleton();
@@ -38,7 +39,55 @@ class DeliveryView extends GetView<DeliveryController> {
             return _ErrorState(onRetry: controller.load);
           }
           final r = controller.route.value!;
-          return _RouteBody(route: r, controller: controller);
+          return RefreshIndicator(
+            onRefresh: controller.load,
+            child: _RouteBody(route: r, controller: controller),
+          );
+        }),
+        bottomNavigationBar: Obx(() {
+          final r = controller.route.value;
+          if (r == null || controller.isLoading.value) return const SizedBox.shrink();
+
+          // All stops done but route still IN_PROGRESS → complete route
+          if (r.status == 'IN_PROGRESS' && r.stops.isNotEmpty &&
+              r.stops.every((s) => !s.isPending)) {
+            return _StickyButton(
+              label: 'Complete Route',
+              icon: Icons.flag_rounded,
+              color: AppColors.success,
+              isLoading: controller.isUpdating.value,
+              onPressed: () => Get.toNamed('/wrap-up',
+                  parameters: {'id': controller.routeId}),
+            );
+          }
+
+          if (r.status != 'DISPATCHED') return const SizedBox.shrink();
+
+          if (!r.preTripDone) {
+            return _StickyButton(
+              label: 'Pre-Trip Check',
+              icon: Icons.checklist_rounded,
+              color: AppColors.primary,
+              isLoading: controller.isUpdating.value,
+              onPressed: _openPreTrip,
+            );
+          }
+          if (!r.loadConfirmed) {
+            return _StickyButton(
+              label: 'Verify Load',
+              icon: Icons.inventory_rounded,
+              color: AppColors.primary,
+              isLoading: controller.isUpdating.value,
+              onPressed: () => _openLoadVerification(r),
+            );
+          }
+          return _StickyButton(
+            label: 'Start Route',
+            icon: Icons.play_arrow_rounded,
+            color: AppColors.success,
+            isLoading: controller.isUpdating.value,
+            onPressed: () => controller.updateRouteStatus('IN_PROGRESS'),
+          );
         }),
       );
 }
@@ -63,8 +112,11 @@ class _RouteBody extends StatelessWidget {
                   index: i,
                   isActive: route.status == 'IN_PROGRESS',
                   isUpdating: controller.isUpdating.value,
-                  onDeliver: () => _showProofSheet(context, route.stops[i].id),
-                  onSkip: () => controller.skipStop(route.stops[i].id),
+                  onDeliver: () => _openStopDetail(context, route.stops[i]),
+                  onSkip: () => _showSkipSheet(context, route.stops[i].id),
+                  onViewCompleted: () => Get.to<void>(
+                    () => CompletedStopView(stop: route.stops[i]),
+                  ),
                 ),
                 childCount: route.stops.length,
               ),
@@ -73,12 +125,19 @@ class _RouteBody extends StatelessWidget {
         ],
       );
 
-  void _showProofSheet(BuildContext context, String stopId) {
+  Future<void> _openStopDetail(BuildContext context, RouteStop stop) async {
+    final result = await Get.to<bool>(
+      () => const StopDetailView(),
+      arguments: {'stop': stop, 'controller': controller},
+    );
+    if (result == true) controller.load();
+  }
+
+  void _showSkipSheet(BuildContext context, String stopId) {
     showModalBottomSheet<void>(
       context: context,
-      isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _ProofSheet(
+      builder: (_) => _SkipSheet(
         stopId: stopId,
         controller: controller,
       ),
@@ -86,237 +145,129 @@ class _RouteBody extends StatelessWidget {
   }
 }
 
-// ── Proof capture bottom sheet ────────────────────────────────────────────────
+// ── Skip reason bottom sheet ──────────────────────────────────────────────────
 
-class _ProofSheet extends StatefulWidget {
-  const _ProofSheet({required this.stopId, required this.controller});
+class _SkipSheet extends StatefulWidget {
+  const _SkipSheet({required this.stopId, required this.controller});
   final String stopId;
   final DeliveryController controller;
 
   @override
-  State<_ProofSheet> createState() => _ProofSheetState();
+  State<_SkipSheet> createState() => _SkipSheetState();
 }
 
-class _ProofSheetState extends State<_ProofSheet> {
-  File? _photo;
-  Position? _position;
-  bool _gettingLocation = false;
-  bool _uploading = false;
+class _SkipSheetState extends State<_SkipSheet> {
+  String? _reason;
 
-  @override
-  void initState() {
-    super.initState();
-    _captureLocation();
-  }
+  static const _reasons = [
+    ('GATE_LOCKED', 'Gate locked / no access'),
+    ('ROAD_BLOCKED', 'Road blocked'),
+    ('CUSTOMER_REFUSED', 'Customer refused delivery'),
+    ('TANK_FULL', 'Tank already full'),
+    ('OTHER', 'Other'),
+  ];
 
-  Future<void> _captureLocation() async {
-    setState(() => _gettingLocation = true);
-    _position = await widget.controller.getLocation();
-    if (mounted) setState(() => _gettingLocation = false);
-  }
-
-  Future<void> _takePhoto() async {
-    final xfile = await widget.controller.takePhoto();
-    if (xfile != null && mounted) {
-      setState(() => _photo = File(xfile.path));
+  Future<void> _submit() async {
+    if (_reason == null) return;
+    Navigator.of(context).pop();
+    await widget.controller.skipStop(widget.stopId, _reason!);
+    final r = widget.controller.route.value;
+    if (r != null && r.stops.every((s) => !s.isPending)) {
+      Get.toNamed('/wrap-up', parameters: {'id': widget.controller.routeId});
     }
   }
-
-  Future<void> _confirm() async {
-    if (_photo == null || _position == null) return;
-    setState(() => _uploading = true);
-    final success = await widget.controller.confirmDelivery(
-        widget.stopId, _photo!, _position!);
-    if (mounted) {
-      setState(() => _uploading = false);
-      if (success) Navigator.of(context).pop();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final ready = _photo != null && _position != null && !_uploading;
-
-    return Container(
-      margin: const EdgeInsets.only(top: 60),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Handle
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 20),
-                  decoration: BoxDecoration(
-                    color: AppColors.border,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const Text(
-                'Confirm Delivery',
-                style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Take a photo and confirm your location to complete this stop.',
-                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 20),
-
-              // GPS row
-              _InfoRow(
-                icon: Icons.location_on_rounded,
-                color: _position != null ? AppColors.success : AppColors.warning,
-                label: _gettingLocation
-                    ? 'Getting location…'
-                    : _position != null
-                        ? 'Location captured'
-                        : 'Location unavailable',
-                trailing: _gettingLocation
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : null,
-              ),
-              const SizedBox(height: 10),
-
-              // Photo
-              GestureDetector(
-                onTap: _uploading ? null : _takePhoto,
-                child: Container(
-                  height: 160,
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: _photo != null
-                          ? AppColors.success.withValues(alpha: 0.4)
-                          : AppColors.border,
-                    ),
-                  ),
-                  child: _photo != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(11),
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              Image.file(_photo!, fit: BoxFit.cover),
-                              Positioned(
-                                bottom: 8,
-                                right: 8,
-                                child: GestureDetector(
-                                  onTap: _uploading ? null : _takePhoto,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black54,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Text('Retake',
-                                        style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600)),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      : Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.camera_alt_rounded,
-                                size: 36,
-                                color: AppColors.primary.withValues(alpha: 0.7)),
-                            const SizedBox(height: 8),
-                            const Text('Tap to take delivery photo',
-                                style: TextStyle(
-                                    fontSize: 13,
-                                    color: AppColors.textSecondary,
-                                    fontWeight: FontWeight.w500)),
-                          ],
-                        ),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Confirm button
-              FilledButton(
-                onPressed: ready ? _confirm : null,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.success,
-                  disabledBackgroundColor: AppColors.border,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-                child: _uploading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : const Text('Confirm Delivery',
-                        style: TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.w600)),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  const _InfoRow(
-      {required this.icon,
-      required this.color,
-      required this.label,
-      this.trailing});
-  final IconData icon;
-  final Color color;
-  final String label;
-  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withValues(alpha: 0.2)),
+        margin: const EdgeInsets.only(top: 80),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
-        child: Row(
-          children: [
-            Icon(icon, size: 18, color: color),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(label,
-                  style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: color)),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const Text('Why can\'t you deliver?',
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary)),
+                const SizedBox(height: 16),
+                ..._reasons.map(
+                  (r) => InkWell(
+                    onTap: () => setState(() => _reason = r.$1),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 20,
+                            height: 20,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: _reason == r.$1
+                                    ? AppColors.primary
+                                    : AppColors.border,
+                                width: 2,
+                              ),
+                            ),
+                            child: _reason == r.$1
+                                ? Center(
+                                    child: Container(
+                                      width: 10,
+                                      height: 10,
+                                      decoration: const BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  )
+                                : null,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(r.$2,
+                              style: const TextStyle(
+                                  fontSize: 14, color: AppColors.textPrimary)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: _reason != null ? _submit : null,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.danger,
+                    disabledBackgroundColor: AppColors.border,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Skip Stop',
+                      style:
+                          TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                ),
+              ],
             ),
-            ?trailing,
-          ],
+          ),
         ),
       );
 }
@@ -398,14 +349,10 @@ class _RouteHeader extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             if (route.stops.isNotEmpty) ...[
-              Row(
-                children: [
-                  Text(
-                    '${route.completedStops}/${route.stopCount} stops delivered',
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.textSecondary),
-                  ),
-                ],
+              Text(
+                '${route.completedStops}/${route.stopCount} stops delivered',
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 6),
               ClipRRect(
@@ -415,7 +362,8 @@ class _RouteHeader extends StatelessWidget {
                       ? route.completedStops / route.stopCount
                       : 0,
                   backgroundColor: AppColors.border,
-                  valueColor: const AlwaysStoppedAnimation<Color>(AppColors.success),
+                  valueColor:
+                      const AlwaysStoppedAnimation<Color>(AppColors.success),
                   minHeight: 6,
                 ),
               ),
@@ -435,6 +383,7 @@ class _StopCard extends StatelessWidget {
     required this.isUpdating,
     required this.onDeliver,
     required this.onSkip,
+    required this.onViewCompleted,
   });
 
   final RouteStop stop;
@@ -443,6 +392,7 @@ class _StopCard extends StatelessWidget {
   final bool isUpdating;
   final VoidCallback onDeliver;
   final VoidCallback onSkip;
+  final VoidCallback onViewCompleted;
 
   Color get _statusColor => switch (stop.status) {
         'COMPLETED' => AppColors.success,
@@ -451,7 +401,9 @@ class _StopCard extends StatelessWidget {
       };
 
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: stop.isCompleted ? onViewCompleted : null,
+        child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
           color: AppColors.surfaceCard,
@@ -459,7 +411,9 @@ class _StopCard extends StatelessWidget {
           border: Border.all(
             color: stop.isCompleted
                 ? AppColors.success.withValues(alpha: 0.3)
-                : AppColors.border,
+                : stop.isSkipped
+                    ? AppColors.danger.withValues(alpha: 0.2)
+                    : AppColors.border,
           ),
         ),
         child: Column(
@@ -479,13 +433,13 @@ class _StopCard extends StatelessWidget {
                     ),
                     alignment: Alignment.center,
                     child: stop.isCompleted
-                        ? Icon(Icons.check_rounded,
+                        ? const Icon(Icons.check_rounded,
                             size: 14, color: AppColors.success)
                         : stop.isSkipped
-                            ? Icon(Icons.close_rounded,
+                            ? const Icon(Icons.close_rounded,
                                 size: 14, color: AppColors.danger)
                             : Text('${index + 1}',
-                                style: TextStyle(
+                                style: const TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
                                     color: AppColors.textSecondary)),
@@ -503,15 +457,20 @@ class _StopCard extends StatelessWidget {
                               color: AppColors.textPrimary),
                         ),
                         if (stop.leaseName != null)
-                          Text(
-                            stop.leaseName!,
-                            style: const TextStyle(
-                                fontSize: 12, color: AppColors.textSecondary),
+                          Text(stop.leaseName!,
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary)),
+                        if (stop.isSkipped && stop.skipReason != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(_skipLabel(stop.skipReason!),
+                                style: const TextStyle(
+                                    fontSize: 11, color: AppColors.danger)),
                           ),
                       ],
                     ),
                   ),
-                  // Show camera icon badge if proof was captured
                   if (stop.isCompleted && stop.deliveryPhotoUrl != null)
                     Container(
                       padding: const EdgeInsets.all(4),
@@ -548,13 +507,24 @@ class _StopCard extends StatelessWidget {
                                         color: AppColors.textPrimary),
                                   ),
                                 ),
-                                Text(
-                                  '${item.quantity % 1 == 0 ? item.quantity.toInt() : item.quantity} ${item.unit}',
-                                  style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.textPrimary),
-                                ),
+                                // Show actual vs planned if delivered
+                                if (stop.isCompleted &&
+                                    item.actualQtyDelivered != null)
+                                  Text(
+                                    '${_fmtQty(item.actualQtyDelivered!)} ${item.unit}',
+                                    style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.success),
+                                  )
+                                else
+                                  Text(
+                                    '${_fmtQty(item.quantity)} ${item.unit}',
+                                    style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.textPrimary),
+                                  ),
                               ],
                             ),
                           ))
@@ -563,7 +533,31 @@ class _StopCard extends StatelessWidget {
               ),
             ],
 
-            // Actions — only for pending stops on an active route
+            // "View Details" hint for completed stops
+            if (stop.isCompleted) ...[
+              const Divider(height: 1, color: AppColors.border),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    const Icon(Icons.photo_rounded,
+                        size: 13, color: AppColors.success),
+                    const SizedBox(width: 4),
+                    Text('View delivery details',
+                        style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.success,
+                            fontWeight: FontWeight.w600)),
+                    const SizedBox(width: 2),
+                    const Icon(Icons.chevron_right_rounded,
+                        size: 14, color: AppColors.success),
+                  ],
+                ),
+              ),
+            ],
+
+            // Actions — pending stops on active route only
             if (stop.isPending && isActive) ...[
               const Divider(height: 1, color: AppColors.border),
               Padding(
@@ -573,8 +567,9 @@ class _StopCard extends StatelessWidget {
                     Expanded(
                       child: FilledButton.icon(
                         onPressed: isUpdating ? null : onDeliver,
-                        icon: const Icon(Icons.camera_alt_rounded, size: 16),
-                        label: const Text('Delivered'),
+                        icon: const Icon(Icons.check_circle_outline_rounded,
+                            size: 16),
+                        label: const Text('Deliver'),
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.success,
                           foregroundColor: Colors.white,
@@ -589,15 +584,15 @@ class _StopCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     OutlinedButton.icon(
                       onPressed: isUpdating ? null : onSkip,
-                      icon: const Icon(Icons.skip_next_rounded, size: 16),
-                      label: const Text('Skip'),
+                      icon: const Icon(Icons.block_rounded, size: 16),
+                      label: const Text('Can\'t Deliver'),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.textSecondary,
-                        side: const BorderSide(color: AppColors.border),
+                        foregroundColor: AppColors.danger,
+                        side: const BorderSide(color: AppColors.danger),
                         textStyle: const TextStyle(
                             fontSize: 13, fontWeight: FontWeight.w600),
                         padding: const EdgeInsets.symmetric(
-                            vertical: 10, horizontal: 16),
+                            vertical: 10, horizontal: 12),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8)),
                       ),
@@ -607,6 +602,64 @@ class _StopCard extends StatelessWidget {
               ),
             ],
           ],
+        ),
+      ),
+      );
+
+  String _fmtQty(double qty) =>
+      qty % 1 == 0 ? qty.toInt().toString() : qty.toStringAsFixed(1);
+
+  String _skipLabel(String reason) => switch (reason) {
+        'GATE_LOCKED'       => 'Gate locked / no access',
+        'ROAD_BLOCKED'      => 'Road blocked',
+        'CUSTOMER_REFUSED'  => 'Customer refused',
+        'TANK_FULL'         => 'Tank already full',
+        _                   => 'Skipped',
+      };
+}
+
+// ── Sticky action button ──────────────────────────────────────────────────────
+
+class _StickyButton extends StatelessWidget {
+  const _StickyButton({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.isLoading,
+    required this.onPressed,
+  });
+
+  final String label;
+  final IconData icon;
+  final Color color;
+  final bool isLoading;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: FilledButton.icon(
+            onPressed: isLoading ? null : onPressed,
+            icon: isLoading
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white))
+                : Icon(icon, size: 20),
+            label: Text(label,
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            style: FilledButton.styleFrom(
+              backgroundColor: color,
+              disabledBackgroundColor: AppColors.border,
+              foregroundColor: Colors.white,
+              minimumSize: const Size.fromHeight(52),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14)),
+            ),
+          ),
         ),
       );
 }

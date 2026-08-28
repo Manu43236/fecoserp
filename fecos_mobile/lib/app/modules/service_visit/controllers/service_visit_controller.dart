@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import 'package:fecos_mobile/app/data/services/dio_service.dart';
+import 'package:fecos_mobile/app/data/services/storage_service.dart';
 import 'package:fecos_mobile/app/core/state/async_state.dart';
 
 class MyVisitStop {
@@ -78,6 +79,8 @@ class ServiceVisitController extends GetxController {
   }
 
   Future<void> loadVisits({DateTime? date}) async {
+    final token = await Get.find<StorageService>().getToken();
+    if (token == null) return;
     if (date != null) selectedDate.value = date;
     state.value = const AsyncLoading();
     try {

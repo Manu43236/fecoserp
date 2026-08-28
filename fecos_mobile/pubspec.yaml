@@ -55,12 +55,21 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.3
 
   # Code generation
   build_runner: ^2.4.13
   drift_dev: ^2.22.1
   json_serializable: ^6.8.0
   freezed: ^2.5.7
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icons/fecos_icon_bg.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#1E3A5F"
+  adaptive_icon_foreground: "assets/icons/fecos_icon.png"
 
 flutter:
   uses-material-design: true

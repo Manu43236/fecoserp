@@ -1,4 +1,4 @@
-package com.fecos.fecos_mobile
+package com.fecos.mobile
 
 import io.flutter.embedding.android.FlutterActivity
 

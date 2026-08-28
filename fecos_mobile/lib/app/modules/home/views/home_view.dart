@@ -33,7 +33,8 @@ class HomeView extends GetView<HomeController> {
               if (controller.isTruckDriver) {
                 return _DriverDashboardContent(routes: controller.todayRoutes);
               }
-              final data = controller.dashboard.value!;
+              final data = controller.dashboard.value;
+              if (data == null) return _LoadingSkeleton();
               return _DashboardContent(data: data, upcoming: controller.upcoming);
             }),
           ),
@@ -533,62 +534,42 @@ class _DriverDashboardContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeRoutes = routes.where((r) => r.isActive).toList();
-    final plannedRoutes = routes.where((r) => r.status == 'PLANNED').toList();
     final totalStops = routes.fold(0, (sum, r) => sum + r.stopCount);
     final deliveredStops = routes.fold(0, (sum, r) => sum + r.completedStops);
+    final remainingRoutes = routes
+        .where((r) => r.status != 'COMPLETED' && r.status != 'CANCELLED')
+        .length;
 
     return SliverList(
       delegate: SliverChildListDelegate([
-        Row(
-          children: [
-            Expanded(
-              child: _DriverStatCard(
-                value: '${routes.length}',
-                label: 'Routes Today',
-                icon: Icons.route_rounded,
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _DriverStatCard(
-                value: '$deliveredStops/$totalStops',
-                label: 'Delivered',
-                icon: Icons.check_circle_rounded,
-                color: AppColors.success,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _DriverStatCard(
-                value: '${totalStops - deliveredStops}',
-                label: 'Remaining',
-                icon: Icons.pending_rounded,
-                color: AppColors.warning,
-              ),
-            ),
-          ],
+        // Context-aware status banner
+        _DayStatusBanner(
+          routes: routes,
+          remainingRoutes: remainingRoutes,
+          deliveredStops: deliveredStops,
+          totalStops: totalStops,
         ),
+        const SizedBox(height: 16),
 
-        if (activeRoutes.isNotEmpty) ...[
-          const SizedBox(height: 24),
-          const _SectionLabel(icon: Icons.local_shipping_rounded, label: 'Active Routes'),
-          const SizedBox(height: 10),
-          ...activeRoutes.map((r) => _RouteCard(route: r)),
-        ],
+        // Stats row
+        _DriverStatsRow(
+          routeCount: routes.length,
+          deliveredStops: deliveredStops,
+          totalStops: totalStops,
+          remainingRoutes: remainingRoutes,
+        ),
+        const SizedBox(height: 24),
 
-        if (plannedRoutes.isNotEmpty) ...[
-          const SizedBox(height: 24),
-          const _SectionLabel(icon: Icons.schedule_rounded, label: 'Planned Routes'),
-          const SizedBox(height: 10),
-          ...plannedRoutes.map((r) => _RouteCard(route: r)),
-        ],
+        // All today's routes (every status)
+        const _SectionLabel(
+          icon: Icons.local_shipping_rounded,
+          label: "Today's Routes",
+        ),
+        const SizedBox(height: 10),
 
         if (routes.isEmpty)
           Container(
-            height: 120,
-            margin: const EdgeInsets.only(top: 20),
+            height: 100,
             decoration: BoxDecoration(
               color: AppColors.surfaceCard,
               borderRadius: BorderRadius.circular(12),
@@ -598,114 +579,373 @@ class _DriverDashboardContent extends StatelessWidget {
               child: Text('No routes assigned for today',
                   style: TextStyle(fontSize: 13, color: AppColors.textHint)),
             ),
-          ),
+          )
+        else
+          ...routes.map((r) => _DriverRouteCard(route: r)),
       ]),
     );
   }
 }
 
-class _DriverStatCard extends StatelessWidget {
-  const _DriverStatCard({
-    required this.value,
-    required this.label,
-    required this.icon,
-    required this.color,
+// ── Day status banner ─────────────────────────────────────────────────────────
+
+class _DayStatusBanner extends StatelessWidget {
+  const _DayStatusBanner({
+    required this.routes,
+    required this.remainingRoutes,
+    required this.deliveredStops,
+    required this.totalStops,
   });
-  final String value;
-  final String label;
-  final IconData icon;
-  final Color color;
+
+  final List<RouteModel> routes;
+  final int remainingRoutes;
+  final int deliveredStops;
+  final int totalStops;
 
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceCard,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withValues(alpha: 0.2)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+  Widget build(BuildContext context) {
+    if (routes.isEmpty) return const SizedBox.shrink();
+
+    final allDone = remainingRoutes == 0;
+    final inProgress = routes.any((r) => r.status == 'IN_PROGRESS');
+    final progress = totalStops > 0 ? deliveredStops / totalStops : 0.0;
+
+    final Color bg;
+    final Color fg;
+    final IconData icon;
+    final String title;
+    final String subtitle;
+
+    if (allDone) {
+      bg = AppColors.success;
+      fg = Colors.white;
+      icon = Icons.celebration_rounded;
+      title = 'All done for today!';
+      subtitle = deliveredStops > 0
+          ? 'Delivered $deliveredStops stop${deliveredStops == 1 ? '' : 's'} across ${routes.length} route${routes.length == 1 ? '' : 's'}'
+          : '${routes.length} route${routes.length == 1 ? '' : 's'} completed today';
+    } else if (inProgress) {
+      bg = AppColors.warning;
+      fg = Colors.white;
+      icon = Icons.local_shipping_rounded;
+      title = 'Route in progress';
+      subtitle = '$remainingRoutes route${remainingRoutes == 1 ? '' : 's'} remaining · $deliveredStops/$totalStops stops done';
+    } else {
+      bg = AppColors.info;
+      fg = Colors.white;
+      icon = Icons.assignment_rounded;
+      title = 'Ready to roll';
+      subtitle = '${routes.length} route${routes.length == 1 ? '' : 's'} assigned · $totalStops stop${totalStops == 1 ? '' : 's'} total';
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: fg, size: 20),
+              const SizedBox(width: 8),
+              Text(title,
+                  style: TextStyle(
+                      color: fg,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(subtitle,
+              style: TextStyle(
+                  color: fg.withValues(alpha: 0.85), fontSize: 12)),
+          if (!allDone && totalStops > 0) ...[
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: progress,
+                backgroundColor: Colors.white.withValues(alpha: 0.25),
+                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                minHeight: 6,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ── Stats row ─────────────────────────────────────────────────────────────────
+
+class _DriverStatsRow extends StatelessWidget {
+  const _DriverStatsRow({
+    required this.routeCount,
+    required this.deliveredStops,
+    required this.totalStops,
+    required this.remainingRoutes,
+  });
+
+  final int routeCount;
+  final int deliveredStops;
+  final int totalStops;
+  final int remainingRoutes;
+
+  @override
+  Widget build(BuildContext context) => IntrinsicHeight(
+        child: Row(
           children: [
-            Icon(icon, size: 18, color: color),
-            const SizedBox(height: 8),
-            Text(value,
-                style: TextStyle(
-                    fontSize: 20, fontWeight: FontWeight.w700, color: color)),
-            const SizedBox(height: 2),
-            Text(label,
-                style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w500)),
+            Expanded(
+              child: _StatTile(
+                value: '$routeCount',
+                label: 'Routes\nToday',
+                color: AppColors.primary,
+              ),
+            ),
+            const _StatDivider(),
+            Expanded(
+              child: _StatTile(
+                value: '$deliveredStops',
+                sublabel: '/ $totalStops stops',
+                label: 'Delivered',
+                color: AppColors.success,
+              ),
+            ),
+            const _StatDivider(),
+            Expanded(
+              child: _StatTile(
+                value: '$remainingRoutes',
+                label: 'Routes\nLeft',
+                color: remainingRoutes > 0 ? AppColors.warning : AppColors.success,
+              ),
+            ),
           ],
         ),
       );
 }
 
-class _RouteCard extends StatelessWidget {
-  const _RouteCard({required this.route});
+class _StatTile extends StatelessWidget {
+  const _StatTile({
+    required this.value,
+    required this.label,
+    required this.color,
+    this.sublabel,
+  });
+
+  final String value;
+  final String label;
+  final Color color;
+  final String? sublabel;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceCard,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.18)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(value,
+                    style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: color,
+                        height: 1)),
+                if (sublabel != null) ...[
+                  const SizedBox(width: 2),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 3),
+                    child: Text(sublabel!,
+                        style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w500)),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(label,
+                style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                    height: 1.3)),
+          ],
+        ),
+      );
+}
+
+class _StatDivider extends StatelessWidget {
+  const _StatDivider();
+  @override
+  Widget build(BuildContext context) => const SizedBox(width: 8);
+}
+
+// ── Route card (all statuses) ─────────────────────────────────────────────────
+
+class _DriverRouteCard extends StatelessWidget {
+  const _DriverRouteCard({required this.route});
   final RouteModel route;
 
-  Color get _color => switch (route.status) {
+  Color get _accentColor => switch (route.status) {
         'IN_PROGRESS' => AppColors.warning,
         'DISPATCHED'  => AppColors.info,
+        'COMPLETED'   => AppColors.success,
+        'CANCELLED'   => AppColors.danger,
         _             => AppColors.textHint,
       };
 
+  String get _statusLabel => switch (route.status) {
+        'IN_PROGRESS' => 'In Progress',
+        'DISPATCHED'  => 'Dispatched',
+        'COMPLETED'   => 'Completed',
+        'CANCELLED'   => 'Cancelled',
+        'PLANNED'     => 'Planned',
+        _             => route.status,
+      };
+
+  IconData get _statusIcon => switch (route.status) {
+        'COMPLETED'   => Icons.check_circle_rounded,
+        'CANCELLED'   => Icons.cancel_rounded,
+        'IN_PROGRESS' => Icons.local_shipping_rounded,
+        _             => Icons.schedule_rounded,
+      };
+
+  bool get _isDone =>
+      route.status == 'COMPLETED' || route.status == 'CANCELLED';
+
   @override
-  Widget build(BuildContext context) => GestureDetector(
-        onTap: () => Get.toNamed(
-          Routes.deliveryDetail.replaceFirst(':id', route.id),
-        ),
+  Widget build(BuildContext context) {
+    final progress = route.stopCount > 0
+        ? route.completedStops / route.stopCount
+        : 0.0;
+
+    return GestureDetector(
+      onTap: () =>
+          Get.toNamed(Routes.deliveryDetail.replaceFirst(':id', route.id)),
+      child: Opacity(
+        opacity: _isDone ? 0.72 : 1.0,
         child: Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.all(14),
+          margin: const EdgeInsets.only(bottom: 10),
           decoration: BoxDecoration(
             color: AppColors.surfaceCard,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: route.isActive
-                  ? _color.withValues(alpha: 0.3)
-                  : AppColors.border,
+              color: _isDone
+                  ? AppColors.border
+                  : _accentColor.withValues(alpha: 0.35),
+              width: _isDone ? 1 : 1.5,
             ),
           ),
-          child: Row(
+          child: Column(
             children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: _color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(Icons.local_shipping_rounded, size: 20, color: _color),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+                child: Row(
                   children: [
-                    Text(
-                      route.truckNumber ?? 'Route',
-                      style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary),
+                    // Status icon circle
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: _accentColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: Icon(_statusIcon, size: 20, color: _accentColor),
                     ),
-                    Text(
-                      '${route.completedStops}/${route.stopCount} stops · ${route.status == 'IN_PROGRESS' ? 'In Progress' : 'Dispatched'}',
-                      style: const TextStyle(
-                          fontSize: 12, color: AppColors.textSecondary),
+                    const SizedBox(width: 12),
+                    // Route info
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            route.truckNumber ?? 'Route',
+                            style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${route.completedStops}/${route.stopCount} stops delivered',
+                            style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Status badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _accentColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        _statusLabel,
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: _accentColor),
+                      ),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded,
-                  size: 20, color: AppColors.textHint),
+              // Progress bar for non-cancelled routes with stops
+              if (route.status != 'CANCELLED' && route.stopCount > 0) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+                  child: Column(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          backgroundColor: AppColors.border,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(_accentColor),
+                          minHeight: 5,
+                        ),
+                      ),
+                      if (!_isDone) ...[
+                        const SizedBox(height: 10),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            route.status == 'IN_PROGRESS'
+                                ? 'Continue →'
+                                : 'View Route →',
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: _accentColor),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ),
-      );
+      ),
+    );
+  }
 }
 

@@ -81,19 +81,26 @@ class _MyRoutesViewState extends State<MyRoutesView> {
                       ],
                     ),
                   )
-                : _routes.isEmpty
-                    ? const Center(
-                        child: Text('No routes assigned',
-                            style: TextStyle(color: AppColors.textHint)),
-                      )
-                    : RefreshIndicator(
-                        onRefresh: _load,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _routes.length,
-                          itemBuilder: (ctx, i) => _RouteListTile(route: _routes[i]),
-                        ),
-                      ),
+                : RefreshIndicator(
+                    onRefresh: _load,
+                    child: _routes.isEmpty
+                        ? const SingleChildScrollView(
+                            physics: AlwaysScrollableScrollPhysics(),
+                            child: SizedBox(
+                              height: 300,
+                              child: Center(
+                                child: Text('No routes assigned',
+                                    style: TextStyle(color: AppColors.textHint)),
+                              ),
+                            ),
+                          )
+                        : ListView.builder(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.all(16),
+                            itemCount: _routes.length,
+                            itemBuilder: (ctx, i) => _RouteListTile(route: _routes[i]),
+                          ),
+                  ),
       );
 }
 

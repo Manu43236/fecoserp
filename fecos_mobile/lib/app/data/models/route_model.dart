@@ -1,21 +1,30 @@
 class RouteStopItem {
   const RouteStopItem({
     required this.id,
+    required this.productId,
     required this.productName,
     required this.quantity,
     required this.unit,
+    this.loadedQty,
+    this.actualQtyDelivered,
   });
 
   final String id;
+  final String productId;
   final String? productName;
   final double quantity;
   final String unit;
+  final double? loadedQty;
+  final double? actualQtyDelivered;
 
   factory RouteStopItem.fromJson(Map<String, dynamic> json) => RouteStopItem(
         id: json['id'] as String,
+        productId: json['productId'] as String? ?? '',
         productName: json['productName'] as String?,
         quantity: (json['quantity'] as num).toDouble(),
         unit: json['unit'] as String? ?? '',
+        loadedQty: (json['loadedQty'] as num?)?.toDouble(),
+        actualQtyDelivered: (json['actualQtyDelivered'] as num?)?.toDouble(),
       );
 }
 
@@ -29,9 +38,11 @@ class RouteStop {
     required this.status,
     required this.items,
     this.notes,
+    this.skipReason,
     this.deliveryPhotoUrl,
     this.deliveryLat,
     this.deliveryLng,
+    this.deliveredAt,
   });
 
   final String id;
@@ -42,9 +53,11 @@ class RouteStop {
   final String status; // PENDING | COMPLETED | SKIPPED
   final List<RouteStopItem> items;
   final String? notes;
+  final String? skipReason;
   final String? deliveryPhotoUrl;
   final double? deliveryLat;
   final double? deliveryLng;
+  final String? deliveredAt;
 
   bool get isPending   => status == 'PENDING';
   bool get isCompleted => status == 'COMPLETED';
@@ -61,9 +74,11 @@ class RouteStop {
             .map((e) => RouteStopItem.fromJson(e as Map<String, dynamic>))
             .toList(),
         notes: json['notes'] as String?,
+        skipReason: json['skipReason'] as String?,
         deliveryPhotoUrl: json['deliveryPhotoUrl'] as String?,
         deliveryLat: (json['deliveryLat'] as num?)?.toDouble(),
         deliveryLng: (json['deliveryLng'] as num?)?.toDouble(),
+        deliveredAt: json['deliveredAt'] as String?,
       );
 }
 
@@ -75,21 +90,32 @@ class RouteModel {
     required this.routeDate,
     required this.status,
     required this.stopCount,
+    required this.completedStopCount,
     required this.stops,
     this.notes,
+    this.loadConfirmedAt,
+    this.preTripConfirmedAt,
   });
 
   final String id;
   final String? driverName;
   final String? truckNumber;
   final String routeDate;
-  final String status; // PLANNED | DISPATCHED | IN_PROGRESS | COMPLETED | CANCELLED
+  final String status;
   final int stopCount;
+  final int completedStopCount;
   final List<RouteStop> stops;
   final String? notes;
+  final String? loadConfirmedAt;
+  final String? preTripConfirmedAt;
 
-  bool get isActive => status == 'DISPATCHED' || status == 'IN_PROGRESS';
-  int get completedStops => stops.where((s) => s.isCompleted).length;
+  bool get isActive      => status == 'DISPATCHED' || status == 'IN_PROGRESS';
+  bool get loadConfirmed => loadConfirmedAt != null;
+  bool get preTripDone   => preTripConfirmedAt != null;
+  // Use backend-provided count when stops aren't loaded (list view), else compute from stops
+  int get completedStops => stops.isNotEmpty
+      ? stops.where((s) => s.isCompleted).length
+      : completedStopCount;
   int get pendingStops   => stops.where((s) => s.isPending).length;
 
   factory RouteModel.fromJson(Map<String, dynamic> json) => RouteModel(
@@ -99,9 +125,12 @@ class RouteModel {
         routeDate: json['routeDate'] as String,
         status: json['status'] as String? ?? 'PLANNED',
         stopCount: json['stopCount'] as int? ?? 0,
+        completedStopCount: json['completedStopCount'] as int? ?? 0,
         stops: (json['stops'] as List? ?? [])
             .map((e) => RouteStop.fromJson(e as Map<String, dynamic>))
             .toList(),
         notes: json['notes'] as String?,
+        loadConfirmedAt: json['loadConfirmedAt'] as String?,
+        preTripConfirmedAt: json['preTripConfirmedAt'] as String?,
       );
 }

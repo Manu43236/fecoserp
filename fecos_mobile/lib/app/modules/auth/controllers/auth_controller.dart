@@ -100,7 +100,6 @@ class AuthController extends GetxController {
 
   Future<void> logout() async {
     await _storage.clearAll();
-    user.value = null;
     Get.offAllNamed(Routes.login);
   }
 }

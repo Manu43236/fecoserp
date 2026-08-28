@@ -1,6 +1,4 @@
-import 'dart:io';
 import 'package:dio/dio.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart' hide FormData, MultipartFile;
 import 'package:image_picker/image_picker.dart';
 import 'package:fecos_mobile/app/data/models/route_model.dart';
@@ -55,40 +53,66 @@ class DeliveryController extends GetxController {
     }
   }
 
-  /// Called after proof is collected (photo + GPS). Marks stop COMPLETED.
-  Future<bool> confirmDelivery(
-      String stopId, File photo, Position position) async {
+  Future<bool> confirmLoad(Map<String, double> loadedQtyMap) async {
     isUpdating.value = true;
     try {
-      // 1. Upload photo — same pattern as well_stop_controller, no explicit Options
-      final formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(
-          photo.path,
-          filename: 'delivery_${DateTime.now().millisecondsSinceEpoch}.jpg',
-        ),
-      });
-      final uploadRes = await _dio.post<Map<String, dynamic>>(
-        '/uploads/photo',
-        data: formData,
+      final items = loadedQtyMap.entries
+          .map((e) => {'itemId': e.key, 'loadedQty': e.value})
+          .toList();
+      final res = await _dio.post<Map<String, dynamic>>(
+        '/routes/$routeId/load-confirmation',
+        data: {'items': items},
       );
-      final photoUrl = uploadRes.data!['data']['url'] as String;
+      route.value = RouteModel.fromJson(res.data!['data'] as Map<String, dynamic>);
+      return true;
+    } on DioException catch (e) {
+      final msg = e.response?.data?['error'] ?? 'Could not confirm load';
+      Get.snackbar('Error', msg, snackPosition: SnackPosition.BOTTOM);
+      return false;
+    } finally {
+      isUpdating.value = false;
+    }
+  }
 
-      // 2. Mark stop COMPLETED with proof
+  Future<void> skipStop(String stopId, String skipReason) async {
+    isUpdating.value = true;
+    try {
       final res = await _dio.patch<Map<String, dynamic>>(
         '/routes/$routeId/stops/$stopId/status',
-        queryParameters: {
-          'status': 'COMPLETED',
-          'lat': position.latitude,
-          'lng': position.longitude,
+        queryParameters: {'status': 'SKIPPED', 'skipReason': skipReason},
+      );
+      route.value = RouteModel.fromJson(res.data!['data'] as Map<String, dynamic>);
+    } on DioException {
+      Get.snackbar('Error', 'Could not skip stop',
+          snackPosition: SnackPosition.BOTTOM);
+    } finally {
+      isUpdating.value = false;
+    }
+  }
+
+  /// Called from StopDetailView after photo upload. Submits delivery with actual quantities.
+  Future<bool> deliverStop(
+      String stopId, String photoUrl, double lat, double lng,
+      Map<String, double> actualQtyMap, String? notes,
+      {String? deliveredAt}) async {
+    isUpdating.value = true;
+    try {
+      final items = actualQtyMap.entries
+          .map((e) => {'itemId': e.key, 'actualQty': e.value})
+          .toList();
+
+      final res = await _dio.patch<Map<String, dynamic>>(
+        '/routes/$routeId/stops/$stopId/deliver',
+        data: {
+          'lat': lat,
+          'lng': lng,
           'photoUrl': photoUrl,
+          if (notes != null && notes.isNotEmpty) 'notes': notes,
+          'deliveredAt': deliveredAt,
+          'items': items,
         },
       );
       route.value = RouteModel.fromJson(res.data!['data'] as Map<String, dynamic>);
-
-      final r = route.value!;
-      if (r.stops.every((s) => !s.isPending) && r.status == 'IN_PROGRESS') {
-        await updateRouteStatus('COMPLETED');
-      }
       return true;
     } on DioException catch (e) {
       final code = e.response?.statusCode ?? 0;
@@ -102,43 +126,47 @@ class DeliveryController extends GetxController {
     }
   }
 
-  Future<void> skipStop(String stopId) async {
+  Future<bool> submitPreTrip({required bool hasIssues, String? notes}) async {
     isUpdating.value = true;
     try {
-      final res = await _dio.patch<Map<String, dynamic>>(
-        '/routes/$routeId/stops/$stopId/status',
-        queryParameters: {'status': 'SKIPPED'},
+      final res = await _dio.post<Map<String, dynamic>>(
+        '/routes/$routeId/pre-trip',
+        data: {'hasIssues': hasIssues, 'notes': notes},
       );
       route.value = RouteModel.fromJson(res.data!['data'] as Map<String, dynamic>);
-
-      final r = route.value!;
-      if (r.stops.every((s) => !s.isPending) && r.status == 'IN_PROGRESS') {
-        await updateRouteStatus('COMPLETED');
-      }
+      return true;
     } on DioException {
-      Get.snackbar('Error', 'Could not update stop',
+      Get.snackbar('Error', 'Could not submit pre-trip check',
           snackPosition: SnackPosition.BOTTOM);
+      return false;
     } finally {
       isUpdating.value = false;
     }
   }
 
-  Future<XFile?> takePhoto() => _picker.pickImage(
+  Future<bool> returnInventory(List<Map<String, dynamic>> items) async {
+    isUpdating.value = true;
+    try {
+      final res = await _dio.post<Map<String, dynamic>>(
+        '/routes/$routeId/return-inventory',
+        data: {'items': items},
+      );
+      route.value = RouteModel.fromJson(res.data!['data'] as Map<String, dynamic>);
+      return true;
+    } on DioException {
+      Get.snackbar('Error', 'Could not complete route',
+          snackPosition: SnackPosition.BOTTOM);
+      return false;
+    } finally {
+      isUpdating.value = false;
+    }
+  }
+
+Future<XFile?> takePhoto() => _picker.pickImage(
         source: ImageSource.camera,
         imageQuality: 75,
         maxWidth: 1280,
       );
-
-  Future<Position?> getLocation() async {
-    final permission = await Geolocator.requestPermission();
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
-      return null;
-    }
-    return Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
-    );
-  }
 
   String _statusLabel(String status) => switch (status) {
         'IN_PROGRESS' => 'In Progress',

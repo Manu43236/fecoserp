@@ -19,6 +19,7 @@ import 'package:fecos_mobile/app/modules/well_stop/bindings/well_stop_binding.da
 import 'package:fecos_mobile/app/modules/well_stop/views/well_stop_view.dart';
 import 'package:fecos_mobile/app/modules/report_view/bindings/report_view_binding.dart';
 import 'package:fecos_mobile/app/modules/report_view/views/report_view_view.dart';
+import 'package:fecos_mobile/app/modules/delivery/views/wrap_up_view.dart';
 
 part 'app_routes.dart';
 
@@ -77,6 +78,10 @@ class AppPages {
       name: _Paths.reportView,
       page: () => const ReportViewView(),
       binding: ReportViewBinding(),
+    ),
+    GetPage(
+      name: _Paths.wrapUp,
+      page: () => const WrapUpView(),
     ),
   ];
 }
