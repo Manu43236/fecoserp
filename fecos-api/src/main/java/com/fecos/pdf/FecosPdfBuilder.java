@@ -2,12 +2,10 @@ package com.fecos.pdf;
 
 import com.lowagie.text.*;
 import com.lowagie.text.pdf.*;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 
@@ -30,28 +28,11 @@ public class FecosPdfBuilder {
     public static final Font DANGER  = new Font(Font.HELVETICA, 10, Font.BOLD,   new Color(0xDC, 0x26, 0x26));
     public static final Font SUCCESS = new Font(Font.HELVETICA, 10, Font.BOLD,   new Color(0x15, 0x80, 0x3D));
 
-    // ── Watermark ─────────────────────────────────────────────────────────────
-
-    private final byte[] iconBytes;
-
-    public FecosPdfBuilder() {
-        byte[] bytes = null;
-        try {
-            bytes = new ClassPathResource("fecos_icon.png").getInputStream().readAllBytes();
-        } catch (IOException ignored) {
-            // watermark skipped if icon missing
-        }
-        this.iconBytes = bytes;
-    }
-
     // ── Builder entry point ───────────────────────────────────────────────────
 
     public Session start(ByteArrayOutputStream out) throws DocumentException {
         var doc = new Document(PageSize.A4, 40, 40, 48, 48);
-        var writer = PdfWriter.getInstance(doc, out);
-        if (iconBytes != null) {
-            writer.setPageEvent(new WatermarkEvent(iconBytes));
-        }
+        PdfWriter.getInstance(doc, out);
         doc.open();
         return new Session(doc);
     }
@@ -186,35 +167,4 @@ public class FecosPdfBuilder {
         }
     }
 
-    // ── Watermark page event ──────────────────────────────────────────────────
-
-    private static final class WatermarkEvent extends PdfPageEventHelper {
-        private final Image watermark;
-
-        WatermarkEvent(byte[] iconBytes) {
-            try {
-                watermark = Image.getInstance(iconBytes);
-                watermark.scaleToFit(320, 320);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        @Override
-        public void onEndPage(PdfWriter writer, Document document) {
-            try {
-                var canvas = writer.getDirectContentUnder();
-                canvas.saveState();
-                var gs = new PdfGState();
-                gs.setFillOpacity(0.06f);
-                gs.setStrokeOpacity(0.06f);
-                canvas.setGState(gs);
-                float x = (document.getPageSize().getWidth()  - watermark.getScaledWidth())  / 2;
-                float y = (document.getPageSize().getHeight() - watermark.getScaledHeight()) / 2;
-                watermark.setAbsolutePosition(x, y);
-                canvas.addImage(watermark);
-                canvas.restoreState();
-            } catch (Exception ignored) {}
-        }
-    }
 }
