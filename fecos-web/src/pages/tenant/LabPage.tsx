@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { Plus, X, ChevronRight, ExternalLink, AlertTriangle } from 'lucide-react'
+import { Plus, X, ChevronRight, ExternalLink, AlertTriangle, FileText } from 'lucide-react'
 import type React from 'react'
 import {
   labApi,
@@ -537,9 +537,21 @@ function LabReportDrawer({ sample, onClose, onEnterResults, onStartTesting }: {
               {SAMPLE_TYPE_LABEL[s.sampleType]} · {s.wellName} · {s.leaseName}
             </p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 rounded-md hover:bg-gray-100 transition-colors">
-            <X size={16} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={async () => {
+                const res = await labApi.getPdf(s.id)
+                const url = URL.createObjectURL(new Blob([res.data as BlobPart], { type: 'application/pdf' }))
+                window.open(url, '_blank')
+              }}
+              className="text-gray-400 hover:text-gray-600 p-1 rounded-md hover:bg-gray-100 transition-colors"
+              title="Download PDF">
+              <FileText size={16} />
+            </button>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 rounded-md hover:bg-gray-100 transition-colors">
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-2">

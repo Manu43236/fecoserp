@@ -136,4 +136,5 @@ export const labApi = {
   approve:          (id: string, data: LabApprovePayload) => api.post<ApiResponse<LabSampleRecord>>(`/api/v1/lab/samples/${id}/approve`, data),
   pendingApprovals: (params?: object) => api.get<ApiResponse<PageResponse<LabSampleRecord>>>('/api/v1/lab/pending-approvals', { params }),
   alerts:       (params?: object) => api.get<ApiResponse<PageResponse<LabSampleRecord>>>('/api/v1/lab/alerts', { params }),
+  getPdf: (id: string) => api.get(`/api/v1/lab/samples/${id}/pdf`, { responseType: 'blob' }),
 }

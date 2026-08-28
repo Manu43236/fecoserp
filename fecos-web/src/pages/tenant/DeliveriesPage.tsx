@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import {
   PackageCheck, ChevronRight, X, MapPin, Package,
-  CheckCircle2, SkipForward, Truck,
+  CheckCircle2, SkipForward, Truck, FileText,
 } from 'lucide-react'
 import { routesApi, type RouteRecord, type RouteStatus, type RouteStopStatus } from '@/api/routes'
 import { SearchableDropdown, type DropdownOption } from '@/components/ui/SearchableDropdown'
@@ -122,9 +122,21 @@ function DeliveryDrawer({ route, onClose }: { route: RouteRecord; onClose: () =>
               <p className="text-xs text-gray-500">{full.truckNumber ?? 'No truck'} · {full.routeDate}</p>
             </div>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-md flex items-center justify-center hover:bg-gray-100 text-gray-400">
-            <X size={16} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={async () => {
+                const res = await routesApi.getPdf(full.id)
+                const url = URL.createObjectURL(new Blob([res.data as BlobPart], { type: 'application/pdf' }))
+                window.open(url, '_blank')
+              }}
+              className="w-8 h-8 rounded-md flex items-center justify-center hover:bg-gray-100 text-gray-400"
+              title="Download PDF">
+              <FileText size={16} />
+            </button>
+            <button onClick={onClose} className="w-8 h-8 rounded-md flex items-center justify-center hover:bg-gray-100 text-gray-400">
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
         {/* Status + action */}

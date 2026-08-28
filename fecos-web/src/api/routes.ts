@@ -82,4 +82,5 @@ export const routesApi = {
   removeItem:     (id: string, stopId: string, itemId: string) => api.delete<ApiResponse<RouteRecord>>(`/api/v1/routes/${id}/stops/${stopId}/items/${itemId}`),
   updateStatus:   (id: string, status: RouteStatus) => api.patch<ApiResponse<RouteRecord>>(`/api/v1/routes/${id}/status`, null, { params: { status } }),
   updateStopStatus: (id: string, stopId: string, status: RouteStopStatus) => api.patch<ApiResponse<RouteRecord>>(`/api/v1/routes/${id}/stops/${stopId}/status`, null, { params: { status } }),
+  getPdf: (id: string) => api.get(`/api/v1/routes/${id}/pdf`, { responseType: 'blob' }),
 }
