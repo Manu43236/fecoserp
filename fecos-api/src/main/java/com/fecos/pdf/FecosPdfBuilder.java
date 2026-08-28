@@ -125,7 +125,7 @@ public class FecosPdfBuilder {
                     bytes = in.readAllBytes();
                 }
                 var img = Image.getInstance(bytes);
-                img.scaleToFit(460, 320);
+                img.scaleToFit(230, 160);
                 img.setSpacingBefore(4);
                 img.setSpacingAfter(2);
                 doc.add(img);
