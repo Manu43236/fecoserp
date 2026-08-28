@@ -66,14 +66,47 @@ class CompletedStopView extends StatelessWidget {
             const SizedBox(height: 16),
           ],
 
+          // Synced Late badge
+          if (stop.syncedLate) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF3E0),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFFF9800).withValues(alpha: 0.4)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.sync_problem_rounded, size: 16, color: Color(0xFFFF9800)),
+                  SizedBox(width: 8),
+                  Text('Synced Late — submitted offline',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFFFF9800))),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
           // Delivery info
           _InfoCard(children: [
             _InfoRow(
               icon: Icons.schedule_rounded,
               color: AppColors.primary,
-              label: 'Delivered at',
+              label: stop.syncedLate ? 'Recorded at (driver time)' : 'Delivered at',
               value: _formatTimestamp(stop.deliveredAt),
             ),
+            if (stop.syncedLate && stop.receivedAt != null) ...[
+              const SizedBox(height: 10),
+              _InfoRow(
+                icon: Icons.cloud_done_rounded,
+                color: const Color(0xFFFF9800),
+                label: 'Synced to server at',
+                value: _formatTimestamp(stop.receivedAt),
+              ),
+            ],
             if (stop.deliveryLat != null && stop.deliveryLng != null) ...[
               const SizedBox(height: 10),
               _InfoRow(

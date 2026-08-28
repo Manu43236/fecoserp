@@ -569,9 +569,22 @@ function RouteDrawer({ route, onClose, onEdit, canEdit }: {
                         className="w-full rounded-lg object-cover max-h-48 border border-gray-200"
                       />
                       {stop.deliveredAt && (
-                        <p className="text-[10px] text-gray-400 mt-1">
-                          Delivered {new Date(stop.deliveredAt).toLocaleString()}
-                        </p>
+                        <div className="mt-2 space-y-1">
+                          {stop.syncedLate && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-600">
+                              ⚠ Synced Late
+                            </span>
+                          )}
+                          <p className="text-[10px] text-gray-400">
+                            {stop.syncedLate ? 'Recorded' : 'Delivered'}{' '}
+                            {new Date(stop.deliveredAt).toLocaleString()}
+                          </p>
+                          {stop.syncedLate && stop.receivedAt && (
+                            <p className="text-[10px] text-gray-400">
+                              Synced {new Date(stop.receivedAt).toLocaleString()}
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}

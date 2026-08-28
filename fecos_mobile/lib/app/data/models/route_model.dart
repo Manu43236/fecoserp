@@ -43,6 +43,8 @@ class RouteStop {
     this.deliveryLat,
     this.deliveryLng,
     this.deliveredAt,
+    this.receivedAt,
+    this.syncedLate = false,
   });
 
   final String id;
@@ -58,6 +60,8 @@ class RouteStop {
   final double? deliveryLat;
   final double? deliveryLng;
   final String? deliveredAt;
+  final String? receivedAt;
+  final bool syncedLate;
 
   bool get isPending   => status == 'PENDING';
   bool get isCompleted => status == 'COMPLETED';
@@ -69,6 +73,7 @@ class RouteStop {
     items: items, notes: notes, skipReason: skipReason ?? this.skipReason,
     deliveryPhotoUrl: deliveryPhotoUrl, deliveryLat: deliveryLat,
     deliveryLng: deliveryLng, deliveredAt: deliveredAt,
+    receivedAt: receivedAt, syncedLate: syncedLate,
   );
 
   factory RouteStop.fromJson(Map<String, dynamic> json) => RouteStop(
@@ -87,6 +92,8 @@ class RouteStop {
         deliveryLat: (json['deliveryLat'] as num?)?.toDouble(),
         deliveryLng: (json['deliveryLng'] as num?)?.toDouble(),
         deliveredAt: json['deliveredAt'] as String?,
+        receivedAt: json['receivedAt'] as String?,
+        syncedLate: json['syncedLate'] as bool? ?? false,
       );
 }
 

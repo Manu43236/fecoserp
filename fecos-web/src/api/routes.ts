@@ -29,6 +29,8 @@ export interface RouteStopRecord {
   deliveryLat: number | null
   deliveryLng: number | null
   deliveredAt: string | null
+  receivedAt: string | null
+  syncedLate: boolean
 }
 
 export interface RouteRecord {
