@@ -1,0 +1,2 @@
+ALTER TABLE route_stops ADD COLUMN received_at TIMESTAMP;
+ALTER TABLE route_stops ADD COLUMN synced_late BOOLEAN NOT NULL DEFAULT FALSE;

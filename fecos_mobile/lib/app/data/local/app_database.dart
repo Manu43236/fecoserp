@@ -60,15 +60,32 @@ class CachedPreTripInspections extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+class ResponseCache extends Table {
+  TextColumn get cacheKey => text()();
+  TextColumn get json     => text()();
+  DateTimeColumn get cachedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column<Object>> get primaryKey => {cacheKey};
+}
+
 @DriftDatabase(tables: [
   SyncQueue,
   CachedDeliveries,
   CachedServiceVisits,
   CachedPreTripInspections,
+  ResponseCache,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(driftDatabase(name: 'fecos_offline'));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onUpgrade: (m, from, to) async {
+      if (from < 2) await m.createTable(responseCache);
+    },
+  );
 }

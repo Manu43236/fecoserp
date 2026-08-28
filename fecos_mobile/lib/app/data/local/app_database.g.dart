@@ -2256,6 +2256,272 @@ class CachedPreTripInspectionsCompanion
   }
 }
 
+class $ResponseCacheTable extends ResponseCache
+    with TableInfo<$ResponseCacheTable, ResponseCacheData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ResponseCacheTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _cacheKeyMeta = const VerificationMeta(
+    'cacheKey',
+  );
+  @override
+  late final GeneratedColumn<String> cacheKey = GeneratedColumn<String>(
+    'cache_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _jsonMeta = const VerificationMeta('json');
+  @override
+  late final GeneratedColumn<String> json = GeneratedColumn<String>(
+    'json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _cachedAtMeta = const VerificationMeta(
+    'cachedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cachedAt = GeneratedColumn<DateTime>(
+    'cached_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [cacheKey, json, cachedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'response_cache';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ResponseCacheData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('cache_key')) {
+      context.handle(
+        _cacheKeyMeta,
+        cacheKey.isAcceptableOrUnknown(data['cache_key']!, _cacheKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cacheKeyMeta);
+    }
+    if (data.containsKey('json')) {
+      context.handle(
+        _jsonMeta,
+        json.isAcceptableOrUnknown(data['json']!, _jsonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_jsonMeta);
+    }
+    if (data.containsKey('cached_at')) {
+      context.handle(
+        _cachedAtMeta,
+        cachedAt.isAcceptableOrUnknown(data['cached_at']!, _cachedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {cacheKey};
+  @override
+  ResponseCacheData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ResponseCacheData(
+      cacheKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cache_key'],
+      )!,
+      json: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}json'],
+      )!,
+      cachedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cached_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ResponseCacheTable createAlias(String alias) {
+    return $ResponseCacheTable(attachedDatabase, alias);
+  }
+}
+
+class ResponseCacheData extends DataClass
+    implements Insertable<ResponseCacheData> {
+  final String cacheKey;
+  final String json;
+  final DateTime cachedAt;
+  const ResponseCacheData({
+    required this.cacheKey,
+    required this.json,
+    required this.cachedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['cache_key'] = Variable<String>(cacheKey);
+    map['json'] = Variable<String>(json);
+    map['cached_at'] = Variable<DateTime>(cachedAt);
+    return map;
+  }
+
+  ResponseCacheCompanion toCompanion(bool nullToAbsent) {
+    return ResponseCacheCompanion(
+      cacheKey: Value(cacheKey),
+      json: Value(json),
+      cachedAt: Value(cachedAt),
+    );
+  }
+
+  factory ResponseCacheData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ResponseCacheData(
+      cacheKey: serializer.fromJson<String>(json['cacheKey']),
+      json: serializer.fromJson<String>(json['json']),
+      cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'cacheKey': serializer.toJson<String>(cacheKey),
+      'json': serializer.toJson<String>(json),
+      'cachedAt': serializer.toJson<DateTime>(cachedAt),
+    };
+  }
+
+  ResponseCacheData copyWith({
+    String? cacheKey,
+    String? json,
+    DateTime? cachedAt,
+  }) => ResponseCacheData(
+    cacheKey: cacheKey ?? this.cacheKey,
+    json: json ?? this.json,
+    cachedAt: cachedAt ?? this.cachedAt,
+  );
+  ResponseCacheData copyWithCompanion(ResponseCacheCompanion data) {
+    return ResponseCacheData(
+      cacheKey: data.cacheKey.present ? data.cacheKey.value : this.cacheKey,
+      json: data.json.present ? data.json.value : this.json,
+      cachedAt: data.cachedAt.present ? data.cachedAt.value : this.cachedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ResponseCacheData(')
+          ..write('cacheKey: $cacheKey, ')
+          ..write('json: $json, ')
+          ..write('cachedAt: $cachedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(cacheKey, json, cachedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ResponseCacheData &&
+          other.cacheKey == this.cacheKey &&
+          other.json == this.json &&
+          other.cachedAt == this.cachedAt);
+}
+
+class ResponseCacheCompanion extends UpdateCompanion<ResponseCacheData> {
+  final Value<String> cacheKey;
+  final Value<String> json;
+  final Value<DateTime> cachedAt;
+  final Value<int> rowid;
+  const ResponseCacheCompanion({
+    this.cacheKey = const Value.absent(),
+    this.json = const Value.absent(),
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ResponseCacheCompanion.insert({
+    required String cacheKey,
+    required String json,
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : cacheKey = Value(cacheKey),
+       json = Value(json);
+  static Insertable<ResponseCacheData> custom({
+    Expression<String>? cacheKey,
+    Expression<String>? json,
+    Expression<DateTime>? cachedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (cacheKey != null) 'cache_key': cacheKey,
+      if (json != null) 'json': json,
+      if (cachedAt != null) 'cached_at': cachedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ResponseCacheCompanion copyWith({
+    Value<String>? cacheKey,
+    Value<String>? json,
+    Value<DateTime>? cachedAt,
+    Value<int>? rowid,
+  }) {
+    return ResponseCacheCompanion(
+      cacheKey: cacheKey ?? this.cacheKey,
+      json: json ?? this.json,
+      cachedAt: cachedAt ?? this.cachedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (cacheKey.present) {
+      map['cache_key'] = Variable<String>(cacheKey.value);
+    }
+    if (json.present) {
+      map['json'] = Variable<String>(json.value);
+    }
+    if (cachedAt.present) {
+      map['cached_at'] = Variable<DateTime>(cachedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ResponseCacheCompanion(')
+          ..write('cacheKey: $cacheKey, ')
+          ..write('json: $json, ')
+          ..write('cachedAt: $cachedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2267,6 +2533,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $CachedServiceVisitsTable(this);
   late final $CachedPreTripInspectionsTable cachedPreTripInspections =
       $CachedPreTripInspectionsTable(this);
+  late final $ResponseCacheTable responseCache = $ResponseCacheTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2276,6 +2543,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     cachedDeliveries,
     cachedServiceVisits,
     cachedPreTripInspections,
+    responseCache,
   ];
 }
 
@@ -3434,6 +3702,172 @@ typedef $$CachedPreTripInspectionsTableProcessedTableManager =
       CachedPreTripInspection,
       PrefetchHooks Function()
     >;
+typedef $$ResponseCacheTableCreateCompanionBuilder =
+    ResponseCacheCompanion Function({
+      required String cacheKey,
+      required String json,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+typedef $$ResponseCacheTableUpdateCompanionBuilder =
+    ResponseCacheCompanion Function({
+      Value<String> cacheKey,
+      Value<String> json,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+
+class $$ResponseCacheTableFilterComposer
+    extends Composer<_$AppDatabase, $ResponseCacheTable> {
+  $$ResponseCacheTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get cacheKey => $composableBuilder(
+    column: $table.cacheKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get json => $composableBuilder(
+    column: $table.json,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ResponseCacheTableOrderingComposer
+    extends Composer<_$AppDatabase, $ResponseCacheTable> {
+  $$ResponseCacheTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get cacheKey => $composableBuilder(
+    column: $table.cacheKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get json => $composableBuilder(
+    column: $table.json,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ResponseCacheTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ResponseCacheTable> {
+  $$ResponseCacheTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get cacheKey =>
+      $composableBuilder(column: $table.cacheKey, builder: (column) => column);
+
+  GeneratedColumn<String> get json =>
+      $composableBuilder(column: $table.json, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get cachedAt =>
+      $composableBuilder(column: $table.cachedAt, builder: (column) => column);
+}
+
+class $$ResponseCacheTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ResponseCacheTable,
+          ResponseCacheData,
+          $$ResponseCacheTableFilterComposer,
+          $$ResponseCacheTableOrderingComposer,
+          $$ResponseCacheTableAnnotationComposer,
+          $$ResponseCacheTableCreateCompanionBuilder,
+          $$ResponseCacheTableUpdateCompanionBuilder,
+          (
+            ResponseCacheData,
+            BaseReferences<
+              _$AppDatabase,
+              $ResponseCacheTable,
+              ResponseCacheData
+            >,
+          ),
+          ResponseCacheData,
+          PrefetchHooks Function()
+        > {
+  $$ResponseCacheTableTableManager(_$AppDatabase db, $ResponseCacheTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ResponseCacheTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ResponseCacheTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ResponseCacheTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> cacheKey = const Value.absent(),
+                Value<String> json = const Value.absent(),
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ResponseCacheCompanion(
+                cacheKey: cacheKey,
+                json: json,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String cacheKey,
+                required String json,
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ResponseCacheCompanion.insert(
+                cacheKey: cacheKey,
+                json: json,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ResponseCacheTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ResponseCacheTable,
+      ResponseCacheData,
+      $$ResponseCacheTableFilterComposer,
+      $$ResponseCacheTableOrderingComposer,
+      $$ResponseCacheTableAnnotationComposer,
+      $$ResponseCacheTableCreateCompanionBuilder,
+      $$ResponseCacheTableUpdateCompanionBuilder,
+      (
+        ResponseCacheData,
+        BaseReferences<_$AppDatabase, $ResponseCacheTable, ResponseCacheData>,
+      ),
+      ResponseCacheData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3449,4 +3883,6 @@ class $AppDatabaseManager {
         _db,
         _db.cachedPreTripInspections,
       );
+  $$ResponseCacheTableTableManager get responseCache =>
+      $$ResponseCacheTableTableManager(_db, _db.responseCache);
 }

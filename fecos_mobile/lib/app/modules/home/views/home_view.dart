@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:fecos_mobile/app/data/models/dashboard_data.dart';
 import 'package:fecos_mobile/app/data/models/route_model.dart';
+import 'package:fecos_mobile/app/data/services/connectivity_service.dart';
+import 'package:fecos_mobile/app/data/services/sync_service.dart';
 import 'package:fecos_mobile/app/modules/service_visit/controllers/service_visit_controller.dart';
 import 'package:fecos_mobile/app/modules/main/controllers/main_controller.dart';
 import 'package:fecos_mobile/app/theme/app_theme.dart';
@@ -36,7 +38,11 @@ class HomeView extends GetView<HomeController> {
                   return _ErrorState(onRetry: controller.load);
                 }
                 if (controller.isTruckDriver) {
-                  return _DriverDashboardContent(routes: controller.todayRoutes);
+                  return _DriverDashboardContent(
+                    routes: controller.todayRoutes,
+                    syncService: controller.syncService,
+                    onSyncNow: controller.load,
+                  );
                 }
                 if (controller.isAccountRep) {
                   return _ArDashboardContent(
@@ -542,8 +548,14 @@ class _SectionLabel extends StatelessWidget {
 // ── Truck Driver dashboard ────────────────────────────────────────────────────
 
 class _DriverDashboardContent extends StatelessWidget {
-  const _DriverDashboardContent({required this.routes});
+  const _DriverDashboardContent({
+    required this.routes,
+    required this.syncService,
+    required this.onSyncNow,
+  });
   final List<RouteModel> routes;
+  final SyncService syncService;
+  final VoidCallback onSyncNow;
 
   @override
   Widget build(BuildContext context) {
@@ -572,6 +584,76 @@ class _DriverDashboardContent extends StatelessWidget {
           remainingRoutes: remainingRoutes,
         ),
         const SizedBox(height: 24),
+
+        // Sync status bar
+        Obx(() {
+          final pending  = syncService.pendingCount.value;
+          final syncing  = syncService.isSyncing.value;
+          if (pending == 0) return const SizedBox.shrink();
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.warning.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.warning.withValues(alpha: 0.35)),
+              ),
+              child: Row(
+                children: [
+                  if (syncing)
+                    const SizedBox(
+                      width: 14, height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2, color: AppColors.warning),
+                    )
+                  else
+                    const Icon(Icons.sync_rounded,
+                        size: 16, color: AppColors.warning),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      syncing
+                          ? 'Syncing $pending action${pending == 1 ? '' : 's'}…'
+                          : '$pending action${pending == 1 ? '' : 's'} pending sync',
+                      style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.warning),
+                    ),
+                  ),
+                  if (!syncing)
+                    GestureDetector(
+                      onTap: () async {
+                        if (!Get.find<ConnectivityService>().isOnline.value) {
+                          Get.snackbar('No Network',
+                              'Connect to the internet to sync',
+                              snackPosition: SnackPosition.BOTTOM,
+                              duration: const Duration(seconds: 3));
+                          return;
+                        }
+                        await Get.find<SyncService>().syncNow();
+                        onSyncNow();
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: AppColors.warning,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text('Sync Now',
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white)),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          );
+        }),
 
         // All today's routes (every status)
         const _SectionLabel(

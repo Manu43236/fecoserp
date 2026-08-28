@@ -238,6 +238,12 @@ public class RouteService {
         if (req.getPhotoUrl() != null) stop.setDeliveryPhotoUrl(req.getPhotoUrl());
         stop.setDeliveredAt(req.getDeliveredAt() != null ? req.getDeliveredAt() : java.time.LocalDateTime.now());
         if (req.getNotes() != null) stop.setNotes(req.getNotes());
+
+        var receivedAt = java.time.LocalDateTime.now();
+        stop.setReceivedAt(receivedAt);
+        if (stop.getDeliveredAt() != null) {
+            stop.setSyncedLate(receivedAt.isAfter(stop.getDeliveredAt().plusMinutes(30)));
+        }
         stopRepository.save(stop);
 
         if (req.getItems() != null) {

@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart' hide FormData, MultipartFile;
 import 'package:image_picker/image_picker.dart';
 import 'package:fecos_mobile/app/data/models/route_model.dart';
+import 'package:fecos_mobile/app/data/services/connectivity_service.dart';
 import 'package:fecos_mobile/app/data/services/dio_service.dart';
 import 'package:fecos_mobile/app/theme/app_theme.dart';
 import 'package:fecos_mobile/app/modules/delivery/controllers/delivery_controller.dart';
@@ -60,15 +61,36 @@ class _StopDetailViewState extends State<StopDetailView> {
       qty % 1 == 0 ? qty.toInt().toString() : qty.toString();
 
   Future<void> _captureLocation() async {
-    final permission = await Geolocator.requestPermission();
-    if (permission != LocationPermission.denied &&
-        permission != LocationPermission.deniedForever) {
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+    try {
+      final permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        if (mounted) setState(() => _gettingLocation = false);
+        return;
+      }
+
+      // Use last known position immediately so driver isn't blocked
+      final last = await Geolocator.getLastKnownPosition();
+      if (last != null && mounted) {
+        setState(() {
+          _position = last;
+          _gettingLocation = false; // spinner stops — driver can act now
+        });
+      }
+
+      // Refresh in background with satellite-only accuracy (no network needed)
+      final fresh = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium, // satellite-only, no A-GPS needed
+          timeLimit: Duration(seconds: 30),
+        ),
       );
-      if (mounted) setState(() => _position = pos);
+      if (mounted) setState(() => _position = fresh);
+    } catch (_) {
+      // GPS unavailable or timed out
+    } finally {
+      if (mounted) setState(() => _gettingLocation = false);
     }
-    if (mounted) setState(() => _gettingLocation = false);
   }
 
   Future<void> _pickDeliveryDateTime() async {
@@ -102,33 +124,50 @@ class _StopDetailViewState extends State<StopDetailView> {
     if (_photo == null || _position == null || _uploading) return;
     setState(() => _uploading = true);
 
+    final actualQtyMap = <String, double>{
+      for (final entry in _qtyControllers.entries)
+        entry.key: double.tryParse(entry.value.text) ?? 0.0
+    };
+    final notes = _notesController.text.trim().isEmpty ? null : _notesController.text.trim();
+
+    // Offline path — queue locally, skip photo upload until connectivity returns
+    if (!Get.find<ConnectivityService>().isOnline.value) {
+      await _deliveryController.queueDeliverStop(
+        stopId:        _stop.id,
+        localPhotoPath: _photo!.path,
+        lat:           _position!.latitude,
+        lng:           _position!.longitude,
+        actualQtyMap:  actualQtyMap,
+        notes:         notes,
+        performedAt:   _deliveredAt,
+      );
+      if (mounted) {
+        setState(() => _uploading = false);
+        Get.back(result: true);
+        final r = _deliveryController.route.value;
+        if (r != null && r.stops.every((s) => !s.isPending)) {
+          Get.toNamed('/wrap-up', parameters: {'id': _deliveryController.routeId});
+        }
+      }
+      return;
+    }
+
+    // Online path — upload photo then deliver
     try {
-      // 1. Upload photo
       final formData = FormData.fromMap({
         'file': await MultipartFile.fromFile(
           _photo!.path,
           filename: 'delivery_${DateTime.now().millisecondsSinceEpoch}.jpg',
         ),
       });
-      final uploadRes = await _dio.post<Map<String, dynamic>>(
-          '/uploads/photo', data: formData);
-      final photoUrl = uploadRes.data!['data']['url'] as String;
+      final uploadRes = await _dio.post<Map<String, dynamic>>('/uploads/photo', data: formData);
+      final photoUrl  = uploadRes.data!['data']['url'] as String;
 
-      // 2. Build actual qty map
-      final actualQtyMap = <String, double>{
-        for (final entry in _qtyControllers.entries)
-          entry.key: double.tryParse(entry.value.text) ?? 0.0
-      };
-
-      // 3. Deliver
-      final iso = _deliveredAt.toIso8601String().substring(0, 19); // LocalDateTime format
+      final iso     = _deliveredAt.toIso8601String().substring(0, 19);
       final success = await _deliveryController.deliverStop(
-        _stop.id,
-        photoUrl,
-        _position!.latitude,
-        _position!.longitude,
-        actualQtyMap,
-        _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+        _stop.id, photoUrl,
+        _position!.latitude, _position!.longitude,
+        actualQtyMap, notes,
         deliveredAt: iso,
       );
 
@@ -141,9 +180,7 @@ class _StopDetailViewState extends State<StopDetailView> {
       }
     } on DioException catch (e) {
       final msg = e.response?.data?['error'] ?? 'Upload failed';
-      if (mounted) {
-        Get.snackbar('Error', msg, snackPosition: SnackPosition.BOTTOM);
-      }
+      if (mounted) Get.snackbar('Error', msg, snackPosition: SnackPosition.BOTTOM);
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
@@ -157,8 +194,7 @@ class _StopDetailViewState extends State<StopDetailView> {
     return '${months[dt.month - 1]} ${dt.day}, ${dt.year}  $h:$m $ampm';
   }
 
-  bool get _canSubmit =>
-      _photo != null && _position != null && !_uploading && !_gettingLocation;
+  bool get _canSubmit => _photo != null && _position != null && !_uploading && !_gettingLocation;
 
   @override
   Widget build(BuildContext context) {

@@ -46,4 +46,10 @@ public class RouteStopEntity extends TenantAwareEntity {
 
     @Column(name = "skip_reason", length = 100)
     private String skipReason;
+
+    @Column(name = "received_at")
+    private java.time.LocalDateTime receivedAt;
+
+    @Column(name = "synced_late")
+    private boolean syncedLate;
 }

@@ -1,17 +1,22 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:get/get.dart';
 import 'package:fecos_mobile/app/data/models/dashboard_data.dart';
 import 'package:fecos_mobile/app/data/models/route_model.dart';
 import 'package:fecos_mobile/app/data/models/user_model.dart';
 import 'package:fecos_mobile/app/data/services/connectivity_service.dart';
+import 'package:fecos_mobile/app/data/services/db_service.dart';
 import 'package:fecos_mobile/app/data/services/dio_service.dart';
+import 'package:fecos_mobile/app/data/services/sync_service.dart';
 import 'package:fecos_mobile/app/modules/auth/controllers/auth_controller.dart';
 import 'package:fecos_mobile/app/modules/service_visit/controllers/service_visit_controller.dart';
 
 class HomeController extends GetxController {
-  final connectivity = Get.find<ConnectivityService>();
-  final auth = Get.find<AuthController>();
-  final _dio = Get.find<DioService>().dio;
+  final connectivity  = Get.find<ConnectivityService>();
+  final auth          = Get.find<AuthController>();
+  final syncService   = Get.find<SyncService>();
+  final _dio          = Get.find<DioService>().dio;
+  final _dbService    = Get.find<DbService>();
 
   // Service tech state
   final dashboard = Rxn<DashboardData>();
@@ -35,6 +40,7 @@ class HomeController extends GetxController {
   void onInit() {
     super.onInit();
     load();
+    ever(connectivity.isOnline, (online) { if (online) load(); });
   }
 
   Future<void> load() async {
@@ -49,7 +55,8 @@ class HomeController extends GetxController {
         await _loadServiceTechData();
       }
     } on DioException {
-      hasError.value = true;
+      if (!isTruckDriver) hasError.value = true;
+      // Driver offline error is handled inside _loadDriverData via cache
     } finally {
       isLoading.value = false;
     }
@@ -72,18 +79,32 @@ class HomeController extends GetxController {
     final dateStr =
         '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
     final driverId = auth.user.value?.id;
-    final res = await _dio.get<Map<String, dynamic>>(
-      '/routes',
-      queryParameters: {
-        'routeDate': dateStr,
-        'size': 50,
-        if (driverId != null) 'driverId': driverId,
-      },
-    );
-    final content = res.data!['data']['content'] as List;
-    todayRoutes.value = content
-        .map((e) => RouteModel.fromJson(e as Map<String, dynamic>))
-        .toList();
+    const cacheKey = 'driver-home-routes';
+
+    if (connectivity.isOnline.value) {
+      final res = await _dio.get<Map<String, dynamic>>(
+        '/routes',
+        queryParameters: {
+          'routeDate': dateStr,
+          'size': 50,
+          if (driverId != null) 'driverId': driverId,
+        },
+      );
+      final content = res.data!['data']['content'] as List;
+      await _dbService.cacheResponse(cacheKey, jsonEncode(content));
+      todayRoutes.value = content
+          .map((e) => RouteModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } else {
+      final cached = await _dbService.getCachedResponse(cacheKey);
+      if (cached != null) {
+        final content = jsonDecode(cached) as List;
+        todayRoutes.value = content
+            .map((e) => RouteModel.fromJson(e as Map<String, dynamic>))
+            .toList();
+      }
+      // No cache yet = empty list, no error — driver can see they have no routes
+    }
   }
 
   Future<void> _loadArData() async {

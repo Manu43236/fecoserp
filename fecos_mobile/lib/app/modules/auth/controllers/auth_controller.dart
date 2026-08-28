@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -33,14 +34,24 @@ class AuthController extends GetxController {
     }
     try {
       final res = await _dio.get<Map<String, dynamic>>('/auth/me');
-      final u = UserModel.fromJson(res.data!['data'] as Map<String, dynamic>);
+      final data = res.data!['data'] as Map<String, dynamic>;
+      final u = UserModel.fromJson(data);
       if (!u.role.isMobileRole) {
         await _storage.clearAll();
       } else {
+        await _storage.setUser(jsonEncode(data));
         user.value = u;
       }
-    } on DioException {
-      await _storage.clearAll();
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        await _storage.clearAll();
+      } else {
+        // Offline or server unreachable — restore from cached user profile
+        final cached = await _storage.getUser();
+        if (cached != null) {
+          user.value = UserModel.fromJson(jsonDecode(cached) as Map<String, dynamic>);
+        }
+      }
     } finally {
       _sessionCompleter.complete();
     }
@@ -77,6 +88,7 @@ class AuthController extends GetxController {
         return;
       }
       await _storage.setToken(token);
+      await _storage.setUser(jsonEncode(data));
       user.value = u;
       Get.offAllNamed(Routes.main);
     } on DioException catch (e) {

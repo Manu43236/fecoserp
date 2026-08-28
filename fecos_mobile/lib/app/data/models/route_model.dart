@@ -63,6 +63,14 @@ class RouteStop {
   bool get isCompleted => status == 'COMPLETED';
   bool get isSkipped   => status == 'SKIPPED';
 
+  RouteStop copyWith({String? status, String? skipReason}) => RouteStop(
+    id: id, routeId: routeId, wellName: wellName, leaseName: leaseName,
+    sequenceOrder: sequenceOrder, status: status ?? this.status,
+    items: items, notes: notes, skipReason: skipReason ?? this.skipReason,
+    deliveryPhotoUrl: deliveryPhotoUrl, deliveryLat: deliveryLat,
+    deliveryLng: deliveryLng, deliveredAt: deliveredAt,
+  );
+
   factory RouteStop.fromJson(Map<String, dynamic> json) => RouteStop(
         id: json['id'] as String,
         routeId: json['routeId'] as String,
@@ -112,6 +120,20 @@ class RouteModel {
   bool get isActive      => status == 'DISPATCHED' || status == 'IN_PROGRESS';
   bool get loadConfirmed => loadConfirmedAt != null;
   bool get preTripDone   => preTripConfirmedAt != null;
+
+  RouteModel copyWith({
+    String? status,
+    List<RouteStop>? stops,
+    String? loadConfirmedAt,
+    String? preTripConfirmedAt,
+  }) => RouteModel(
+    id: id, driverName: driverName, truckNumber: truckNumber,
+    routeDate: routeDate, status: status ?? this.status,
+    stopCount: stopCount, completedStopCount: completedStopCount,
+    stops: stops ?? this.stops, notes: notes,
+    loadConfirmedAt: loadConfirmedAt ?? this.loadConfirmedAt,
+    preTripConfirmedAt: preTripConfirmedAt ?? this.preTripConfirmedAt,
+  );
   // Use backend-provided count when stops aren't loaded (list view), else compute from stops
   int get completedStops => stops.isNotEmpty
       ? stops.where((s) => s.isCompleted).length

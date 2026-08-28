@@ -17,4 +17,16 @@ class DbService extends GetxService {
     db.close();
     super.onClose();
   }
+
+  Future<void> cacheResponse(String key, String json) =>
+      db.into(db.responseCache).insertOnConflictUpdate(
+        ResponseCacheCompanion.insert(cacheKey: key, json: json),
+      );
+
+  Future<String?> getCachedResponse(String key) async {
+    final row = await (db.select(db.responseCache)
+          ..where((t) => t.cacheKey.equals(key)))
+        .getSingleOrNull();
+    return row?.json;
+  }
 }
