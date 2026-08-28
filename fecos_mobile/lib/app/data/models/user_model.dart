@@ -18,9 +18,7 @@ enum UserRole {
         _ => throw ArgumentError('Unknown role: $value'),
       };
 
-  bool get isMobileRole =>
-      this == truckDriver || this == serviceTech ||
-      this == manager || this == accountRep;
+  bool get isMobileRole => this == truckDriver || this == serviceTech;
 }
 
 class UserModel {
