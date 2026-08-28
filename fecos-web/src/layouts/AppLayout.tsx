@@ -1,10 +1,10 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import {
   LayoutDashboard, Truck, MapPin, CalendarDays, Package, Users,
   Activity, PackageCheck, Building2, Wrench, BarChart3,
   FlaskConical, ClipboardList, TestTube, CheckCircle2,
-  Briefcase, LogOut, Drill, Settings2, Cylinder, Car,
+  Briefcase, LogOut, Drill, Settings2, Cylinder, Car, Menu,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
@@ -77,6 +77,7 @@ export function AppLayout() {
   const navigate = useNavigate()
   const nav = user ? navByRole[user.role as Role] ?? [] : []
   const isImpersonating = !!saSession
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
     const root = document.documentElement
@@ -91,10 +92,18 @@ export function AppLayout() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-dvh overflow-hidden">
+      {/* Mobile backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <aside
-        className="flex flex-col w-[220px] shrink-0 h-full"
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col w-[220px] h-full transition-transform duration-200 md:relative md:translate-x-0 md:z-auto ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
         style={{ backgroundColor: 'var(--color-dark)' }}
       >
         {/* Logo */}
@@ -110,6 +119,7 @@ export function AppLayout() {
               <NavLink
                 key={item.path}
                 to={item.path}
+                onClick={() => setSidebarOpen(false)}
                 className={({ isActive }) =>
                   `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 group ${
                     isActive ? 'text-white shadow-sm' : 'hover:bg-white/8'
@@ -168,7 +178,22 @@ export function AppLayout() {
       </aside>
 
       {/* Main */}
-      <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex flex-col flex-1 overflow-hidden min-w-0">
+        {/* Mobile top bar */}
+        <div
+          className="h-[60px] flex items-center px-4 gap-3 shrink-0 md:hidden"
+          style={{ backgroundColor: 'var(--color-dark)' }}
+        >
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="text-white/70 hover:text-white transition-colors"
+            aria-label="Open menu"
+          >
+            <Menu size={20} />
+          </button>
+          <img src={fecosLogo} alt="FECOS" className="h-6 object-contain" />
+        </div>
+
         {/* Impersonation banner */}
         {isImpersonating && (
           <div className="bg-amber-500 text-white px-5 py-2 flex items-center justify-between text-sm shrink-0">

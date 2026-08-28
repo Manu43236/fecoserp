@@ -56,7 +56,7 @@ function CreatePanel({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="fixed inset-0 bg-black/20" />
-      <div className="relative w-[440px] h-full bg-white shadow-xl flex flex-col">
+      <div className="relative w-full md:w-[440px] h-full bg-white shadow-xl flex flex-col">
         {/* Header */}
         <div className="flex items-center gap-3 px-5 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
           <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-primary)' }}>
@@ -151,7 +151,7 @@ function ResultsPanel({ batch, onClose, onSaved }: { batch: RawMaterialBatch; on
   return (
     <div className="fixed inset-0 z-[60] flex justify-end">
       <div className="fixed inset-0 bg-black/20" />
-      <div className="relative w-[440px] h-full bg-white shadow-xl flex flex-col">
+      <div className="relative w-full md:w-[440px] h-full bg-white shadow-xl flex flex-col">
         <div className="flex items-center gap-3 px-5 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
           <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-primary)' }}>
             <TestTube size={14} className="text-white" />
@@ -454,7 +454,7 @@ export default function RawMaterialQcPage() {
       {/* Table */}
       <div className="flex-1 overflow-auto px-6 py-4">
         <div className="bg-white rounded-xl overflow-hidden" style={{ border: '1px solid rgba(0,0,0,0.07)' }}>
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto"><table className="w-full text-sm">
             <thead>
               <tr style={{ backgroundColor: 'var(--color-primary)' }}>
                 {['Batch #', 'Material', 'Supplier', 'Quantity', 'Received Date', 'Status', ''].map(h => (
@@ -488,7 +488,7 @@ export default function RawMaterialQcPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
 
         {/* Pagination */}

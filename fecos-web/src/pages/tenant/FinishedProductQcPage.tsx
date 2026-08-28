@@ -53,7 +53,7 @@ function MoveToWarehousePanel({ batch, onClose, onMoved }: {
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center">
       <div className="fixed inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-xl w-[400px] p-6">
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-[400px] p-6">
         <div className="flex items-center gap-3 mb-5">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--color-primary)' }}>
             <Warehouse size={16} className="text-white" />
@@ -125,7 +125,7 @@ function CreatePanel({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="fixed inset-0 bg-black/20" />
-      <div className="relative w-[440px] h-full bg-white shadow-xl flex flex-col">
+      <div className="relative w-full md:w-[440px] h-full bg-white shadow-xl flex flex-col">
         <div className="flex items-center gap-3 px-5 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
           <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-primary)' }}>
             <Package size={14} className="text-white" />
@@ -209,7 +209,7 @@ function ResultsPanel({ batch, onClose, onSaved }: {
   return (
     <div className="fixed inset-0 z-[60] flex justify-end">
       <div className="fixed inset-0 bg-black/20" />
-      <div className="relative w-[440px] h-full bg-white shadow-xl flex flex-col">
+      <div className="relative w-full md:w-[440px] h-full bg-white shadow-xl flex flex-col">
         <div className="flex items-center gap-3 px-5 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
           <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-primary)' }}>
             <Package size={14} className="text-white" />
@@ -511,7 +511,7 @@ export default function FinishedProductQcPage() {
 
       <div className="flex-1 overflow-auto px-6 py-4">
         <div className="bg-white rounded-xl overflow-hidden" style={{ border: '1px solid rgba(0,0,0,0.07)' }}>
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto"><table className="w-full text-sm">
             <thead>
               <tr style={{ backgroundColor: 'var(--color-primary)' }}>
                 {['Batch #', 'Product', 'Quantity', 'Blend Date', 'Status', 'Warehouse', ''].map(h => (
@@ -548,7 +548,7 @@ export default function FinishedProductQcPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
 
         {pages > 1 && (

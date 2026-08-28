@@ -22,36 +22,59 @@ export default function MastersPage() {
   const section = SECTIONS.find(s => s.id === active)!
 
   return (
-    <div className="flex h-full min-h-screen">
-      {/* Left nav */}
-      <aside className="w-[240px] shrink-0 bg-white border-r border-gray-100 py-4">
-        <p className="px-5 text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-2">
-          Configure
-        </p>
-        <nav className="space-y-0.5 px-2">
-          {SECTIONS.map(s => {
-            const Icon = s.icon
-            const isActive = s.id === active
-            return (
-              <button
-                key={s.id}
-                onClick={() => setActive(s.id)}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all"
-                style={isActive ? { backgroundColor: 'var(--color-primary)', color: '#fff' } : {}}
-              >
-                <Icon size={15} className={isActive ? 'text-white' : 'text-gray-400'} />
-                <span className={`text-sm font-medium flex-1 ${isActive ? 'text-white' : 'text-gray-700'}`}>
-                  {s.label}
-                </span>
-                {isActive && <ChevronRight size={13} className="text-white/70 shrink-0" />}
-              </button>
-            )
-          })}
-        </nav>
-      </aside>
+    <div className="flex flex-col h-full min-h-screen">
+      {/* Mobile tab bar */}
+      <div className="md:hidden bg-white border-b border-gray-100 flex overflow-x-auto">
+        {SECTIONS.map(s => {
+          const Icon = s.icon
+          const isActive = s.id === active
+          return (
+            <button
+              key={s.id}
+              onClick={() => setActive(s.id)}
+              className="flex items-center gap-2 px-4 py-3.5 text-sm font-medium border-b-2 whitespace-nowrap transition-all shrink-0"
+              style={{
+                borderBottomColor: isActive ? 'var(--color-primary)' : 'transparent',
+                color: isActive ? 'var(--color-primary)' : '#6B7280',
+              }}
+            >
+              <Icon size={14} />
+              {s.label}
+            </button>
+          )
+        })}
+      </div>
 
-      {/* Content */}
-      <main className="flex-1 p-8">
+      <div className="flex flex-1">
+        {/* Desktop sidebar */}
+        <aside className="hidden md:flex md:flex-col w-[240px] shrink-0 bg-white border-r border-gray-100 py-4">
+          <p className="px-5 text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-2">
+            Configure
+          </p>
+          <nav className="space-y-0.5 px-2">
+            {SECTIONS.map(s => {
+              const Icon = s.icon
+              const isActive = s.id === active
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => setActive(s.id)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all"
+                  style={isActive ? { backgroundColor: 'var(--color-primary)', color: '#fff' } : {}}
+                >
+                  <Icon size={15} className={isActive ? 'text-white' : 'text-gray-400'} />
+                  <span className={`text-sm font-medium flex-1 ${isActive ? 'text-white' : 'text-gray-700'}`}>
+                    {s.label}
+                  </span>
+                  {isActive && <ChevronRight size={13} className="text-white/70 shrink-0" />}
+                </button>
+              )
+            })}
+          </nav>
+        </aside>
+
+        {/* Content */}
+        <main className="flex-1 p-4 md:p-8">
         <div className="max-w-2xl">
           <div className="mb-6">
             <h1 className="text-lg font-bold text-gray-900">{section.label}</h1>
@@ -87,6 +110,7 @@ export default function MastersPage() {
           )}
         </div>
       </main>
+      </div>
     </div>
   )
 }

@@ -240,7 +240,7 @@ export default function ApprovalsPage() {
 
       {/* Table */}
       <div className="flex-1 overflow-auto">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full text-sm">
           <thead>
             <tr style={{ backgroundColor: 'var(--color-primary)' }}>
               {['Sample #', 'Type', 'Well / Lease', 'Client', 'Received', 'Priority', 'Critical Flags', ''].map(h => (
@@ -288,7 +288,7 @@ export default function ApprovalsPage() {
               )
             })}
           </tbody>
-        </table>
+        </table></div>
       </div>
 
       {/* Pagination */}

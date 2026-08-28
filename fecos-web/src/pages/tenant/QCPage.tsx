@@ -81,7 +81,7 @@ function RawCreatePanel({ onClose, onSaved }: { onClose: () => void; onSaved: ()
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="fixed inset-0 bg-black/20" />
-      <div className="relative w-[440px] h-full bg-white shadow-xl flex flex-col">
+      <div className="relative w-full md:w-[440px] h-full bg-white shadow-xl flex flex-col">
         <PanelHeader icon={FlaskConical} title="Log Raw Material Batch" onClose={onClose} />
         <form onSubmit={submit} className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
           <div>
@@ -150,7 +150,7 @@ function RawResultsPanel({ batch, onClose, onSaved }: { batch: RawMaterialBatch;
   return (
     <div className="fixed inset-0 z-[60] flex justify-end">
       <div className="fixed inset-0 bg-black/20" />
-      <div className="relative w-[440px] h-full bg-white shadow-xl flex flex-col">
+      <div className="relative w-full md:w-[440px] h-full bg-white shadow-xl flex flex-col">
         <PanelHeader icon={TestTube} title="Enter QC Results" sub={`${batch.batchNumber} — ${batch.materialName}`} onClose={onClose} />
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
           <div>
@@ -365,7 +365,7 @@ function RawMaterialsSection() {
       </div>
 
       <div className="bg-white rounded-xl overflow-hidden border border-gray-200">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full text-sm">
           <thead>
             <tr style={{ backgroundColor: 'var(--color-primary)' }}>
               {['Batch #', 'Material', 'Supplier', 'Quantity', 'Received Date', 'Status', ''].map(h => (
@@ -396,7 +396,7 @@ function RawMaterialsSection() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       </div>
 
       {pages > 1 && (
@@ -431,7 +431,7 @@ function MoveToWarehousePanel({ batch, onClose, onMoved }: { batch: FinishedProd
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center">
       <div className="fixed inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-xl w-[400px] p-6">
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-[400px] p-6">
         <div className="flex items-center gap-3 mb-5">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--color-primary)' }}>
             <Warehouse size={16} className="text-white" />
@@ -485,7 +485,7 @@ function FinishedCreatePanel({ onClose, onSaved }: { onClose: () => void; onSave
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="fixed inset-0 bg-black/20" />
-      <div className="relative w-[440px] h-full bg-white shadow-xl flex flex-col">
+      <div className="relative w-full md:w-[440px] h-full bg-white shadow-xl flex flex-col">
         <PanelHeader icon={Package} title="Log Finished Product Batch" onClose={onClose} />
         <form onSubmit={submit} className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
           <div>
@@ -542,7 +542,7 @@ function FinishedResultsPanel({ batch, onClose, onSaved }: { batch: FinishedProd
   return (
     <div className="fixed inset-0 z-[60] flex justify-end">
       <div className="fixed inset-0 bg-black/20" />
-      <div className="relative w-[440px] h-full bg-white shadow-xl flex flex-col">
+      <div className="relative w-full md:w-[440px] h-full bg-white shadow-xl flex flex-col">
         <PanelHeader icon={Package} title="Enter QC Results" sub={`${batch.batchNumber} — ${batch.productName}`} onClose={onClose} />
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
           <div>
@@ -775,7 +775,7 @@ function FinishedProductSection() {
       </div>
 
       <div className="bg-white rounded-xl overflow-hidden border border-gray-200">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full text-sm">
           <thead>
             <tr style={{ backgroundColor: 'var(--color-primary)' }}>
               {['Batch #', 'Product', 'Quantity', 'Blend Date', 'Status', 'Warehouse', ''].map(h => (
@@ -810,7 +810,7 @@ function FinishedProductSection() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       </div>
 
       {pages > 1 && (
@@ -845,8 +845,8 @@ export default function QCPage() {
 
   return (
     <div className="h-full flex flex-col bg-gray-50">
-      <div className="bg-white px-6 shrink-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
-        <div className="flex gap-1">
+      <div className="bg-white px-2 shrink-0 overflow-x-auto" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
+        <div className="flex gap-1 min-w-max">
           {TABS.map(tab => (
             <button key={tab.key} onClick={() => setActiveTab(tab.key)}
               className={`px-5 py-3.5 text-sm font-medium border-b-2 transition-colors ${

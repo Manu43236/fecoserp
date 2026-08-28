@@ -84,7 +84,7 @@ function VehiclePanel({ vehicle, onClose, onSaved }: {
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="fixed inset-0 bg-black/20" />
-      <div className="relative w-[440px] h-full bg-white shadow-xl flex flex-col">
+      <div className="relative w-full md:w-[440px] h-full bg-white shadow-xl flex flex-col">
         {/* Header */}
         <div className="flex items-center gap-3 px-5 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
           <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-primary)' }}>
@@ -346,7 +346,7 @@ export default function VehiclesPage() {
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full text-sm">
           <thead>
             <tr style={{ backgroundColor: 'var(--color-primary)' }}>
               {['Type', 'Make & Model', 'Year', 'License Plate', 'DOT #', 'Mileage', 'Status', ''].map(h => (
@@ -380,7 +380,7 @@ export default function VehiclesPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       </div>
 
       {/* Pagination */}

@@ -111,7 +111,7 @@ function DeliveryDrawer({ route, onClose }: { route: RouteRecord; onClose: () =>
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
       <div className="fixed inset-0 bg-black/20" />
-      <div className="relative w-[440px] bg-white h-full shadow-2xl flex flex-col z-50">
+      <div className="relative w-full md:w-[440px] bg-white h-full shadow-2xl flex flex-col z-50">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
           <div className="flex items-center gap-3">
@@ -333,7 +333,7 @@ export default function DeliveriesPage() {
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full text-sm">
           <thead>
             <tr style={{ backgroundColor: 'var(--color-primary)' }}>
               {['Driver', 'Truck', 'Date', 'Stops', 'Status', ''].map(h => (
@@ -379,7 +379,7 @@ export default function DeliveriesPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
 
         {/* Pagination */}
         {totalPages > 1 && (

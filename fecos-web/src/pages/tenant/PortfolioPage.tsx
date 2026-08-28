@@ -267,7 +267,7 @@ function ClientDrawer({
   return (
     <div className="fixed inset-0 z-40 flex">
       <div className="flex-1" />
-      <div className="w-[440px] bg-white shadow-2xl flex flex-col h-full border-l border-gray-200">
+      <div className="w-full md:w-[440px] bg-white shadow-2xl flex flex-col h-full border-l border-gray-200">
         {/* Header */}
         <div className="flex items-start justify-between px-5 py-4 border-b border-gray-100 shrink-0">
           <div className="flex items-center gap-3 min-w-0">

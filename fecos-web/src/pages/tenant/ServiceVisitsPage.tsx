@@ -132,7 +132,7 @@ function VisitPanel({ onClose, onSaved, stUsers }: {
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="fixed inset-0 bg-black/20" />
-      <div className="relative w-[440px] h-full bg-white shadow-xl flex flex-col">
+      <div className="relative w-full md:w-[440px] h-full bg-white shadow-xl flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
           <h2 className="text-sm font-semibold text-gray-900">New Schedule</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
@@ -938,7 +938,7 @@ export default function ServiceVisitsPage() {
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full text-sm">
           <thead>
             <tr className="text-xs font-semibold uppercase tracking-wide text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
               <th className="px-4 py-3 text-left">Date</th>
@@ -986,7 +986,7 @@ export default function ServiceVisitsPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
 
         {/* Pagination */}
         {visits.length > 0 && (

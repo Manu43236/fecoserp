@@ -61,7 +61,7 @@ function VisitDrawer({ visit, onClose }: { visit: ServiceVisit; onClose: () => v
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
       <div className="fixed inset-0 bg-black/20" />
-      <div className="relative w-[440px] bg-white h-full shadow-2xl flex flex-col z-50">
+      <div className="relative w-full md:w-[440px] bg-white h-full shadow-2xl flex flex-col z-50">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-primary)' }}>
@@ -146,7 +146,7 @@ function RouteDrawer({ route, onClose }: { route: RouteRecord; onClose: () => vo
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
       <div className="fixed inset-0 bg-black/20" />
-      <div className="relative w-[440px] bg-white h-full shadow-2xl flex flex-col z-50">
+      <div className="relative w-full md:w-[440px] bg-white h-full shadow-2xl flex flex-col z-50">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-primary)' }}>

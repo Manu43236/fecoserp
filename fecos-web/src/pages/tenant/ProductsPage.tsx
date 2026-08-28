@@ -106,7 +106,7 @@ function ProductFormPanel({
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/30" />
-      <div className="relative bg-white w-[440px] h-full shadow-2xl flex flex-col">
+      <div className="relative bg-white w-full md:w-[440px] h-full shadow-2xl flex flex-col">
 
         <div className="flex items-center justify-between px-5 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
           <div className="flex items-center gap-3">
@@ -245,7 +245,7 @@ function ProductDrawer({ product, onClose, onEdit }: { product: ProductRecord; o
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/30" />
-      <div className="relative bg-white w-[400px] h-full shadow-2xl flex flex-col">
+      <div className="relative bg-white w-full md:w-[400px] h-full shadow-2xl flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
           <p className="text-sm font-semibold text-gray-900">Product Details</p>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 rounded-md hover:bg-gray-100 transition-colors">
@@ -404,7 +404,7 @@ export default function ProductsPage() {
 
       {/* Table */}
       <div className="flex-1 overflow-auto">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full text-sm">
           <thead>
             <tr style={{ backgroundColor: 'var(--color-primary)' }}>
               {['Product', 'Category', 'Unit', 'Price / Unit', 'Status', ''].map(h => (
@@ -452,7 +452,7 @@ export default function ProductsPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       </div>
 
       {/* Pagination */}

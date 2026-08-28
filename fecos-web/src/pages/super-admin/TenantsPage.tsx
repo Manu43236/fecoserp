@@ -379,7 +379,7 @@ export function TenantsPage() {
             <p className="text-sm text-gray-400">{search ? 'No matching tenants' : 'No tenants yet — create one to get started'}</p>
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto"><table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 <th className="w-8 px-4 py-3" />
@@ -399,7 +399,7 @@ export function TenantsPage() {
                 />
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </div>
 

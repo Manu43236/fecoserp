@@ -1,5 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Building2, CreditCard, Users, Settings, LogOut, ShieldCheck } from 'lucide-react'
+import { useState } from 'react'
+import { LayoutDashboard, Building2, CreditCard, Users, Settings, LogOut, ShieldCheck, Menu } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import fecosLogo from '@/assets/fecos_logo.png'
@@ -22,6 +23,7 @@ function userInitials(name?: string) {
 export function SuperAdminLayout() {
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   function handleLogout() {
     logout()
@@ -29,9 +31,17 @@ export function SuperAdminLayout() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-dvh overflow-hidden">
+      {/* Mobile backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* SA Sidebar */}
-      <aside className="flex flex-col w-[220px] shrink-0 h-full bg-slate-900">
+      <aside className={`fixed inset-y-0 left-0 z-50 flex flex-col w-[220px] h-full bg-slate-900 transition-transform duration-200 md:relative md:translate-x-0 md:z-auto ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         {/* Logo */}
         <div className="h-[60px] flex items-center gap-3 px-4 shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           <img src={fecosLogo} alt="FECOS" className="h-6 object-contain" />
@@ -49,6 +59,7 @@ export function SuperAdminLayout() {
               <NavLink
                 key={item.path}
                 to={item.path}
+                onClick={() => setSidebarOpen(false)}
                 className={({ isActive }) =>
                   `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
                     isActive
@@ -97,7 +108,19 @@ export function SuperAdminLayout() {
       </aside>
 
       {/* Main */}
-      <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex flex-col flex-1 overflow-hidden min-w-0">
+        {/* Mobile top bar */}
+        <div className="h-[60px] flex items-center px-4 gap-3 shrink-0 bg-slate-900 md:hidden">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="text-slate-400 hover:text-white transition-colors"
+            aria-label="Open menu"
+          >
+            <Menu size={20} />
+          </button>
+          <img src={fecosLogo} alt="FECOS" className="h-6 object-contain" />
+        </div>
+
         <main className="flex-1 overflow-y-auto bg-slate-50">
           <Outlet />
         </main>

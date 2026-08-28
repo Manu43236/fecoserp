@@ -109,7 +109,7 @@ function UserFormPanel({ open, onClose, user }: { open: boolean; onClose: () => 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/30" />
-      <div className="relative bg-white w-[440px] h-full shadow-2xl flex flex-col">
+      <div className="relative bg-white w-full md:w-[440px] h-full shadow-2xl flex flex-col">
 
         {/* Header */}
         <div
@@ -267,7 +267,7 @@ function ResetPinPanel({ open, onClose, user }: { open: boolean; onClose: () => 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/30" />
-      <div className="relative bg-white w-[440px] h-full shadow-2xl flex flex-col">
+      <div className="relative bg-white w-full md:w-[440px] h-full shadow-2xl flex flex-col">
         <div
           className="flex items-center justify-between px-5 py-4 shrink-0"
           style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}

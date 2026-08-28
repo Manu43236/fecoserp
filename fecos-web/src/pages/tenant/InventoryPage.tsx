@@ -103,7 +103,7 @@ function WarehouseFormPanel({ open, onClose, warehouse }: {
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/30" />
-      <div className="relative bg-white w-[440px] h-full shadow-2xl flex flex-col">
+      <div className="relative bg-white w-full md:w-[440px] h-full shadow-2xl flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-primary)' }}>
@@ -183,7 +183,7 @@ function WarehouseDrawer({ warehouse, onClose, onEdit }: {
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/30" />
-      <div className="relative bg-white w-[400px] h-full shadow-2xl flex flex-col">
+      <div className="relative bg-white w-full md:w-[400px] h-full shadow-2xl flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
           <p className="text-sm font-semibold text-gray-900">Warehouse Details</p>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 rounded-md hover:bg-gray-100 transition-colors">
@@ -260,7 +260,7 @@ function WarehousesSection({ canEdit }: { canEdit: boolean }) {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full text-sm">
           <thead>
             <tr style={{ backgroundColor: 'var(--color-primary)' }}>
               {['Warehouse', 'Location', 'Status', ''].map(h => (
@@ -289,7 +289,7 @@ function WarehousesSection({ canEdit }: { canEdit: boolean }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
 
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
@@ -351,7 +351,7 @@ function StockSection() {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full text-sm">
           <thead>
             <tr style={{ backgroundColor: 'var(--color-primary)' }}>
               {['Product', 'Warehouse', 'Unit', 'Qty on Hand'].map(h => (
@@ -378,7 +378,7 @@ function StockSection() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       </div>
     </div>
   )
@@ -476,7 +476,7 @@ function TransactionFormPanel({ open, onClose }: { open: boolean; onClose: () =>
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/30" />
-      <div className="relative bg-white w-[440px] h-full shadow-2xl flex flex-col">
+      <div className="relative bg-white w-full md:w-[440px] h-full shadow-2xl flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-primary)' }}>
@@ -670,7 +670,7 @@ function TransactionsSection({ canEdit }: { canEdit: boolean }) {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full text-sm">
           <thead>
             <tr style={{ backgroundColor: 'var(--color-primary)' }}>
               {['Date', 'Type', 'Product', 'Warehouse', 'Qty', 'Unit', 'Supplier', 'Recorded By', 'Notes'].map(h => (
@@ -708,7 +708,7 @@ function TransactionsSection({ canEdit }: { canEdit: boolean }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
 
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
@@ -736,7 +736,7 @@ export default function InventoryPage() {
 
   return (
     <div className="flex flex-col h-full min-h-screen">
-      <div className="bg-white border-b border-gray-200 px-6 flex items-center gap-1">
+      <div className="bg-white border-b border-gray-200 px-2 flex items-center gap-1 overflow-x-auto">
         {SECTIONS.map(s => {
           const Icon = s.icon
           const isActive = s.id === active

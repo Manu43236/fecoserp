@@ -105,7 +105,7 @@ function LeaseFormPanel({
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/30" />
-      <div className="relative bg-white w-[440px] h-full shadow-2xl flex flex-col">
+      <div className="relative bg-white w-full md:w-[440px] h-full shadow-2xl flex flex-col">
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
@@ -444,7 +444,7 @@ export function LeasesPage() {
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full text-sm">
           <thead>
             <tr style={{ backgroundColor: 'var(--color-primary)' }}>
               {['Lease Name', 'Client', 'Location', 'Status', ''].map(h => (
@@ -487,7 +487,7 @@ export function LeasesPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
 
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
