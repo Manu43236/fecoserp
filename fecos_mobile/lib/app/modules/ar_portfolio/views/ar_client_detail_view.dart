@@ -1,11 +1,15 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:dio/dio.dart' as dio_options;
+import 'package:printing/printing.dart';
 import 'package:fecos_mobile/app/data/models/client_model.dart';
 import 'package:fecos_mobile/app/data/models/plan_model.dart';
 import 'package:fecos_mobile/app/data/models/lab_sample_model.dart';
 import 'package:fecos_mobile/app/data/services/dio_service.dart';
 import 'package:fecos_mobile/app/theme/app_theme.dart';
 import 'package:fecos_mobile/app/widgets/fecos_shimmer.dart';
+import 'package:fecos_mobile/app/modules/ar_lab/views/ar_sample_detail_view.dart';
 
 class ArClientDetailView extends StatelessWidget {
   const ArClientDetailView({
@@ -190,7 +194,7 @@ class _PlansTabState extends State<_PlansTab>
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(16),
             itemCount: plans.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
             itemBuilder: (_, i) => _PlanCard(
                   plan: plans[i].plan,
                   lines: plans[i].lines,
@@ -203,7 +207,7 @@ class _PlansTabState extends State<_PlansTab>
   }
 }
 
-class _PlanCard extends StatelessWidget {
+class _PlanCard extends StatefulWidget {
   const _PlanCard({
     required this.plan,
     required this.lines,
@@ -213,7 +217,14 @@ class _PlanCard extends StatelessWidget {
   final List<Map<String, dynamic>> lines;
   final Map<String, Map<String, dynamic>> tanks;
 
-  Color get _statusColor => switch (plan.status) {
+  @override
+  State<_PlanCard> createState() => _PlanCardState();
+}
+
+class _PlanCardState extends State<_PlanCard> {
+  bool _expanded = false;
+
+  Color get _statusColor => switch (widget.plan.status) {
         'ACTIVE'     => AppColors.success,
         'PAUSED'     => AppColors.warning,
         'SUSPENDED'  => const Color(0xFFEA580C),
@@ -222,119 +233,132 @@ class _PlanCard extends StatelessWidget {
         _            => AppColors.textHint,
       };
 
-  String get _statusLabel => switch (plan.status) {
+  String get _statusLabel => switch (widget.plan.status) {
         'ACTIVE'     => 'Active',
         'DRAFT'      => 'Draft',
         'PAUSED'     => 'Paused',
         'SUSPENDED'  => 'Suspended',
         'COMPLETED'  => 'Completed',
         'SUPERSEDED' => 'Superseded',
-        _            => plan.status,
+        _            => widget.plan.status,
       };
 
   @override
   Widget build(BuildContext context) {
-    final hasTankLines = lines.any((l) => l['tankId'] != null);
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceCard,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Header row ──────────────────────────────────────────────
-          Row(
-            children: [
-              Container(
-                width: 4,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: _statusColor,
-                  borderRadius: BorderRadius.circular(2),
+    final hasTankLines = widget.lines.any((l) => l['tankId'] != null);
+    return GestureDetector(
+      onTap: hasTankLines ? () => setState(() => _expanded = !_expanded) : null,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceCard,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Header row ──────────────────────────────────────────────
+            Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: _statusColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      plan.wellName ?? '—',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      plan.leaseName ?? '—',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    if (plan.startDate != null) ...[
-                      const SizedBox(height: 2),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        'Started ${_fmtDate(plan.startDate!)}',
+                        widget.plan.wellName ?? '—',
                         style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textHint,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
                         ),
                       ),
+                      const SizedBox(height: 2),
+                      Text(
+                        widget.plan.leaseName ?? '—',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      if (widget.plan.startDate != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          'Started ${_fmtDate(widget.plan.startDate!)}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textHint,
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: _statusColor.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      _statusLabel,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: _statusColor,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: _statusColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        _statusLabel,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: _statusColor,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${plan.lineCount} product${plan.lineCount == 1 ? '' : 's'}',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textHint,
+                    const SizedBox(height: 4),
+                    Text(
+                      '${widget.plan.lineCount} product${widget.plan.lineCount == 1 ? '' : 's'}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textHint,
+                      ),
                     ),
+                  ],
+                ),
+                if (hasTankLines) ...[
+                  const SizedBox(width: 8),
+                  Icon(
+                    _expanded
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                    size: 20,
+                    color: AppColors.textHint,
                   ),
                 ],
-              ),
-            ],
-          ),
+              ],
+            ),
 
-          // ── Tank + pump section ──────────────────────────────────────
-          if (hasTankLines) ...[
-            const SizedBox(height: 10),
-            const Divider(height: 1, color: AppColors.border),
-            const SizedBox(height: 10),
-            for (final l in lines)
-              if (l['tankId'] != null)
-                _LineDetail(
-                  line: l,
-                  tank: tanks[l['tankId'] as String],
-                ),
+            // ── Tank + pump section (collapsible) ────────────────────
+            if (hasTankLines && _expanded) ...[
+              const SizedBox(height: 10),
+              const Divider(height: 1, color: AppColors.border),
+              const SizedBox(height: 10),
+              for (final l in widget.lines)
+                if (l['tankId'] != null)
+                  _LineDetail(
+                    line: l,
+                    tank: widget.tanks[l['tankId'] as String],
+                  ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -652,7 +676,7 @@ class _LabTabState extends State<_LabTab> with AutomaticKeepAliveClientMixin {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(16),
             itemCount: samples.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
             itemBuilder: (_, i) => _LabSampleCard(sample: samples[i]),
           ),
         );
@@ -670,7 +694,9 @@ class _LabSampleCard extends StatelessWidget {
     final isPending = sample.approvalStatus == 'PENDING_REVIEW';
     final isApproved = sample.approvalStatus == 'APPROVED';
 
-    return Container(
+    return GestureDetector(
+      onTap: () => Get.to(() => ArSampleDetailView(sampleId: sample.id)),
+      child: Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.surfaceCard,
@@ -767,6 +793,7 @@ class _LabSampleCard extends StatelessWidget {
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -856,7 +883,7 @@ class _ScheduleTabState extends State<_ScheduleTab>
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(16),
             itemCount: visits.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
             itemBuilder: (_, i) => _VisitCard(
               visit: visits[i],
               clientName: widget.client.companyName,
@@ -872,6 +899,25 @@ class _VisitCard extends StatelessWidget {
   const _VisitCard({required this.visit, required this.clientName});
   final Map<String, dynamic> visit;
   final String clientName;
+
+  Future<void> _viewPdf() async {
+    final visitId = visit['id'] as String?;
+    final stops = (visit['stops'] as List? ?? []).cast<Map<String, dynamic>>();
+    final completedStop = stops.firstWhere(
+      (s) => s['clientName'] == clientName && s['status'] == 'COMPLETED',
+      orElse: () => {},
+    );
+    final stopId = completedStop['id'] as String?;
+    if (visitId == null || stopId == null) return;
+
+    final dio = Get.find<DioService>().dio;
+    final res = await dio.get<List<int>>(
+      '/service-visits/$visitId/stops/$stopId/treatment-report/pdf',
+      options: dio_options.Options(responseType: dio_options.ResponseType.bytes),
+    );
+    if (res.data == null) return;
+    await Printing.layoutPdf(onLayout: (_) async => Uint8List.fromList(res.data!));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -968,6 +1014,17 @@ class _VisitCard extends StatelessWidget {
                   ),
                 ),
               ),
+              if (status == 'COMPLETED') ...[
+                const SizedBox(height: 6),
+                GestureDetector(
+                  onTap: _viewPdf,
+                  child: const Icon(
+                    Icons.picture_as_pdf_outlined,
+                    size: 20,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
             ],
           ),
         ],

@@ -5,6 +5,26 @@ import 'package:fecos_mobile/app/data/services/dio_service.dart';
 import 'package:fecos_mobile/app/theme/app_theme.dart';
 import 'package:fecos_mobile/app/widgets/fecos_shimmer.dart';
 
+class _HistoryEvent {
+  const _HistoryEvent({
+    required this.event,
+    required this.label,
+    required this.occurredAt,
+    this.detail,
+  });
+  final String event;
+  final String label;
+  final String occurredAt;
+  final String? detail;
+
+  factory _HistoryEvent.fromJson(Map<String, dynamic> json) => _HistoryEvent(
+        event: json['event'] as String,
+        label: json['label'] as String,
+        occurredAt: json['occurredAt'] as String,
+        detail: json['detail'] as String?,
+      );
+}
+
 class ArPlanDetailView extends StatefulWidget {
   const ArPlanDetailView({super.key, required this.planId});
   final String planId;
@@ -16,16 +36,27 @@ class ArPlanDetailView extends StatefulWidget {
 class _ArPlanDetailViewState extends State<ArPlanDetailView> {
   final _dio = Get.find<DioService>().dio;
   late Future<PlanDetailModel> _future;
+  late Future<List<_HistoryEvent>> _historyFuture;
 
   @override
   void initState() {
     super.initState();
     _future = _load();
+    _historyFuture = _loadHistory();
   }
 
   Future<PlanDetailModel> _load() async {
     final res = await _dio.get<Map<String, dynamic>>('/plans/${widget.planId}');
     return PlanDetailModel.fromJson(res.data!['data'] as Map<String, dynamic>);
+  }
+
+  Future<List<_HistoryEvent>> _loadHistory() async {
+    final res = await _dio
+        .get<Map<String, dynamic>>('/plans/${widget.planId}/history');
+    final data = res.data!['data'] as List;
+    return data
+        .map((e) => _HistoryEvent.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   @override
@@ -54,15 +85,16 @@ class _ArPlanDetailViewState extends State<ArPlanDetailView> {
               );
             }
             final plan = snap.data!;
-            return _PlanDetailBody(plan: plan);
+            return _PlanDetailBody(plan: plan, historyFuture: _historyFuture);
           },
         ),
       );
 }
 
 class _PlanDetailBody extends StatelessWidget {
-  const _PlanDetailBody({required this.plan});
+  const _PlanDetailBody({required this.plan, required this.historyFuture});
   final PlanDetailModel plan;
+  final Future<List<_HistoryEvent>> historyFuture;
 
   Color get _statusColor => switch (plan.status) {
         'ACTIVE'     => AppColors.success,
@@ -192,6 +224,55 @@ class _PlanDetailBody extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 12),
                   child: _LineCard(line: line),
                 )),
+
+          const SizedBox(height: 20),
+
+          // History section
+          Row(
+            children: const [
+              Icon(Icons.history_rounded, size: 16, color: AppColors.primary),
+              SizedBox(width: 6),
+              Text(
+                'History',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textSecondary,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          FutureBuilder<List<_HistoryEvent>>(
+            future: historyFuture,
+            builder: (context, snap) {
+              if (snap.connectionState == ConnectionState.waiting) {
+                return const FecosListShimmer(itemCount: 3, itemHeight: 60);
+              }
+              if (snap.hasError || snap.data == null || snap.data!.isEmpty) {
+                return Container(
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceCard,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'No history available',
+                      style:
+                          TextStyle(color: AppColors.textHint, fontSize: 13),
+                    ),
+                  ),
+                );
+              }
+              return _HistoryTimeline(events: snap.data!);
+            },
+          ),
+
+          const SizedBox(height: 24),
         ],
       );
 
@@ -438,6 +519,106 @@ class _LineCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _HistoryTimeline extends StatelessWidget {
+  const _HistoryTimeline({required this.events});
+  final List<_HistoryEvent> events;
+
+  IconData _icon(String event) => switch (event) {
+        'CREATED'     => Icons.add_circle_outline_rounded,
+        'STARTED'     => Icons.play_circle_outline_rounded,
+        'PAUSED'      => Icons.pause_circle_outline_rounded,
+        'RESUMED'     => Icons.replay_rounded,
+        'SUPERSEDED'  => Icons.swap_horiz_rounded,
+        'RATE_CHANGE' => Icons.edit_outlined,
+        _             => Icons.circle_outlined,
+      };
+
+  Color _color(String event) => switch (event) {
+        'CREATED'     => AppColors.info,
+        'STARTED'     => AppColors.success,
+        'PAUSED'      => AppColors.warning,
+        'RESUMED'     => AppColors.success,
+        'SUPERSEDED'  => AppColors.textHint,
+        'RATE_CHANGE' => AppColors.primary,
+        _             => AppColors.textHint,
+      };
+
+  String _fmtDate(String iso) {
+    try {
+      final d = DateTime.parse(iso).toLocal();
+      const months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      ];
+      return '${months[d.month - 1]} ${d.day}, ${d.year}';
+    } on FormatException {
+      return iso;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Container(
+        decoration: BoxDecoration(
+          color: AppColors.surfaceCard,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: events.length,
+          separatorBuilder: (_, _) =>
+              const Divider(height: 1, color: AppColors.border),
+          itemBuilder: (_, i) {
+            final e = events[i];
+            final color = _color(e.event);
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(_icon(e.event), size: 18, color: color),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          e.label,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: color,
+                          ),
+                        ),
+                        if (e.detail != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            e.detail!,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  Text(
+                    _fmtDate(e.occurredAt),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textHint,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      );
 }
 
 class _SectionHeader extends StatelessWidget {

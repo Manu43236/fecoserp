@@ -74,29 +74,36 @@ class _SearchBar extends StatelessWidget {
   final ArPortfolioController controller;
 
   @override
-  Widget build(BuildContext context) => Container(
-        height: 40,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: TextField(
-          onChanged: (v) => controller.search.value = v,
-          style: const TextStyle(color: Colors.white, fontSize: 14),
-          decoration: InputDecoration(
-            hintText: 'Search clients…',
-            hintStyle: TextStyle(
-              color: Colors.white.withValues(alpha: 0.55),
-              fontSize: 14,
-            ),
-            prefixIcon: Icon(
-              Icons.search_rounded,
-              color: Colors.white.withValues(alpha: 0.55),
-              size: 20,
-            ),
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(vertical: 10),
+  Widget build(BuildContext context) => TextField(
+        onChanged: (v) => controller.search.value = v,
+        style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+        decoration: InputDecoration(
+          hintText: 'Search clients…',
+          hintStyle: const TextStyle(
+            color: AppColors.textHint,
+            fontSize: 14,
           ),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            color: AppColors.textHint,
+            size: 20,
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+          ),
+          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+          isDense: true,
         ),
       );
 }
@@ -124,7 +131,7 @@ class _ClientList extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           sliver: SliverList.separated(
             itemCount: clients.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            separatorBuilder: (_, _) => const SizedBox(height: 10),
             itemBuilder: (_, i) => _ClientCard(
               client: clients[i],
               controller: controller,

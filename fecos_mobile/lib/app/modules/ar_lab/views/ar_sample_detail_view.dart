@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:printing/printing.dart';
 import 'package:fecos_mobile/app/data/models/lab_sample_model.dart';
 import 'package:fecos_mobile/app/data/services/dio_service.dart';
 import 'package:fecos_mobile/app/theme/app_theme.dart';
+import 'package:fecos_mobile/app/utils/fecos_pdf.dart';
 import 'package:fecos_mobile/app/widgets/fecos_shimmer.dart';
 import '../controllers/ar_lab_controller.dart';
 
@@ -17,6 +19,7 @@ class ArSampleDetailView extends StatefulWidget {
 class _ArSampleDetailViewState extends State<ArSampleDetailView> {
   final _dio = Get.find<DioService>().dio;
   late Future<LabSampleModel> _future;
+  LabSampleModel? _sample;
 
   @override
   void initState() {
@@ -27,8 +30,54 @@ class _ArSampleDetailViewState extends State<ArSampleDetailView> {
   Future<LabSampleModel> _load() async {
     final res = await _dio
         .get<Map<String, dynamic>>('/lab/samples/${widget.sampleId}');
-    return LabSampleModel.fromJson(
-        res.data!['data'] as Map<String, dynamic>);
+    final s = LabSampleModel.fromJson(res.data!['data'] as Map<String, dynamic>);
+    if (mounted) setState(() => _sample = s);
+    return s;
+  }
+
+  Future<void> _sharePdf() async {
+    final s = _sample!;
+    final bytes = await FecosPdf.build(pageContent: [
+      [
+        FecosPdf.title('Lab Sample Report'),
+        FecosPdf.subtitle('${s.sampleNumber}  ·  ${s.sampleType.replaceAll('_', ' ')}'),
+        FecosPdf.sectionTitle('Sample Info'),
+        FecosPdf.infoTable([
+          ('Status',   s.status.replaceAll('_', ' ')),
+          ('Priority', s.priority),
+          if (s.wellName != null)   ('Well',     s.wellName!),
+          if (s.leaseName != null)  ('Lease',    s.leaseName!),
+          if (s.clientName != null) ('Client',   s.clientName!),
+          if (s.receivedAt != null) ('Received', s.receivedAt!),
+        ]),
+        if (s.hasResults) ...[
+          FecosPdf.sectionTitle('Lab Results'),
+          FecosPdf.infoTable([
+            if (s.ph != null)              ('pH',             s.ph!.toStringAsFixed(2)),
+            if (s.iron != null)            ('Iron (mg/L)',    s.iron!.toStringAsFixed(2)),
+            if (s.srbCount != null)        ('SRB (cfu/mL)',   s.srbCount!.toStringAsFixed(0)),
+            if (s.apbCount != null)        ('APB (cfu/mL)',   s.apbCount!.toStringAsFixed(0)),
+            if (s.corrosionRate != null)   ('Corrosion (mpy)',s.corrosionRate!.toStringAsFixed(3)),
+            if (s.dissolvedOxygen != null) ('DO (mg/L)',      s.dissolvedOxygen!.toStringAsFixed(2)),
+            if (s.scalingIndex != null)    ('Scaling Index',  s.scalingIndex!.toStringAsFixed(2)),
+            if (s.labTechName != null)     ('Analyzed By',    s.labTechName!),
+          ]),
+        ],
+        if (s.labTechNotes != null && s.labTechNotes!.isNotEmpty) ...[
+          FecosPdf.sectionTitle('Lab Tech Notes'),
+          FecosPdf.bodyText(s.labTechNotes!),
+        ],
+        if (s.isApproved) ...[
+          FecosPdf.sectionTitle('Approval'),
+          FecosPdf.infoTable([
+            if (s.approvedByName != null) ('Approved By', s.approvedByName!),
+            if (s.approvalNotes != null && s.approvalNotes!.isNotEmpty)
+              ('Notes', s.approvalNotes!),
+          ]),
+        ],
+      ],
+    ]);
+    await Printing.sharePdf(bytes: bytes, filename: '${s.sampleNumber}.pdf');
   }
 
   @override
@@ -41,6 +90,15 @@ class _ArSampleDetailViewState extends State<ArSampleDetailView> {
             'Sample Detail',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
           ),
+          actions: [
+            if (_sample != null)
+              IconButton(
+                icon: const Icon(Icons.picture_as_pdf_outlined,
+                    color: Colors.white),
+                tooltip: 'Export PDF',
+                onPressed: _sharePdf,
+              ),
+          ],
         ),
         body: FutureBuilder<LabSampleModel>(
           future: _future,
