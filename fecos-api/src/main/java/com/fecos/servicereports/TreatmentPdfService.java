@@ -32,7 +32,8 @@ public class TreatmentPdfService {
                        {"GPS",           r.gpsLat() != null
                                ? r.gpsLat().toPlainString() + ", " + r.gpsLng().toPlainString()
                                : null},
-               });
+               })
+               .image(r.photoUrl(), "Site Photo");
 
             if (r.soar()) {
                 doc.sectionTitle("SOAR")
@@ -70,11 +71,13 @@ public class TreatmentPdfService {
                    .infoTable(new String[][]{
                            {"Type",  r.sampleType()},
                            {"Notes", r.sampleNotes()},
-                   });
+                   })
+                   .image(r.samplePhotoUrl(), "Sample Photo");
             }
 
             if (r.signerName() != null) {
                 doc.sectionTitle("Signature")
+                   .image(r.signatureUrl(), null)
                    .infoTable(new String[][]{
                            {"Signed By", r.signerName()},
                            {"Signed At", fmt(r.signedAt())},

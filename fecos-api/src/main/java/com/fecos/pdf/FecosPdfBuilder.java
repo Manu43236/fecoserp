@@ -8,6 +8,8 @@ import org.springframework.stereotype.Component;
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
 
 /**
  * Shared PDF builder for all FECOS reports.
@@ -114,6 +116,30 @@ public class FecosPdfBuilder {
             return this;
         }
 
+        /** Fetches an image from a URL and embeds it. Silently skipped if null or unreachable. */
+        public Session image(String url, String caption) throws DocumentException {
+            if (url == null || url.isBlank()) return this;
+            try {
+                byte[] bytes;
+                try (InputStream in = URI.create(url).toURL().openStream()) {
+                    bytes = in.readAllBytes();
+                }
+                var img = Image.getInstance(bytes);
+                img.scaleToFit(460, 320);
+                img.setSpacingBefore(4);
+                img.setSpacingAfter(2);
+                doc.add(img);
+                if (caption != null && !caption.isBlank()) {
+                    var p = new Paragraph(caption, LABEL);
+                    p.setSpacingAfter(8);
+                    doc.add(p);
+                }
+            } catch (Exception ignored) {
+                // skip image silently if fetch fails
+            }
+            return this;
+        }
+
         public byte[] build() {
             doc.close();
             // bytes are in the ByteArrayOutputStream passed to start()
@@ -129,7 +155,7 @@ public class FecosPdfBuilder {
         WatermarkEvent(byte[] iconBytes) {
             try {
                 watermark = Image.getInstance(iconBytes);
-                watermark.scaleToFit(180, 180);
+                watermark.scaleToFit(320, 320);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
