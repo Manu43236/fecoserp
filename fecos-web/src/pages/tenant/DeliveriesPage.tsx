@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import {
   PackageCheck, ChevronRight, X, MapPin, Package,
-  CheckCircle2, SkipForward, Truck, FileText,
+  CheckCircle2, SkipForward, Truck, FileText, Loader2,
 } from 'lucide-react'
 import { routesApi, type RouteRecord, type RouteStatus, type RouteStopStatus } from '@/api/routes'
 import { SearchableDropdown, type DropdownOption } from '@/components/ui/SearchableDropdown'
@@ -65,6 +65,7 @@ function todayIso() {
 
 function DeliveryDrawer({ route, onClose }: { route: RouteRecord; onClose: () => void }) {
   const qc = useQueryClient()
+  const [pdfLoading, setPdfLoading] = useState(false)
 
   const { data } = useQuery({
     queryKey: ['route', route.id],
@@ -125,13 +126,19 @@ function DeliveryDrawer({ route, onClose }: { route: RouteRecord; onClose: () =>
           <div className="flex items-center gap-1">
             <button
               onClick={async () => {
-                const res = await routesApi.getPdf(full.id)
-                const url = URL.createObjectURL(new Blob([res.data as BlobPart], { type: 'application/pdf' }))
-                window.open(url, '_blank')
+                setPdfLoading(true)
+                try {
+                  const res = await routesApi.getPdf(full.id)
+                  const url = URL.createObjectURL(new Blob([res.data as BlobPart], { type: 'application/pdf' }))
+                  window.open(url, '_blank')
+                } finally {
+                  setPdfLoading(false)
+                }
               }}
-              className="w-8 h-8 rounded-md flex items-center justify-center hover:bg-gray-100 text-gray-400"
+              disabled={pdfLoading}
+              className="w-8 h-8 rounded-md flex items-center justify-center hover:bg-gray-100 text-gray-400 disabled:opacity-50"
               title="Download PDF">
-              <FileText size={16} />
+              {pdfLoading ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
             </button>
             <button onClick={onClose} className="w-8 h-8 rounded-md flex items-center justify-center hover:bg-gray-100 text-gray-400">
               <X size={16} />

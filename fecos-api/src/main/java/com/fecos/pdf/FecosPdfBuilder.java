@@ -21,6 +21,7 @@ public class FecosPdfBuilder {
 
     // ── Fonts ─────────────────────────────────────────────────────────────────
 
+    public static final Font COMPANY = new Font(Font.HELVETICA, 13, Font.BOLD,   new Color(0x1E, 0x3A, 0x5F));
     public static final Font TITLE   = new Font(Font.HELVETICA, 18, Font.BOLD,   new Color(0x1E, 0x3A, 0x5F));
     public static final Font HEADING = new Font(Font.HELVETICA, 10, Font.BOLD,   new Color(0x6B, 0x72, 0x80));
     public static final Font LABEL   = new Font(Font.HELVETICA,  9, Font.NORMAL, new Color(0x6B, 0x72, 0x80));
@@ -61,6 +62,44 @@ public class FecosPdfBuilder {
         private final Document doc;
 
         Session(Document doc) { this.doc = doc; }
+
+        /** Renders tenant logo + company name + divider at the top of the document. */
+        public Session header(String companyName, byte[] logoBytes) throws DocumentException {
+            boolean hasLogo = logoBytes != null;
+            var table = new PdfPTable(hasLogo ? 2 : 1);
+            table.setWidthPercentage(100);
+            table.setSpacingAfter(10);
+            if (hasLogo) {
+                try {
+                    table.setWidths(new float[]{12, 88});
+                    var img = Image.getInstance(logoBytes);
+                    img.scaleToFit(44, 44);
+                    var lc = new PdfPCell(img, true);
+                    lc.setBorder(Rectangle.NO_BORDER);
+                    lc.setPaddingRight(8);
+                    lc.setVerticalAlignment(Element.ALIGN_MIDDLE);
+                    table.addCell(lc);
+                } catch (Exception ignored) {
+                    hasLogo = false;
+                }
+            }
+            var name = companyName != null && !companyName.isBlank() ? companyName : "FECOS";
+            var nc = new PdfPCell(new Phrase(name, COMPANY));
+            nc.setBorder(Rectangle.NO_BORDER);
+            nc.setPadding(4);
+            nc.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            table.addCell(nc);
+            doc.add(table);
+
+            // divider
+            var line = new com.lowagie.text.pdf.draw.LineSeparator(1f, 100f,
+                    new Color(0xE5, 0xE7, 0xEB), Element.ALIGN_CENTER, -2);
+            doc.add(new Chunk(line));
+            var gap = new Paragraph(" ");
+            gap.setSpacingAfter(6);
+            doc.add(gap);
+            return this;
+        }
 
         public Session title(String text) throws DocumentException {
             doc.add(new Paragraph(text, TITLE));

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { Plus, X, ChevronRight, ExternalLink, AlertTriangle, FileText } from 'lucide-react'
+import { Plus, X, ChevronRight, ExternalLink, AlertTriangle, FileText, Loader2 } from 'lucide-react'
 import type React from 'react'
 import {
   labApi,
@@ -482,6 +482,7 @@ function LabReportDrawer({ sample, onClose, onEnterResults, onStartTesting }: {
   const canApprove = user?.role === 'ACCOUNT_REP' || user?.role === 'ADMIN'
   const canEdit    = user?.role === 'LAB_TECH'    || user?.role === 'ADMIN'
   const [approvalNotes, setApprovalNotes] = useState('')
+  const [pdfLoading, setPdfLoading] = useState(false)
 
   const { data: fullSample } = useQuery({
     queryKey: ['lab-sample', sample.id],
@@ -540,13 +541,19 @@ function LabReportDrawer({ sample, onClose, onEnterResults, onStartTesting }: {
           <div className="flex items-center gap-1">
             <button
               onClick={async () => {
-                const res = await labApi.getPdf(s.id)
-                const url = URL.createObjectURL(new Blob([res.data as BlobPart], { type: 'application/pdf' }))
-                window.open(url, '_blank')
+                setPdfLoading(true)
+                try {
+                  const res = await labApi.getPdf(s.id)
+                  const url = URL.createObjectURL(new Blob([res.data as BlobPart], { type: 'application/pdf' }))
+                  window.open(url, '_blank')
+                } finally {
+                  setPdfLoading(false)
+                }
               }}
-              className="text-gray-400 hover:text-gray-600 p-1 rounded-md hover:bg-gray-100 transition-colors"
+              disabled={pdfLoading}
+              className="text-gray-400 hover:text-gray-600 p-1 rounded-md hover:bg-gray-100 transition-colors disabled:opacity-50"
               title="Download PDF">
-              <FileText size={16} />
+              {pdfLoading ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
             </button>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 rounded-md hover:bg-gray-100 transition-colors">
               <X size={16} />

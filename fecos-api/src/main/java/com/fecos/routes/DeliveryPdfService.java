@@ -1,11 +1,14 @@
 package com.fecos.routes;
 
 import com.fecos.pdf.FecosPdfBuilder;
+import com.fecos.pdf.PdfTenantResolver;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.math.BigDecimal;
+import java.net.URI;
 import java.time.format.DateTimeFormatter;
 
 @Service
@@ -13,12 +16,15 @@ import java.time.format.DateTimeFormatter;
 public class DeliveryPdfService {
 
     private final FecosPdfBuilder pdf;
+    private final PdfTenantResolver tenantResolver;
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("MMM d, yyyy h:mm a");
 
     public byte[] generate(RouteResponse r) {
         try (var out = new ByteArrayOutputStream()) {
             var doc = pdf.start(out);
+            var tenant = tenantResolver.current();
+            doc.header(tenant != null ? tenant.getCompanyName() : null, fetchLogo(tenant != null ? tenant.getLogoUrl() : null));
 
             doc.title("Delivery Report")
                .subtitle("Route: " + r.routeDate() + "  ·  Driver: " + orDash(r.driverName()) + "  ·  Truck: " + orDash(r.truckNumber()))
@@ -65,6 +71,13 @@ public class DeliveryPdfService {
     }
 
     private String orDash(String s) { return s != null ? s : "—"; }
+
+    private byte[] fetchLogo(String url) {
+        if (url == null || url.isBlank()) return null;
+        try (InputStream in = URI.create(url).toURL().openStream()) {
+            return in.readAllBytes();
+        } catch (Exception ignored) { return null; }
+    }
 
     private String orQty(BigDecimal v, String unit) {
         if (v == null) return "—";

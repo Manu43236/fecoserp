@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { X, Plus, ClipboardList, ChevronRight, Trash2, FlaskConical, AlertTriangle, FileText, MapPin, Camera, PenLine, Search, CheckSquare, Square } from 'lucide-react'
+import { X, Plus, ClipboardList, ChevronRight, Trash2, FlaskConical, AlertTriangle, FileText, MapPin, Camera, PenLine, Search, CheckSquare, Square, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { serviceVisitsApi } from '@/api/serviceVisits'
 import type { ServiceVisit, ServiceVisitStop, VisitStatus, VisitStopStatus, DueWell, TreatmentReport } from '@/api/serviceVisits'
@@ -254,6 +254,7 @@ function VisitDrawer({ visit, onClose, onRefresh, wellOpts }: {
   const [reportStop,  setReportStop]  = useState<ServiceVisitStop | null>(null)
   const [ackNote,     setAckNote]     = useState('')
   const [showAckForm, setShowAckForm] = useState(false)
+  const [pdfLoading,  setPdfLoading]  = useState(false)
 
   const { data: dueData } = useQuery({
     queryKey: ['due-wells', visit.visitDate],
@@ -332,11 +333,17 @@ function VisitDrawer({ visit, onClose, onRefresh, wellOpts }: {
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {reportStop && (
-                <button onClick={() => openReportPdf(visit.id, reportStop.id)}
-                  className="flex items-center justify-center w-8 h-8 rounded-lg border text-gray-600 hover:bg-gray-50 transition-colors"
+                <button
+                  onClick={async () => {
+                    setPdfLoading(true)
+                    try { await openReportPdf(visit.id, reportStop.id) }
+                    finally { setPdfLoading(false) }
+                  }}
+                  disabled={pdfLoading}
+                  className="flex items-center justify-center w-8 h-8 rounded-lg border text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
                   style={{ borderColor: 'rgba(0,0,0,0.15)' }}
                   title="View PDF">
-                  <FileText size={15} />
+                  {pdfLoading ? <Loader2 size={15} className="animate-spin" /> : <FileText size={15} />}
                 </button>
               )}
               <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>

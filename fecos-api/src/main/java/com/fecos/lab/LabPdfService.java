@@ -1,10 +1,13 @@
 package com.fecos.lab;
 
 import com.fecos.pdf.FecosPdfBuilder;
+import com.fecos.pdf.PdfTenantResolver;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.net.URI;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
@@ -13,6 +16,7 @@ import java.time.format.DateTimeFormatter;
 public class LabPdfService {
 
     private final FecosPdfBuilder pdf;
+    private final PdfTenantResolver tenantResolver;
 
     private static final DateTimeFormatter LDT_FMT = DateTimeFormatter.ofPattern("MMM d, yyyy h:mm a");
     private static final DateTimeFormatter INS_FMT = DateTimeFormatter.ofPattern("MMM d, yyyy h:mm a")
@@ -21,6 +25,8 @@ public class LabPdfService {
     public byte[] generate(LabSampleResponse s) {
         try (var out = new ByteArrayOutputStream()) {
             var doc = pdf.start(out);
+            var tenant = tenantResolver.current();
+            doc.header(tenant != null ? tenant.getCompanyName() : null, fetchLogo(tenant != null ? tenant.getLogoUrl() : null));
 
             doc.title("Lab Report")
                .subtitle(orDash(s.sampleNumber()) + "  ·  " + orDash(s.wellName())
@@ -135,4 +141,11 @@ public class LabPdfService {
     }
 
     private String orDash(String s) { return s != null ? s : "—"; }
+
+    private byte[] fetchLogo(String url) {
+        if (url == null || url.isBlank()) return null;
+        try (InputStream in = URI.create(url).toURL().openStream()) {
+            return in.readAllBytes();
+        } catch (Exception ignored) { return null; }
+    }
 }
