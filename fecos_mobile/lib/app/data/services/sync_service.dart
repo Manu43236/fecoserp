@@ -8,6 +8,7 @@ import 'package:get/get.dart' hide FormData, MultipartFile;
 import 'package:fecos_mobile/app/data/services/connectivity_service.dart';
 import 'package:fecos_mobile/app/data/services/db_service.dart';
 import 'package:fecos_mobile/app/data/services/dio_service.dart';
+import 'package:fecos_mobile/app/widgets/fecos_snackbar.dart';
 
 class SyncService extends GetxService {
   final pendingCount = 0.obs;
@@ -49,12 +50,26 @@ class SyncService extends GetxService {
           final payload = jsonDecode(item.payload) as Map<String, dynamic>;
           await _dispatch(dio, item.entityType, payload);
           await (_db.delete(_db.syncQueue)..where((t) => t.id.equals(item.id))).go();
-          pendingCount.value--;
+        } on DioException catch (e) {
+          final status = e.response?.statusCode ?? 0;
+          if (status >= 400 && status < 500) {
+            // 4xx — permanent failure, drop the item and notify the driver
+            await (_db.delete(_db.syncQueue)..where((t) => t.id.equals(item.id))).go();
+            final msg = e.response?.data?['error'] as String? ?? 'Action rejected by server';
+            FecosSnackbar.error('Sync Failed', msg);
+          } else {
+            // 5xx or network — transient, increment retry and keep for next cycle
+            await (_db.update(_db.syncQueue)..where((t) => t.id.equals(item.id)))
+                .write(SyncQueueCompanion(retries: drift.Value(item.retries + 1)));
+          }
         } catch (_) {
           await (_db.update(_db.syncQueue)..where((t) => t.id.equals(item.id)))
               .write(SyncQueueCompanion(retries: drift.Value(item.retries + 1)));
         }
       }
+      // Always re-read DB count — arithmetic drift causes stale counts
+      final remaining = await _db.select(_db.syncQueue).get();
+      pendingCount.value = remaining.length;
     } finally {
       isSyncing.value = false;
     }

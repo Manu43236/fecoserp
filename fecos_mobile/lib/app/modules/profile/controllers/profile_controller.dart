@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:fecos_mobile/app/data/services/dio_service.dart';
 import 'package:fecos_mobile/app/modules/auth/controllers/auth_controller.dart';
+import 'package:fecos_mobile/app/widgets/fecos_snackbar.dart';
 
 class ProfileController extends GetxController {
   final auth = Get.find<AuthController>();
@@ -26,17 +27,7 @@ class ProfileController extends GetxController {
       final msg = e.response?.statusCode == 401
           ? 'Current PIN is incorrect.'
           : 'Failed to change PIN. Try again.';
-      Get.snackbar(
-        'Error',
-        msg,
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: const Color(0xFF1C1C1E),
-        colorText: const Color(0xFFFFFFFF),
-        icon: const Icon(Icons.error_outline, color: Color(0xFFFF453A), size: 22),
-        borderRadius: 12,
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        duration: const Duration(seconds: 4),
-      );
+      FecosSnackbar.error('Error', msg);
     } finally {
       isChangingPin.value = false;
     }

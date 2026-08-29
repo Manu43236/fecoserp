@@ -9,6 +9,7 @@ import 'package:fecos_mobile/app/data/services/connectivity_service.dart';
 import 'package:fecos_mobile/app/data/services/dio_service.dart';
 import 'package:fecos_mobile/app/theme/app_theme.dart';
 import 'package:fecos_mobile/app/modules/delivery/controllers/delivery_controller.dart';
+import 'package:fecos_mobile/app/widgets/fecos_snackbar.dart';
 
 class StopDetailView extends StatefulWidget {
   const StopDetailView({super.key});
@@ -148,6 +149,10 @@ class _StopDetailViewState extends State<StopDetailView> {
         if (r != null && r.stops.every((s) => !s.isPending)) {
           Get.toNamed('/wrap-up', parameters: {'id': _deliveryController.routeId});
         }
+        FecosSnackbar.success(
+          'Delivery Captured Offline',
+          '${_stop.wellName ?? 'Stop'} · ${_formatDeliveryDateTime(_deliveredAt)}\nWill sync automatically when connected',
+        );
       }
       return;
     }
@@ -179,8 +184,8 @@ class _StopDetailViewState extends State<StopDetailView> {
         }
       }
     } on DioException catch (e) {
-      final msg = e.response?.data?['error'] ?? 'Upload failed';
-      if (mounted) Get.snackbar('Error', msg, snackPosition: SnackPosition.BOTTOM);
+      final msg = e.response?.data?['error'] as String? ?? 'Upload failed';
+      if (mounted) FecosSnackbar.error('Error', msg);
     } finally {
       if (mounted) setState(() => _uploading = false);
     }

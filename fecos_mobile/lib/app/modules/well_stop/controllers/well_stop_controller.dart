@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:signature/signature.dart';
 import 'package:fecos_mobile/app/data/services/dio_service.dart';
 import 'package:fecos_mobile/app/modules/service_visit/controllers/service_visit_controller.dart';
+import 'package:fecos_mobile/app/widgets/fecos_snackbar.dart';
 
 // ── Treatment plan line model ─────────────────────────────────────────────────
 
@@ -253,12 +254,7 @@ class WellStopController extends GetxController {
         perm = await Geolocator.requestPermission();
       }
       if (perm == LocationPermission.deniedForever) {
-        Get.snackbar(
-          'Permission Required',
-          'Location permission is permanently denied. Please enable it in Settings.',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.orange[100],
-        );
+        FecosSnackbar.warning('Permission Required', 'Location permission is permanently denied. Please enable it in Settings.');
         Geolocator.openAppSettings();
         return;
       }
@@ -319,28 +315,20 @@ class WellStopController extends GetxController {
   Future<void> submit() async {
     // Signature is required
     if (!hasSigned.value) {
-      Get.snackbar('Signature Required',
-          'Operator must sign before submitting.',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.orange[100]);
+      FecosSnackbar.warning('Signature Required', 'Operator must sign before submitting.');
       return;
     }
 
     // SOAR note is required when SOAR is on
     if (soar.value && soarNote.text.trim().isEmpty) {
-      Get.snackbar('SOAR Note Required', 'Please describe the observation.',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red[100]);
+      FecosSnackbar.warning('SOAR Note Required', 'Please describe the observation.');
       return;
     }
 
     // Deviation reason is required for each CI line that deviates
     for (final line in planLines) {
       if (line.isCi && line.isDeviating && line.deviationReason.text.trim().isEmpty) {
-        Get.snackbar('Deviation Reason Required',
-            'Please explain why you changed the rate for "${line.productName}".',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.orange[100]);
+        FecosSnackbar.warning('Deviation Reason Required', 'Please explain why you changed the rate for "${line.productName}".');
         return;
       }
     }
@@ -359,9 +347,7 @@ class WellStopController extends GetxController {
 
       final sigBytes = await signatureController.toPngBytes();
       if (sigBytes == null) {
-        Get.snackbar('Signature Error', 'Unable to export signature. Please try again.',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.red[100]);
+        FecosSnackbar.error('Signature Error', 'Unable to export signature. Please try again.');
         return;
       }
       final sigUrl = await _uploadSignature(sigBytes);
@@ -395,14 +381,10 @@ class WellStopController extends GetxController {
       );
 
       Get.back(result: true);
-      Get.snackbar('Submitted', 'Well stop report saved.',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green[100]);
+      FecosSnackbar.success('Submitted', 'Well stop report saved.');
     } on dio_pkg.DioException catch (e) {
-      Get.snackbar('Submit Failed',
-          e.response?.data?['error'] ?? e.message ?? 'Unknown error',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red[100]);
+      FecosSnackbar.error('Submit Failed',
+          e.response?.data?['error'] as String? ?? e.message ?? 'Unknown error');
     } finally {
       isSubmitting.value = false;
     }

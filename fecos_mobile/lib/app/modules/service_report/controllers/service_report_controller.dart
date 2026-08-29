@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:fecos_mobile/app/data/services/dio_service.dart';
 import 'package:fecos_mobile/app/core/state/async_state.dart';
+import 'package:fecos_mobile/app/widgets/fecos_snackbar.dart';
 
 class ChemicalLine {
   final nameCtrl        = TextEditingController();
@@ -98,10 +99,7 @@ class ServiceReportController extends GetxController {
 
   Future<void> submit() async {
     if (!soar.value) {
-      Get.snackbar('S.O.A.R Required',
-          'You must acknowledge S.O.A.R before submitting.',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red[100]);
+      FecosSnackbar.warning('S.O.A.R Required', 'You must acknowledge S.O.A.R before submitting.');
       return;
     }
 
@@ -120,12 +118,10 @@ class ServiceReportController extends GetxController {
       await _dio.post('/service-visits/$visitId/stops/$stopId/report', data: body);
       submitState.value = const AsyncSuccess(true);
       Get.back();
-      Get.snackbar('Submitted', 'Service report saved.',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green[100]);
+      FecosSnackbar.success('Submitted', 'Service report saved.');
     } on Exception catch (e) {
       submitState.value = const AsyncError('Failed to submit');
-      Get.snackbar('Error', e.toString(), snackPosition: SnackPosition.BOTTOM);
+      FecosSnackbar.error('Error', e.toString());
     }
   }
 

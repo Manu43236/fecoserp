@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:fecos_mobile/app/theme/app_theme.dart';
 import 'package:fecos_mobile/app/widgets/fecos_dialog.dart';
+import 'package:fecos_mobile/app/widgets/fecos_snackbar.dart';
 import '../controllers/profile_controller.dart';
 
 class ProfileView extends GetView<ProfileController> {
@@ -282,18 +283,7 @@ class _ChangePinSheetState extends State<_ChangePinSheet> {
       newPin: newPin,
       onSuccess: () {
         Navigator.of(context).pop();
-        Get.snackbar(
-          'Success',
-          'PIN changed successfully.',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: const Color(0xFF1C1C1E),
-          colorText: const Color(0xFFFFFFFF),
-          icon: const Icon(Icons.check_circle_outline,
-              color: Color(0xFF30D158), size: 22),
-          borderRadius: 12,
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          duration: const Duration(seconds: 3),
-        );
+        FecosSnackbar.success('Success', 'PIN changed successfully.');
       },
     );
   }

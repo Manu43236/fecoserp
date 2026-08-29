@@ -41,6 +41,9 @@ class HomeController extends GetxController {
     super.onInit();
     load();
     ever(connectivity.isOnline, (online) { if (online) load(); });
+    ever(syncService.isSyncing, (syncing) {
+      if (!syncing && syncService.pendingCount.value == 0) load();
+    });
   }
 
   Future<void> load() async {

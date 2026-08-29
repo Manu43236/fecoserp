@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import 'package:fecos_mobile/app/data/services/dio_service.dart';
 import 'package:fecos_mobile/app/data/services/storage_service.dart';
 import 'package:fecos_mobile/app/core/state/async_state.dart';
+import 'package:fecos_mobile/app/widgets/fecos_snackbar.dart';
 
 class MyVisitStop {
   final String id;
@@ -106,8 +107,7 @@ class ServiceVisitController extends GetxController {
       }
       return null;
     } on Exception {
-      Get.snackbar('Error', 'Failed to start visit',
-          snackPosition: SnackPosition.BOTTOM);
+      FecosSnackbar.error('Error', 'Failed to start visit');
       return null;
     }
   }

@@ -8,6 +8,7 @@ import 'package:fecos_mobile/app/data/services/connectivity_service.dart';
 import 'package:fecos_mobile/app/data/services/db_service.dart';
 import 'package:fecos_mobile/app/data/services/dio_service.dart';
 import 'package:fecos_mobile/app/data/services/sync_service.dart';
+import 'package:fecos_mobile/app/widgets/fecos_snackbar.dart';
 
 class DeliveryController extends GetxController {
   final _dio          = Get.find<DioService>().dio;
@@ -84,8 +85,7 @@ class DeliveryController extends GetxController {
       await _setRoute(res.data!['data'] as Map<String, dynamic>);
       return true;
     } on DioException {
-      Get.snackbar('Error', 'Could not submit pre-trip check',
-          snackPosition: SnackPosition.BOTTOM);
+      FecosSnackbar.error('Error', 'Could not submit pre-trip check');
       return false;
     } finally {
       isUpdating.value = false;
@@ -116,8 +116,8 @@ class DeliveryController extends GetxController {
       await _setRoute(res.data!['data'] as Map<String, dynamic>);
       return true;
     } on DioException catch (e) {
-      final msg = e.response?.data?['error'] ?? 'Could not confirm load';
-      Get.snackbar('Error', msg, snackPosition: SnackPosition.BOTTOM);
+      final msg = e.response?.data?['error'] as String? ?? 'Could not confirm load';
+      FecosSnackbar.error('Error', msg);
       return false;
     } finally {
       isUpdating.value = false;
@@ -143,11 +143,9 @@ class DeliveryController extends GetxController {
         queryParameters: {'status': status},
       );
       await _setRoute(res.data!['data'] as Map<String, dynamic>);
-      Get.snackbar('Updated', 'Route marked as ${_statusLabel(status)}',
-          snackPosition: SnackPosition.BOTTOM);
+      FecosSnackbar.success('Updated', 'Route marked as ${_statusLabel(status)}');
     } on DioException {
-      Get.snackbar('Error', 'Could not update route status',
-          snackPosition: SnackPosition.BOTTOM);
+      FecosSnackbar.error('Error', 'Could not update route status');
     } finally {
       isUpdating.value = false;
     }
@@ -178,10 +176,8 @@ class DeliveryController extends GetxController {
       return true;
     } on DioException catch (e) {
       final code = e.response?.statusCode ?? 0;
-      final msg  = e.response?.data?['error'] ?? e.message ?? 'Unknown error';
-      Get.snackbar('Error ($code)', msg,
-          snackPosition: SnackPosition.BOTTOM,
-          duration: const Duration(seconds: 6));
+      final msg  = e.response?.data?['error'] as String? ?? e.message ?? 'Unknown error';
+      FecosSnackbar.error('Error ($code)', msg);
       return false;
     } finally {
       isUpdating.value = false;
@@ -209,7 +205,7 @@ class DeliveryController extends GetxController {
       'items': items, 'notes': notes,
       'performedAt': performedAt.toIso8601String(),
     });
-    _updateStopLocally(stopId, 'DELIVERED');
+    _updateStopLocally(stopId, 'DELIVERED', deliveredAt: performedAt.toIso8601String());
     _showOfflineSnack();
   }
 
@@ -234,8 +230,7 @@ class DeliveryController extends GetxController {
       );
       await _setRoute(res.data!['data'] as Map<String, dynamic>);
     } on DioException {
-      Get.snackbar('Error', 'Could not skip stop',
-          snackPosition: SnackPosition.BOTTOM);
+      FecosSnackbar.error('Error', 'Could not skip stop');
     } finally {
       isUpdating.value = false;
     }
@@ -262,8 +257,7 @@ class DeliveryController extends GetxController {
       await _setRoute(res.data!['data'] as Map<String, dynamic>);
       return true;
     } on DioException {
-      Get.snackbar('Error', 'Could not complete route',
-          snackPosition: SnackPosition.BOTTOM);
+      FecosSnackbar.error('Error', 'Could not complete route');
       return false;
     } finally {
       isUpdating.value = false;
@@ -289,14 +283,17 @@ class DeliveryController extends GetxController {
       operation:  'UPDATE',
       payload:    jsonEncode(payload),
     ));
-    Get.find<SyncService>().pendingCount.value++;
+    final count = await _db.select(_db.syncQueue).get();
+    Get.find<SyncService>().pendingCount.value = count.length;
   }
 
-  void _updateStopLocally(String stopId, String status, {String? skipReason}) {
+  void _updateStopLocally(String stopId, String status, {String? skipReason, String? deliveredAt}) {
     final current = route.value;
     if (current == null) return;
     final stops = current.stops
-        .map((s) => s.id == stopId ? s.copyWith(status: status, skipReason: skipReason) : s)
+        .map((s) => s.id == stopId
+            ? s.copyWith(status: status, skipReason: skipReason, deliveredAt: deliveredAt)
+            : s)
         .toList();
     route.value = current.copyWith(stops: stops);
     _persistRouteToCache(route.value!);
@@ -356,12 +353,8 @@ class DeliveryController extends GetxController {
     await _dbService.cacheResponse('route-$routeId', jsonEncode(updated));
   }
 
-  void _showOfflineSnack() => Get.snackbar(
-        'Saved offline',
-        'Will sync when connected',
-        snackPosition: SnackPosition.BOTTOM,
-        duration: const Duration(seconds: 3),
-      );
+  void _showOfflineSnack() =>
+      FecosSnackbar.info('Saved Offline', 'Will sync when connected');
 
   String _statusLabel(String status) => switch (status) {
         'IN_PROGRESS' => 'In Progress',

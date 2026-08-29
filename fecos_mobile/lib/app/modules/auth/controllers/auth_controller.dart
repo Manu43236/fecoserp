@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:dio/dio.dart';
-import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:fecos_mobile/app/data/services/dio_service.dart';
 import 'package:fecos_mobile/app/data/services/storage_service.dart';
 import 'package:fecos_mobile/app/data/models/user_model.dart';
 import 'package:fecos_mobile/app/routes/app_pages.dart';
+import 'package:fecos_mobile/app/widgets/fecos_snackbar.dart';
 
 class AuthController extends GetxController {
   final _dio = Get.find<DioService>().dio;
@@ -57,21 +57,8 @@ class AuthController extends GetxController {
     }
   }
 
-  void _showError(String message) {
-    Get.snackbar(
-      'Sign In Failed',
-      message,
-      snackPosition: SnackPosition.TOP,
-      backgroundColor: const Color(0xFF1C1C1E),
-      colorText: const Color(0xFFFFFFFF),
-      icon: const Icon(Icons.error_outline, color: Color(0xFFFF453A), size: 22),
-      borderRadius: 12,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      duration: const Duration(seconds: 4),
-      isDismissible: true,
-      forwardAnimationCurve: Curves.easeOutCubic,
-    );
-  }
+  void _showError(String message) =>
+      FecosSnackbar.error('Sign In Failed', message);
 
   Future<void> login(String mobileNumber, String pin) async {
     isLoading.value = true;

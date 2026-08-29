@@ -8,6 +8,7 @@ import 'package:fecos_mobile/app/modules/service_visit/controllers/service_visit
 import 'package:fecos_mobile/app/modules/main/controllers/main_controller.dart';
 import 'package:fecos_mobile/app/theme/app_theme.dart';
 import 'package:fecos_mobile/app/widgets/fecos_shimmer.dart';
+import 'package:fecos_mobile/app/widgets/fecos_snackbar.dart';
 import 'package:fecos_mobile/app/routes/app_pages.dart';
 import '../controllers/home_controller.dart';
 
@@ -613,9 +614,7 @@ class _DriverDashboardContent extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      syncing
-                          ? 'Syncing $pending action${pending == 1 ? '' : 's'}…'
-                          : '$pending action${pending == 1 ? '' : 's'} pending sync',
+                      syncing ? 'Syncing offline data…' : 'Sync offline data',
                       style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -626,10 +625,7 @@ class _DriverDashboardContent extends StatelessWidget {
                     GestureDetector(
                       onTap: () async {
                         if (!Get.find<ConnectivityService>().isOnline.value) {
-                          Get.snackbar('No Network',
-                              'Connect to the internet to sync',
-                              snackPosition: SnackPosition.BOTTOM,
-                              duration: const Duration(seconds: 3));
+                          FecosSnackbar.info('No Network', 'Connect to the internet to sync');
                           return;
                         }
                         await Get.find<SyncService>().syncNow();
@@ -676,7 +672,18 @@ class _DriverDashboardContent extends StatelessWidget {
             ),
           )
         else
-          ...routes.map((r) => _DriverRouteCard(route: r)),
+          Obx(() {
+            final syncing = syncService.isSyncing.value;
+            return AbsorbPointer(
+              absorbing: syncing,
+              child: Opacity(
+                opacity: syncing ? 0.45 : 1.0,
+                child: Column(
+                  children: routes.map((r) => _DriverRouteCard(route: r)).toList(),
+                ),
+              ),
+            );
+          }),
       ]),
     );
   }

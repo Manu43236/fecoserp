@@ -6,6 +6,7 @@ import 'package:fecos_mobile/app/data/services/dio_service.dart';
 import 'package:fecos_mobile/app/theme/app_theme.dart';
 import 'package:fecos_mobile/app/utils/fecos_pdf.dart';
 import 'package:fecos_mobile/app/widgets/fecos_shimmer.dart';
+import 'package:fecos_mobile/app/widgets/fecos_snackbar.dart';
 import '../controllers/ar_lab_controller.dart';
 
 class ArSampleDetailView extends StatefulWidget {
@@ -748,20 +749,9 @@ class _ApproveSheetState extends State<_ApproveSheet> {
                   );
                   if (ok) {
                     Get.back();
-                    Get.snackbar(
-                      'Approved',
-                      'Sample ${widget.sample.sampleNumber} approved',
-                      backgroundColor: AppColors.success,
-                      colorText: Colors.white,
-                      duration: const Duration(seconds: 3),
-                    );
+                    FecosSnackbar.success('Approved', 'Sample ${widget.sample.sampleNumber} approved');
                   } else {
-                    Get.snackbar(
-                      'Error',
-                      'Failed to approve sample. Please try again.',
-                      backgroundColor: AppColors.danger,
-                      colorText: Colors.white,
-                    );
+                    FecosSnackbar.error('Error', 'Failed to approve sample. Please try again.');
                   }
                 },
                 style: FilledButton.styleFrom(

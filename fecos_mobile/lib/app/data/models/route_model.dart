@@ -67,12 +67,12 @@ class RouteStop {
   bool get isCompleted => status == 'COMPLETED';
   bool get isSkipped   => status == 'SKIPPED';
 
-  RouteStop copyWith({String? status, String? skipReason}) => RouteStop(
+  RouteStop copyWith({String? status, String? skipReason, String? deliveredAt}) => RouteStop(
     id: id, routeId: routeId, wellName: wellName, leaseName: leaseName,
     sequenceOrder: sequenceOrder, status: status ?? this.status,
     items: items, notes: notes, skipReason: skipReason ?? this.skipReason,
     deliveryPhotoUrl: deliveryPhotoUrl, deliveryLat: deliveryLat,
-    deliveryLng: deliveryLng, deliveredAt: deliveredAt,
+    deliveryLng: deliveryLng, deliveredAt: deliveredAt ?? this.deliveredAt,
     receivedAt: receivedAt, syncedLate: syncedLate,
   );
 
