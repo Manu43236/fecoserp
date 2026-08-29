@@ -98,6 +98,7 @@ function RouteFormPanel({ open, onClose, route, driverOptions }: {
     onSuccess: () => {
       toast.success(isEdit ? 'Route updated' : 'Route created')
       qc.invalidateQueries({ queryKey: ['routes'] })
+      qc.invalidateQueries({ queryKey: ['routes-board'] })
       onClose(); reset()
     },
     onError: (e: unknown) =>
@@ -299,6 +300,7 @@ function RouteDrawer({ route, onClose, onEdit, canEdit }: {
       toast.success('Stop added')
       qc.invalidateQueries({ queryKey: ['route', route.id] })
       qc.invalidateQueries({ queryKey: ['routes'] })
+      qc.invalidateQueries({ queryKey: ['routes-board'] })
       resetStopForm()
     },
     onError: () => toast.error('Failed to add stop'),
@@ -310,6 +312,7 @@ function RouteDrawer({ route, onClose, onEdit, canEdit }: {
       toast.success('Stop removed')
       qc.invalidateQueries({ queryKey: ['route', route.id] })
       qc.invalidateQueries({ queryKey: ['routes'] })
+      qc.invalidateQueries({ queryKey: ['routes-board'] })
     },
     onError: () => toast.error('Failed to remove stop'),
   })
@@ -348,6 +351,7 @@ function RouteDrawer({ route, onClose, onEdit, canEdit }: {
     onSuccess: () => {
       toast.success('Route cancelled')
       qc.invalidateQueries({ queryKey: ['routes'] })
+      qc.invalidateQueries({ queryKey: ['routes-board'] })
       qc.invalidateQueries({ queryKey: ['route', route.id] })
     },
     onError: () => toast.error('Failed to cancel route'),
