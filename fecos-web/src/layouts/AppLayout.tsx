@@ -2,7 +2,7 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useEffect, useState, useMemo } from 'react'
 import {
   LayoutDashboard, Truck, MapPin, CalendarDays, Package, Users,
-  Activity, PackageCheck, Building2, Wrench, BarChart3,
+  Building2, Wrench, BarChart3,
   FlaskConical, ClipboardList, TestTube, CheckCircle2,
   Briefcase, LogOut, Drill, Settings2, Cylinder, Car, Menu,
   ChevronDown,
@@ -12,9 +12,10 @@ import { useAuthStore } from '@/store/authStore'
 import type { Role } from '@/types'
 import fecosLogo from '@/assets/fecos_logo.png'
 
-interface NavItem  { label: string; path: string; icon: LucideIcon }
-interface NavGroup { label: string; icon: LucideIcon; children: NavItem[] }
-interface GroupedNav { dashboard: NavItem; groups: NavGroup[] }
+interface NavItem { label: string; path: string; icon: LucideIcon }
+type NavEntry =
+  | { kind: 'item';  label: string; path: string; icon: LucideIcon }
+  | { kind: 'group'; label: string; icon: LucideIcon; children: NavItem[] }
 
 // ── Flat nav (roles with few items) ───────────────────────────────────────────
 const flatNavByRole: Partial<Record<string, NavItem[]>> = {
@@ -36,97 +37,59 @@ const flatNavByRole: Partial<Record<string, NavItem[]>> = {
 }
 
 // ── Grouped nav (Admin + Manager) ─────────────────────────────────────────────
-const groupedNavByRole: Partial<Record<string, GroupedNav>> = {
-  ADMIN: {
-    dashboard: { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    groups: [
-      {
-        label: 'Operations', icon: Truck,
-        children: [
-          { label: 'Routes',         path: '/routes',         icon: Truck        },
-          { label: 'Deliveries',     path: '/deliveries',     icon: PackageCheck },
-          { label: 'Schedule',       path: '/schedule',       icon: CalendarDays },
-          { label: 'Field Activity', path: '/field-activity', icon: Activity     },
-        ],
-      },
-      {
-        label: 'Sites', icon: MapPin,
-        children: [
-          { label: 'Leases', path: '/leases', icon: MapPin   },
-          { label: 'Wells',  path: '/wells',  icon: Drill    },
-          { label: 'Tanks',  path: '/tanks',  icon: Cylinder },
-        ],
-      },
-      {
-        label: 'Chemistry', icon: FlaskConical,
-        children: [
-          { label: 'Products',  path: '/products',  icon: FlaskConical  },
-          { label: 'Programs',  path: '/plans',     icon: ClipboardList },
-          { label: 'Inventory', path: '/inventory', icon: Package       },
-          { label: 'Lab',       path: '/lab/queue', icon: TestTube      },
-          { label: 'QC',        path: '/qc',        icon: CheckCircle2  },
-          { label: 'Pumps',     path: '/pump-shop', icon: Wrench        },
-        ],
-      },
-      {
-        label: 'Clients', icon: Building2,
-        children: [
-          { label: 'Clients',   path: '/clients',       icon: Building2 },
-          { label: 'Portfolio', path: '/rep/portfolio', icon: Briefcase },
-        ],
-      },
-      {
-        label: 'Admin', icon: Settings2,
-        children: [
-          { label: 'Users',    path: '/users',    icon: Users     },
-          { label: 'Vehicles', path: '/vehicles', icon: Car       },
-          { label: 'Masters',  path: '/masters',  icon: Settings2 },
-          { label: 'Reports',  path: '/reports',  icon: BarChart3 },
-        ],
-      },
-    ],
-  },
-  MANAGER: {
-    dashboard: { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    groups: [
-      {
-        label: 'Operations', icon: Truck,
-        children: [
-          { label: 'Deliveries',     path: '/deliveries',     icon: PackageCheck },
-          { label: 'Field Activity', path: '/field-activity', icon: Activity     },
-        ],
-      },
-      {
-        label: 'Sites', icon: MapPin,
-        children: [
-          { label: 'Leases', path: '/leases', icon: MapPin   },
-          { label: 'Wells',  path: '/wells',  icon: Drill    },
-          { label: 'Tanks',  path: '/tanks',  icon: Cylinder },
-        ],
-      },
-      {
-        label: 'Chemistry', icon: FlaskConical,
-        children: [
-          { label: 'Programs',  path: '/plans',     icon: ClipboardList },
-          { label: 'Inventory', path: '/inventory', icon: Package       },
-          { label: 'Lab',       path: '/lab/queue', icon: TestTube      },
-          { label: 'Pumps',     path: '/pump-shop', icon: Wrench        },
-        ],
-      },
-      {
-        label: 'Clients', icon: Building2,
-        children: [
-          { label: 'Clients', path: '/clients', icon: Building2 },
-        ],
-      },
-      {
-        label: 'Admin', icon: Settings2,
-        children: [
-          { label: 'Reports', path: '/reports', icon: BarChart3 },
-        ],
-      },
-    ],
-  },
+const groupedNavByRole: Partial<Record<string, NavEntry[]>> = {
+  ADMIN: [
+    { kind: 'item',  label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { kind: 'group', label: 'Operations', icon: Truck, children: [
+      { label: 'Routes',    path: '/routes',    icon: Truck        },
+      { label: 'Schedule',  path: '/schedule',  icon: CalendarDays },
+      { label: 'Programs',  path: '/plans',     icon: ClipboardList },
+      { label: 'Pumps',     path: '/pump-shop', icon: Wrench       },
+    ]},
+    { kind: 'group', label: 'Sites', icon: MapPin, children: [
+      { label: 'Leases', path: '/leases', icon: MapPin   },
+      { label: 'Wells',  path: '/wells',  icon: Drill    },
+      { label: 'Tanks',  path: '/tanks',  icon: Cylinder },
+    ]},
+    { kind: 'group', label: 'Chemistry', icon: FlaskConical, children: [
+      { label: 'Lab', path: '/lab/queue', icon: TestTube     },
+      { label: 'QC',  path: '/qc',        icon: CheckCircle2 },
+    ]},
+    { kind: 'item',  label: 'Inventory', path: '/inventory', icon: Package },
+    { kind: 'group', label: 'Clients', icon: Building2, children: [
+      { label: 'Clients',   path: '/clients',       icon: Building2 },
+      { label: 'Portfolio', path: '/rep/portfolio', icon: Briefcase },
+    ]},
+    { kind: 'group', label: 'Admin', icon: Settings2, children: [
+      { label: 'Users',    path: '/users',    icon: Users     },
+      { label: 'Vehicles', path: '/vehicles', icon: Car       },
+      { label: 'Masters',  path: '/masters',  icon: Settings2 },
+    ]},
+    { kind: 'item',  label: 'Reports', path: '/reports', icon: BarChart3 },
+  ],
+  MANAGER: [
+    { kind: 'item',  label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { kind: 'group', label: 'Operations', icon: Truck, children: [
+      { label: 'Routes',   path: '/routes',    icon: Truck        },
+      { label: 'Schedule', path: '/schedule',  icon: CalendarDays },
+      { label: 'Programs', path: '/plans',     icon: ClipboardList },
+      { label: 'Pumps',    path: '/pump-shop', icon: Wrench       },
+    ]},
+    { kind: 'group', label: 'Sites', icon: MapPin, children: [
+      { label: 'Leases', path: '/leases', icon: MapPin   },
+      { label: 'Wells',  path: '/wells',  icon: Drill    },
+      { label: 'Tanks',  path: '/tanks',  icon: Cylinder },
+    ]},
+    { kind: 'group', label: 'Chemistry', icon: FlaskConical, children: [
+      { label: 'Lab', path: '/lab/queue', icon: TestTube     },
+      { label: 'QC',  path: '/qc',        icon: CheckCircle2 },
+    ]},
+    { kind: 'item',  label: 'Inventory', path: '/inventory', icon: Package },
+    { kind: 'group', label: 'Clients', icon: Building2, children: [
+      { label: 'Clients', path: '/clients', icon: Building2 },
+    ]},
+    { kind: 'item',  label: 'Reports', path: '/reports', icon: BarChart3 },
+  ],
 }
 
 function userInitials(name?: string) {
@@ -135,14 +98,15 @@ function userInitials(name?: string) {
 }
 
 // ── Grouped sidebar nav ────────────────────────────────────────────────────────
-function GroupedSidebarNav({ config, onNavigate }: { config: GroupedNav; onNavigate: () => void }) {
+function GroupedSidebarNav({ entries, onNavigate }: { entries: NavEntry[]; onNavigate: () => void }) {
   const location = useLocation()
 
   const activeGroupLabel = useMemo(() => {
-    return config.groups.find(g =>
-      g.children.some(c => location.pathname.startsWith(c.path))
-    )?.label ?? null
-  }, [location.pathname, config.groups])
+    return entries
+      .filter((e): e is Extract<NavEntry, { kind: 'group' }> => e.kind === 'group')
+      .find(g => g.children.some(c => location.pathname.startsWith(c.path)))
+      ?.label ?? null
+  }, [location.pathname, entries])
 
   const [expanded, setExpanded] = useState<string | null>(activeGroupLabel)
 
@@ -154,49 +118,48 @@ function GroupedSidebarNav({ config, onNavigate }: { config: GroupedNav; onNavig
 
   return (
     <>
-      {/* Dashboard — always flat */}
-      <NavLink
-        to={config.dashboard.path}
-        onClick={onNavigate}
-        className={({ isActive }) =>
-          `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
-            isActive ? 'text-white shadow-sm' : 'hover:bg-white/8'
-          }`
+      {entries.map(entry => {
+        if (entry.kind === 'item') {
+          const Icon = entry.icon
+          return (
+            <NavLink
+              key={entry.path}
+              to={entry.path}
+              onClick={onNavigate}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
+                  isActive ? 'text-white shadow-sm' : 'hover:bg-white/8'
+                }`
+              }
+              style={({ isActive }) => ({
+                backgroundColor: isActive ? 'var(--color-primary)' : undefined,
+                color: isActive ? '#fff' : accentMuted,
+              })}
+            >
+              {({ isActive }) => (
+                <>
+                  <Icon size={16} strokeWidth={isActive ? 2 : 1.75} style={{ opacity: isActive ? 1 : 0.7 }} />
+                  <span className={isActive ? 'font-semibold tracking-tight' : 'font-medium'}>{entry.label}</span>
+                </>
+              )}
+            </NavLink>
+          )
         }
-        style={({ isActive }) => ({
-          backgroundColor: isActive ? 'var(--color-primary)' : undefined,
-          color: isActive ? '#fff' : accentMuted,
-        })}
-      >
-        {({ isActive }) => (
-          <>
-            <LayoutDashboard size={16} strokeWidth={isActive ? 2 : 1.75} style={{ opacity: isActive ? 1 : 0.7 }} />
-            <span className={isActive ? 'font-semibold tracking-tight' : 'font-medium'}>Dashboard</span>
-          </>
-        )}
-      </NavLink>
 
-      {/* Groups */}
-      {config.groups.map(group => {
-        const isOpen   = expanded === group.label
-        const isActive = group.label === activeGroupLabel
-        const GroupIcon = group.icon
+        const isOpen    = expanded === entry.label
+        const isActive  = entry.label === activeGroupLabel
+        const GroupIcon = entry.icon
 
         return (
-          <div key={group.label}>
-            {/* Group header */}
+          <div key={entry.label}>
             <button
-              onClick={() => setExpanded(isOpen ? null : group.label)}
+              onClick={() => setExpanded(isOpen ? null : entry.label)}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 hover:bg-white/8"
               style={{ color: isActive ? 'var(--color-accent)' : accentMuted }}
             >
-              <GroupIcon
-                size={16}
-                strokeWidth={1.75}
-                style={{ opacity: isActive ? 1 : 0.65, flexShrink: 0 }}
-              />
+              <GroupIcon size={16} strokeWidth={1.75} style={{ opacity: isActive ? 1 : 0.65, flexShrink: 0 }} />
               <span className={`flex-1 text-left ${isActive ? 'font-semibold' : 'font-medium'}`}>
-                {group.label}
+                {entry.label}
               </span>
               <ChevronDown
                 size={13}
@@ -210,10 +173,9 @@ function GroupedSidebarNav({ config, onNavigate }: { config: GroupedNav; onNavig
               />
             </button>
 
-            {/* Children */}
             {isOpen && (
               <div className="mt-0.5 mb-1 space-y-0.5">
-                {group.children.map(item => {
+                {entry.children.map(item => {
                   const Icon = item.icon
                   return (
                     <NavLink
@@ -331,7 +293,7 @@ export function AppLayout() {
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto px-2.5 py-3 space-y-0.5">
           {grouped ? (
-            <GroupedSidebarNav config={grouped} onNavigate={() => setSidebarOpen(false)} />
+            <GroupedSidebarNav entries={grouped} onNavigate={() => setSidebarOpen(false)} />
           ) : flatItems ? (
             <FlatSidebarNav items={flatItems} onNavigate={() => setSidebarOpen(false)} />
           ) : null}
