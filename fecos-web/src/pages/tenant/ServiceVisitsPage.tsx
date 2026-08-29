@@ -354,11 +354,14 @@ function VisitDrawer({ visit, onClose, onRefresh, wellOpts }: {
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-primary)' }}>
               <ClipboardList size={14} className="text-white" />
             </div>
-            <div>
-              <h2 className="text-sm font-semibold text-gray-900">{visit.name ?? visit.techName}</h2>
-              <p className="text-xs text-gray-500">{visit.techName} · {new Date(visit.visitDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-gray-900 truncate">{visit.name ?? visit.techName}</h2>
+              <p className="text-xs text-gray-500 truncate">
+                {visit.techName} · {new Date(visit.visitDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                {visit.stops.length > 0 && ` · ${visit.stops[0].clientName} — ${visit.stops[0].leaseName}`}
+              </p>
             </div>
-            <div className="ml-auto flex items-center gap-2">
+            <div className="ml-auto flex items-center gap-2 shrink-0">
               {statusBadge(visit.status)}
               <button onClick={onClose} className="text-gray-400 hover:text-gray-600 ml-1"><X size={18} /></button>
             </div>
@@ -627,10 +630,64 @@ function VisitDrawer({ visit, onClose, onRefresh, wellOpts }: {
         /* Body — Wells List View */
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
 
-          {/* Due Today Suggestions */}
+          {/* Wells (stops) — always at top */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Wells ({visit.stops.length})
+              </p>
+              {canEdit && !addingWell && (
+                <button onClick={() => setAddingWell(true)}
+                  className="flex items-center gap-1 h-6 px-2.5 text-xs font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                  <Plus size={11} /> Add Well
+                </button>
+              )}
+            </div>
+
+            {addingWell && (
+              <div className="flex gap-2 mb-3">
+                <div className="flex-1">
+                  <SearchableDropdown
+                    value={newWellId}
+                    onChange={v => setNewWellId(v ?? '')}
+                    options={wellOpts.filter(w => !alreadyAdded.has(w.value))}
+                    placeholder="Search wells…"
+                    showClear={false}
+                  />
+                </div>
+                <button onClick={() => { if (newWellId) addStopMutation.mutate(newWellId) }}
+                  disabled={!newWellId || addStopMutation.isPending}
+                  className="h-9 px-3 text-sm font-semibold rounded-lg text-white disabled:opacity-60"
+                  style={{ backgroundColor: 'var(--color-primary)' }}>
+                  Add
+                </button>
+                <button onClick={() => { setAddingWell(false); setNewWellId('') }}
+                  className="h-9 px-3 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+
+            {visit.stops.length === 0 ? (
+              <p className="text-sm text-gray-400 italic">No wells added yet</p>
+            ) : (
+              <div className="space-y-2">
+                {visit.stops.map((stop, i) => (
+                  <StopCard key={stop.id} stop={stop} index={i}
+                    canEdit={canEdit}
+                    onRemove={() => removeStopMutation.mutate(stop.id)}
+                    onStatusChange={s => updateStopMutation.mutate({ stopId: stop.id, data: { status: s } })}
+                    onViewReport={() => setReportStop(stop)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Due Today — only wells not yet in this visit */}
           {canEdit && suggestions.length > 0 && (
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Due Today</p>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Also Due Today</p>
               <div className="space-y-1.5">
                 {suggestions.map(d => (
                   <div key={d.wellId} className="flex items-center justify-between px-3 py-2 bg-amber-50 border border-amber-100 rounded-lg">
@@ -651,62 +708,6 @@ function VisitDrawer({ visit, onClose, onRefresh, wellOpts }: {
               </div>
             </div>
           )}
-
-          {/* Add Other Well */}
-          {canEdit && (
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Add Well</p>
-              {addingWell ? (
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <SearchableDropdown
-                      value={newWellId}
-                      onChange={v => setNewWellId(v ?? '')}
-                      options={wellOpts.filter(w => !alreadyAdded.has(w.value))}
-                      placeholder="Search wells…"
-                      showClear={false}
-                    />
-                  </div>
-                  <button onClick={() => { if (newWellId) addStopMutation.mutate(newWellId) }}
-                    disabled={!newWellId || addStopMutation.isPending}
-                    className="h-9 px-3 text-sm font-semibold rounded-lg text-white disabled:opacity-60"
-                    style={{ backgroundColor: 'var(--color-primary)' }}>
-                    Add
-                  </button>
-                  <button onClick={() => { setAddingWell(false); setNewWellId('') }}
-                    className="h-9 px-3 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">
-                    <X size={14} />
-                  </button>
-                </div>
-              ) : (
-                <button onClick={() => setAddingWell(true)}
-                  className="flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
-                  <Plus size={13} /> Add Other Well
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Stops */}
-          <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-              Wells ({visit.stops.length})
-            </p>
-            {visit.stops.length === 0 ? (
-              <p className="text-sm text-gray-400 italic">No wells added yet</p>
-            ) : (
-              <div className="space-y-2">
-                {visit.stops.map((stop, i) => (
-                  <StopCard key={stop.id} stop={stop} index={i}
-                    canEdit={canEdit}
-                    onRemove={() => removeStopMutation.mutate(stop.id)}
-                    onStatusChange={s => updateStopMutation.mutate({ stopId: stop.id, data: { status: s } })}
-                    onViewReport={() => setReportStop(stop)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
 
           {visit.notes && (
             <div>
@@ -956,7 +957,7 @@ export default function ServiceVisitsPage() {
             ) : filteredVisits.length === 0 ? (
               <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-gray-400">No service visits found</td></tr>
             ) : filteredVisits.map(v => (
-              <tr key={v.id} onClick={() => setActiveVisit(v)}
+              <tr key={v.id} onClick={() => serviceVisitsApi.get(v.id).then(r => setActiveVisit(r.data?.data ?? null))}
                 className="hover:bg-gray-50 cursor-pointer transition-colors">
                 <td className="px-4 py-3">
                   <p className="font-medium text-gray-900">{v.name ?? new Date(v.visitDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
