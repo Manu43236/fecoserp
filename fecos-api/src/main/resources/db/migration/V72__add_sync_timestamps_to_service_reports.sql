@@ -1,0 +1,2 @@
+ALTER TABLE service_reports ADD COLUMN synced_at TIMESTAMP;
+ALTER TABLE service_reports ADD COLUMN synced_late BOOLEAN NOT NULL DEFAULT FALSE;

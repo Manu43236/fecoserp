@@ -31,6 +31,8 @@ public record TreatmentReportResponse(
         Instant signedAt,
         String notes,
         Instant submittedAt,
+        Instant syncedAt,
+        boolean syncedLate,
         List<TreatmentLineResponse> lines
 ) {
     public record TreatmentLineResponse(

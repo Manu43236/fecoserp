@@ -21,6 +21,7 @@ public record TreatmentReportRequest(
         String signerName,
         Instant signedAt,
         String notes,
+        Instant syncedAt,
         List<TreatmentLineRequest> lines
 ) {
     public record TreatmentLineRequest(

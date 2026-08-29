@@ -219,6 +219,14 @@ public class ServiceReportService {
         report.setSignedAt(req.signedAt());
         report.setNotes(req.notes());
         report.setSubmittedAt(Instant.now());
+
+        // Track when offline data arrived vs when the inspection actually happened
+        if (req.syncedAt() != null) {
+            report.setSyncedAt(req.syncedAt());
+            report.setSyncedLate(req.performedAt() != null &&
+                    req.syncedAt().isAfter(req.performedAt().plusSeconds(1800)));
+        }
+
         report = reportRepo.save(report); // capture returned managed instance — ID may differ from pre-merge entity
 
         // replace treatment lines
@@ -390,7 +398,7 @@ public class ServiceReportService {
                 r.isSoar(), r.getSoarNote(), soarAckByName, soarAckAtStr, r.getSoarAckNote(),
                 r.getSampleType(), r.getSampleNotes(), r.getSamplePhotoUrl(),
                 r.getSignatureUrl(), r.getSignerName(), r.getSignedAt(),
-                r.getNotes(), r.getSubmittedAt(), lines
+                r.getNotes(), r.getSubmittedAt(), r.getSyncedAt(), r.isSyncedLate(), lines
         );
     }
 

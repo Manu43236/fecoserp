@@ -103,6 +103,20 @@ public class ServiceVisitService {
         return toResponse(visitRepo.save(v), true);
     }
 
+    // ── Update status (mobile — SERVICE_TECH updates their own visit) ────────
+
+    public void updateStatus(UUID id, ServiceVisitStatus status) {
+        UUID tenantId = currentTenantId();
+        UUID userId   = currentUserId();
+        ServiceVisitEntity v = visitRepo.findByIdAndTenantIdAndIsDeletedFalse(id, tenantId)
+                .orElseThrow(() -> new RuntimeException("Service visit not found"));
+        if (!v.getTechId().equals(userId)) {
+            throw new RuntimeException("Not authorized to update this visit");
+        }
+        if (status != null) v.setStatus(status);
+        visitRepo.save(v);
+    }
+
     // ── Delete ───────────────────────────────────────────────────────────────
 
     public void delete(UUID id) {

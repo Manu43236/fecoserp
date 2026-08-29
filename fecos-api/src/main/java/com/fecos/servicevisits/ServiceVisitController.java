@@ -57,6 +57,14 @@ public class ServiceVisitController {
         return ResponseEntity.ok(ApiResponse.ok(service.update(id, req)));
     }
 
+    @PatchMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','SERVICE_TECH')")
+    public ResponseEntity<ApiResponse<Void>> updateStatus(
+            @PathVariable UUID id, @RequestBody ServiceVisitUpdateRequest req) {
+        service.updateStatus(id, req.status());
+        return ResponseEntity.ok(ApiResponse.ok(null));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {

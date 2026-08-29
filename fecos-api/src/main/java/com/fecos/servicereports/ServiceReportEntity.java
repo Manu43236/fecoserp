@@ -77,4 +77,10 @@ public class ServiceReportEntity extends TenantAwareEntity {
 
     @Column(name = "sample_photo_url", length = 500)
     private String samplePhotoUrl;
+
+    @Column(name = "synced_at")
+    private Instant syncedAt;
+
+    @Column(name = "synced_late", nullable = false)
+    private boolean syncedLate;
 }
