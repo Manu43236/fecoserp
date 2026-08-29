@@ -845,6 +845,10 @@ export default function QCPage() {
 
   return (
     <div className="h-full flex flex-col bg-gray-50">
+      <div className="bg-white px-6 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
+        <h1 className="text-xl font-bold text-gray-900">QC</h1>
+        <p className="text-sm text-gray-500 mt-0.5">Quality control for raw material and finished product batches</p>
+      </div>
       <div className="bg-white px-2 shrink-0 overflow-x-auto" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
         <div className="flex gap-1 min-w-max">
           {TABS.map(tab => (

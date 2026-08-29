@@ -1093,6 +1093,10 @@ export default function InventoryPage() {
 
   return (
     <div className="flex flex-col h-full min-h-screen">
+      <div className="bg-white px-6 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
+        <h1 className="text-xl font-bold text-gray-900">Inventory</h1>
+        <p className="text-sm text-gray-500 mt-0.5">Products, warehouses, stock levels, and transactions</p>
+      </div>
       <div className="bg-white border-b border-gray-200 px-2 flex items-center gap-1 overflow-x-auto">
         {SECTIONS.map(s => {
           const Icon = s.icon

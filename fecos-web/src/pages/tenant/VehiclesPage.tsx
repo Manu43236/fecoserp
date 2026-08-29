@@ -314,6 +314,11 @@ export default function VehiclesPage() {
 
   return (
     <div className="p-6 space-y-5">
+      <div>
+        <h1 className="text-xl font-bold text-gray-900">Fleet</h1>
+        <p className="text-sm text-gray-500 mt-0.5">{total} vehicle{total !== 1 ? 's' : ''} total</p>
+      </div>
+
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
