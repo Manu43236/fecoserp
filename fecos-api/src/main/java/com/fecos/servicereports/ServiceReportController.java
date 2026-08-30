@@ -1,14 +1,18 @@
 package com.fecos.servicereports;
 
 import com.fecos.common.ApiResponse;
+import com.fecos.common.PagedResponse;
+import com.fecos.servicevisits.ServiceVisitStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -39,6 +43,28 @@ public class ServiceReportController {
     public ResponseEntity<ApiResponse<List<MyVisitResponse>>> myVisits(
             @RequestParam(required = false) String date) {
         return ResponseEntity.ok(ApiResponse.ok(service.myVisits(date)));
+    }
+
+    // Mobile — upcoming visits paginated (tab 2)
+    @GetMapping("/api/v1/my-visits/upcoming")
+    @PreAuthorize("hasRole('SERVICE_TECH')")
+    public ResponseEntity<ApiResponse<PagedResponse<MyVisitResponse>>> upcomingPaged(
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(ApiResponse.ok(service.upcomingVisitsPaged(page, size)));
+    }
+
+    // Mobile — visit history with filters (tab 3)
+    @GetMapping("/api/v1/my-visits/history")
+    @PreAuthorize("hasRole('SERVICE_TECH')")
+    public ResponseEntity<ApiResponse<PagedResponse<MyVisitResponse>>> visitHistory(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) ServiceVisitStatus status,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(ApiResponse.ok(service.visitHistory(from, to, status, search, page, size)));
     }
 
     // Mobile — submit service report for a stop

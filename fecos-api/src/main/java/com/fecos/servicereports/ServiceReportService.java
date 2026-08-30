@@ -4,6 +4,7 @@ import com.fecos.clients.ClientRepository;
 import com.fecos.leases.LeaseRepository;
 import com.fecos.programs.TreatmentPlanLineRepository;
 import com.fecos.servicevisits.ServiceVisitRepository;
+import com.fecos.servicevisits.ServiceVisitStatus;
 import com.fecos.servicevisits.ServiceVisitStopRepository;
 import com.fecos.servicevisits.ServiceVisitStopStatus;
 import com.fecos.tanks.TankRepository;
@@ -133,7 +134,7 @@ public class ServiceReportService {
         LocalDate today = LocalDate.now();
 
         List<com.fecos.servicevisits.ServiceVisitEntity> visits =
-                visitRepo.search(tenantId, null, techId, today, today, PageRequest.of(0, 100))
+                visitRepo.search(tenantId, (ServiceVisitStatus) null, techId, today, today, null, PageRequest.of(0, 100))
                         .getContent();
 
         int visitsTotal    = visits.size();
@@ -151,7 +152,7 @@ public class ServiceReportService {
 
         LocalDate weekStart = today.with(java.time.DayOfWeek.MONDAY);
         List<com.fecos.servicevisits.ServiceVisitEntity> weekVisits =
-                visitRepo.search(tenantId, null, techId, weekStart, today, PageRequest.of(0, 500))
+                visitRepo.search(tenantId, (ServiceVisitStatus) null, techId, weekStart, today, null, PageRequest.of(0, 500))
                         .getContent();
         int weekVisitsTotal = weekVisits.size();
         int weekStopsTotal  = 0;
@@ -175,7 +176,7 @@ public class ServiceReportService {
                 ? java.time.LocalDate.parse(date)
                 : java.time.LocalDate.now();
 
-        return visitRepo.search(tenantId, null, techId, visitDate, visitDate, PageRequest.of(0, 50))
+        return visitRepo.search(tenantId, (ServiceVisitStatus) null, techId, visitDate, visitDate, null, PageRequest.of(0, 50))
                 .getContent().stream()
                 .map(this::toMyVisitResponse)
                 .toList();
@@ -191,6 +192,38 @@ public class ServiceReportService {
                 .stream()
                 .map(this::toMyVisitResponse)
                 .toList();
+    }
+
+    // ── Upcoming visits paginated (mobile tabs) ───────────────────────────────
+
+    @Transactional(readOnly = true)
+    public com.fecos.common.PagedResponse<MyVisitResponse> upcomingVisitsPaged(int page, int size) {
+        UUID tenantId = currentTenantId();
+        UUID techId   = currentUserId();
+        var paged = visitRepo.findUpcomingForTechPageable(
+                tenantId, techId, LocalDate.now(),
+                org.springframework.data.domain.PageRequest.of(page, size));
+        return com.fecos.common.PagedResponse.from(paged.map(this::toMyVisitResponse));
+    }
+
+    // ── History visits with filters (mobile tabs) ─────────────────────────────
+
+    @Transactional(readOnly = true)
+    public com.fecos.common.PagedResponse<MyVisitResponse> visitHistory(
+            LocalDate from, LocalDate to,
+            com.fecos.servicevisits.ServiceVisitStatus status,
+            String search, int page, int size) {
+        UUID tenantId = currentTenantId();
+        UUID techId   = currentUserId();
+        // Default: last 30 days if no range provided
+        LocalDate effectiveTo   = to   != null ? to   : LocalDate.now().minusDays(1);
+        LocalDate effectiveFrom = from != null ? from : effectiveTo.minusDays(29);
+        var paged = visitRepo.search(
+                tenantId, status, techId,
+                effectiveFrom, effectiveTo,
+                (search != null && !search.isBlank()) ? search.strip() : null,
+                org.springframework.data.domain.PageRequest.of(page, size));
+        return com.fecos.common.PagedResponse.from(paged.map(this::toMyVisitResponse));
     }
 
     // ── Submit treatment report for a stop (mobile Phase 2) ──────────────────

@@ -22,6 +22,7 @@ public interface ServiceVisitRepository extends JpaRepository<ServiceVisitEntity
               AND (:techId IS NULL OR v.techId = :techId)
               AND (:dateFrom IS NULL OR v.visitDate >= :dateFrom)
               AND (:dateTo IS NULL OR v.visitDate <= :dateTo)
+              AND (:search IS NULL OR LOWER(v.name) LIKE LOWER(CONCAT('%', :search, '%')))
             ORDER BY v.visitDate DESC, v.createdAt DESC
             """,
         countQuery = """
@@ -32,6 +33,7 @@ public interface ServiceVisitRepository extends JpaRepository<ServiceVisitEntity
               AND (:techId IS NULL OR v.techId = :techId)
               AND (:dateFrom IS NULL OR v.visitDate >= :dateFrom)
               AND (:dateTo IS NULL OR v.visitDate <= :dateTo)
+              AND (:search IS NULL OR LOWER(v.name) LIKE LOWER(CONCAT('%', :search, '%')))
             """
     )
     Page<ServiceVisitEntity> search(
@@ -40,6 +42,21 @@ public interface ServiceVisitRepository extends JpaRepository<ServiceVisitEntity
             @Param("techId") UUID techId,
             @Param("dateFrom") LocalDate dateFrom,
             @Param("dateTo") LocalDate dateTo,
+            @Param("search") String search,
+            Pageable pageable);
+
+    @Query("""
+            SELECT v FROM ServiceVisitEntity v
+            WHERE v.tenantId = :tenantId
+              AND v.techId = :techId
+              AND v.isDeleted = false
+              AND v.visitDate > :from
+            ORDER BY v.visitDate ASC
+            """)
+    Page<ServiceVisitEntity> findUpcomingForTechPageable(
+            @Param("tenantId") UUID tenantId,
+            @Param("techId") UUID techId,
+            @Param("from") LocalDate from,
             Pageable pageable);
 
     Optional<ServiceVisitEntity> findByIdAndTenantIdAndIsDeletedFalse(UUID id, UUID tenantId);

@@ -40,7 +40,7 @@ public class ServiceVisitService {
     public Page<ServiceVisitResponse> list(int page, int size, ServiceVisitStatus status,
                                            UUID techId, LocalDate dateFrom, LocalDate dateTo) {
         UUID tenantId = currentTenantId();
-        return visitRepo.search(tenantId, status, techId, dateFrom, dateTo, PageRequest.of(page, size))
+        return visitRepo.search(tenantId, status, techId, dateFrom, dateTo, null, PageRequest.of(page, size))
                 .map(v -> toResponse(v, true));
     }
 
