@@ -355,7 +355,7 @@ public class ServiceReportService {
                                     hasReport
                             );
                         }).toList();
-        return new MyVisitResponse(v.getId(), v.getVisitDate().toString(), v.getStatus().name(), stops);
+        return new MyVisitResponse(v.getId(), v.getName(), v.getVisitDate().toString(), v.getStatus().name(), stops);
     }
 
     private TreatmentReportResponse toTreatmentReportResponse(ServiceReportEntity r) {
