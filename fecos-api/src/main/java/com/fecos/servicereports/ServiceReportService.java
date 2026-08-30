@@ -149,7 +149,19 @@ public class ServiceReportService {
                     .count();
         }
 
-        return new DashboardResponse(false, visitsTotal, stopsCompleted, stopsTotal, today);
+        LocalDate weekStart = today.with(java.time.DayOfWeek.MONDAY);
+        List<com.fecos.servicevisits.ServiceVisitEntity> weekVisits =
+                visitRepo.search(tenantId, null, techId, weekStart, today, PageRequest.of(0, 500))
+                        .getContent();
+        int weekVisitsTotal = weekVisits.size();
+        int weekStopsTotal  = 0;
+        for (var v : weekVisits) {
+            weekStopsTotal += stopRepo
+                    .findAllByServiceVisitIdAndIsDeletedFalseOrderBySequenceAsc(v.getId()).size();
+        }
+
+        return new DashboardResponse(false, visitsTotal, stopsCompleted, stopsTotal, today,
+                weekVisitsTotal, weekStopsTotal);
     }
 
     // ── My visits for today (mobile - service tech) ───────────────────────────

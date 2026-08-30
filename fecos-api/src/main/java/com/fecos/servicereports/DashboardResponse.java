@@ -7,5 +7,7 @@ public record DashboardResponse(
         int visitsTotal,
         int stopsCompleted,
         int stopsTotal,
-        LocalDate visitDate
+        LocalDate visitDate,
+        int weekVisitsTotal,
+        int weekStopsTotal
 ) {}
