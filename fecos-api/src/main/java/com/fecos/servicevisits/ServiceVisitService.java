@@ -60,7 +60,6 @@ public class ServiceVisitService {
         UUID userId   = currentUserId();
 
         ServiceVisitEntity v = new ServiceVisitEntity();
-        v.setId(UUID.randomUUID());
         v.setTenantId(tenantId);
         v.setName(req.name());
         v.setVisitDate(req.visitDate());
@@ -68,7 +67,7 @@ public class ServiceVisitService {
         v.setNotes(req.notes());
         v.setStatus(ServiceVisitStatus.SCHEDULED);
         v.setCreatedBy(userId);
-        visitRepo.save(v);
+        v = visitRepo.save(v);
 
         if (req.wellIds() != null) {
             int seq = 1;
