@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import toast from 'react-hot-toast'
-import { Plus, X, Search, ChevronRight, Truck, MapPin, Trash2, Package, LayoutList, LayoutGrid, ChevronLeft } from 'lucide-react'
+import { Plus, X, Search, ChevronRight, Truck, MapPin, Trash2, Package, LayoutList, LayoutGrid, ChevronLeft, Check } from 'lucide-react'
 import { routesApi, type RouteRecord, type RoutePayload, type RouteStopPayload, type RouteStopItemPayload, type RouteStatus } from '@/api/routes'
 import { leasesApi, type LeaseRecord } from '@/api/leases'
 import { wellsApi, type WellRecord } from '@/api/wells'
@@ -463,17 +463,38 @@ function RouteDrawer({ route, onClose, onEdit, canEdit }: {
             </div>
           ) : (
             <div className="space-y-2">
-              {stops.map((stop, idx) => (
+              {stops.map((stop, idx) => {
+                const isSkipped   = stop.status === 'SKIPPED'
+                const isDelivered = stop.status === 'COMPLETED'
+                const stopBg    = isSkipped ? 'bg-red-50' : isDelivered ? 'bg-emerald-50' : 'bg-gray-50'
+                const circleBg  = isSkipped ? '#ef4444' : isDelivered ? '#10b981' : undefined
+                return (
                 <div key={stop.id} className="border border-gray-200 rounded-xl overflow-hidden">
                   {/* Stop header */}
-                  <div className="flex items-center gap-3 px-4 py-3 bg-gray-50">
+                  <div className={`flex items-center gap-3 px-4 py-3 ${stopBg}`}>
                     <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0"
-                      style={{ backgroundColor: 'var(--color-primary)' }}>
-                      {idx + 1}
+                      style={{ backgroundColor: circleBg ?? 'var(--color-primary)' }}>
+                      {isDelivered ? <Check size={12} strokeWidth={3} /> : isSkipped ? <X size={12} strokeWidth={3} /> : idx + 1}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900">{stop.leaseName ?? '—'}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-gray-900">{stop.leaseName ?? '—'}</p>
+                        {isDelivered && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-700">Delivered</span>
+                        )}
+                        {isSkipped && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-100 text-red-600">Skipped</span>
+                        )}
+                      </div>
                       <p className="text-xs text-gray-500">{stop.wellName ?? '—'}</p>
+                      {isSkipped && stop.skipReason && (
+                        <p className="text-xs text-red-500 mt-0.5">Reason: {stop.skipReason}</p>
+                      )}
+                      {isDelivered && stop.deliveredAt && (
+                        <p className="text-xs text-emerald-600 mt-0.5">
+                          Delivered {new Date(stop.deliveredAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                        </p>
+                      )}
                     </div>
                     {canEdit && r.status === 'PLANNED' && (
                       <button
@@ -593,7 +614,7 @@ function RouteDrawer({ route, onClose, onEdit, canEdit }: {
                     </div>
                   )}
                 </div>
-              ))}
+              )})}
             </div>
           )}
 

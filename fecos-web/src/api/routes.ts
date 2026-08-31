@@ -24,6 +24,7 @@ export interface RouteStopRecord {
   sequenceOrder: number
   status: RouteStopStatus
   notes: string | null
+  skipReason: string | null
   items: RouteStopItemRecord[]
   deliveryPhotoUrl: string | null
   deliveryLat: number | null
