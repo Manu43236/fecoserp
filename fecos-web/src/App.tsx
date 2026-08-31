@@ -31,6 +31,7 @@ import PumpShopPage from '@/pages/tenant/PumpShopPage'
 import VehiclesPage from '@/pages/tenant/VehiclesPage'
 import ServiceVisitsPage from '@/pages/tenant/ServiceVisitsPage'
 import DashboardPage from '@/pages/tenant/DashboardPage'
+import ReportsPage from '@/pages/tenant/ReportsPage'
 
 const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -155,7 +156,7 @@ function TenantRoutes() {
             <Route path="/leases"           element={<LeasesPage />} />
             <Route path="/wells"            element={<WellsPage />} />
             <Route path="/pump-shop"        element={<PumpShopPage />} />
-            <Route path="/reports"          element={<PlaceholderPage title="Reports" />} />
+            <Route path="/reports"          element={<ReportsPage />} />
             <Route path="/lab/queue"        element={<LabPage />} />
             <Route path="/lab/results"      element={<LabPage />} />
             <Route path="/qc"               element={<QCPage />} />

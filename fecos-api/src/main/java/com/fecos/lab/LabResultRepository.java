@@ -11,6 +11,8 @@ public interface LabResultRepository extends JpaRepository<LabResultEntity, UUID
 
     Optional<LabResultEntity> findBySampleIdAndIsDeletedFalse(UUID sampleId);
 
+    java.util.List<LabResultEntity> findAllBySampleIdInAndIsDeletedFalse(java.util.Collection<UUID> sampleIds);
+
     Page<LabResultEntity> findAllByTenantIdAndHasCriticalValuesTrueAndIsDeletedFalseOrderByCreatedAtDesc(
             UUID tenantId, Pageable pageable);
 

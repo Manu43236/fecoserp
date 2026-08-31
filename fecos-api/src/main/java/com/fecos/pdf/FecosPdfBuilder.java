@@ -160,6 +160,38 @@ public class FecosPdfBuilder {
             return this;
         }
 
+        public Session dataTable(String[] headers, java.util.List<String[]> rows) throws DocumentException {
+            var table = new PdfPTable(headers.length);
+            table.setWidthPercentage(100);
+            table.setSpacingBefore(6);
+            table.setSpacingAfter(10);
+
+            var headerBg = new Color(0x1E, 0x3A, 0x5F);
+            var altBg    = new Color(0xF3, 0xF4, 0xF6);
+
+            for (var h : headers) {
+                var cell = new PdfPCell(new Phrase(h, new Font(Font.HELVETICA, 8, Font.BOLD, Color.WHITE)));
+                cell.setBackgroundColor(headerBg);
+                cell.setPadding(5);
+                cell.setBorderColor(headerBg);
+                table.addCell(cell);
+            }
+
+            for (int r = 0; r < rows.size(); r++) {
+                var cols = rows.get(r);
+                for (var col : cols) {
+                    var cell = new PdfPCell(new Phrase(col != null ? col : "", BODY));
+                    cell.setPadding(4);
+                    cell.setBorderColor(new Color(0xE5, 0xE7, 0xEB));
+                    if (r % 2 == 1) cell.setBackgroundColor(altBg);
+                    table.addCell(cell);
+                }
+            }
+
+            if (!rows.isEmpty()) doc.add(table);
+            return this;
+        }
+
         public byte[] build() {
             doc.close();
             // bytes are in the ByteArrayOutputStream passed to start()

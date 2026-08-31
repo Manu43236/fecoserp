@@ -28,6 +28,10 @@ public interface WellRepository extends JpaRepository<WellEntity, UUID> {
             @Param("isActive") Boolean isActive,
             Pageable pageable);
 
+    List<WellEntity> findAllByTenantIdAndIsDeletedFalse(UUID tenantId);
+
+    List<WellEntity> findAllByTenantIdAndLeaseIdInAndIsDeletedFalse(UUID tenantId, java.util.Collection<UUID> leaseIds);
+
     List<WellEntity> findAllByTenantIdAndLeaseIdAndIsDeletedFalse(UUID tenantId, UUID leaseId);
 
     Optional<WellEntity> findByIdAndTenantIdAndIsDeletedFalse(UUID id, UUID tenantId);

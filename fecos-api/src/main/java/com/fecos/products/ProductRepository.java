@@ -29,5 +29,7 @@ public interface ProductRepository extends JpaRepository<ProductEntity, UUID> {
 
     Optional<ProductEntity> findByIdAndTenantIdAndIsDeletedFalse(UUID id, UUID tenantId);
 
+    java.util.List<ProductEntity> findAllByTenantIdAndIsDeletedFalse(UUID tenantId);
+
     boolean existsByNameAndTenantIdAndIsDeletedFalse(String name, UUID tenantId);
 }

@@ -11,4 +11,6 @@ public interface RouteStopItemRepository extends JpaRepository<RouteStopItemEnti
     List<RouteStopItemEntity> findAllByStopIdAndIsDeletedFalseOrderByCreatedAtAsc(UUID stopId);
 
     Optional<RouteStopItemEntity> findByIdAndStopIdAndIsDeletedFalse(UUID id, UUID stopId);
+
+    List<RouteStopItemEntity> findAllByStopIdInAndIsDeletedFalse(java.util.Collection<UUID> stopIds);
 }

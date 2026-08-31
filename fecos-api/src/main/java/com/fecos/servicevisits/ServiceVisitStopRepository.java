@@ -15,6 +15,8 @@ public interface ServiceVisitStopRepository extends JpaRepository<ServiceVisitSt
 
     Optional<ServiceVisitStopEntity> findByIdAndTenantIdAndIsDeletedFalse(UUID id, UUID tenantId);
 
+    List<ServiceVisitStopEntity> findAllByServiceVisitIdInAndIsDeletedFalse(java.util.Collection<UUID> serviceVisitIds);
+
     @Query("""
         SELECT MAX(v.visitDate) FROM ServiceVisitEntity v
         JOIN ServiceVisitStopEntity s ON s.serviceVisitId = v.id
