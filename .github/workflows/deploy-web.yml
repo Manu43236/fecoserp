@@ -19,9 +19,9 @@ jobs:
           script: |
             set -e
             cd /app/fecos
-            rm -f .git/index.lock
-            git update-ref -d refs/remotes/origin/main 2>/dev/null || true
+            rm -f .git/index.lock .git/FETCH_HEAD.lock
             git fetch origin main
+            rm -f .git/index.lock
             git reset --hard FETCH_HEAD
             docker compose -f docker-compose.prod.yml --env-file .env up --build -d web
             docker image prune -f
