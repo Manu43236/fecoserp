@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -116,9 +116,70 @@ function formatPhoneInput(raw: string): string {
 
 const schema = z.object({
   mobileNumber: z.string().regex(/^\d{10}$/, 'Enter a valid 10-digit mobile number'),
-  pin:          z.string().min(4, 'PIN must be at least 4 digits').regex(/^\d+$/, 'Digits only'),
+  pin:          z.string().length(4, 'Enter your 4-digit PIN').regex(/^\d+$/, 'Digits only'),
 })
 type FormData = z.infer<typeof schema>
+
+function PinInput({ value, onChange, error, primaryColor }: {
+  value: string
+  onChange: (pin: string) => void
+  error?: string
+  primaryColor: string
+}) {
+  const refs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)]
+  const digits = value.split('').concat(['', '', '', '']).slice(0, 4)
+
+  const handleKey = useCallback((i: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace') {
+      e.preventDefault()
+      const next = digits.map((d, idx) => idx === i ? '' : d).join('')
+      onChange(next)
+      if (i > 0) refs[i - 1].current?.focus()
+    }
+  }, [digits, onChange])
+
+  const handleChange = useCallback((i: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const char = e.target.value.replace(/\D/g, '').slice(-1)
+    const next = digits.map((d, idx) => idx === i ? char : d).join('')
+    onChange(next)
+    if (char && i < 3) refs[i + 1].current?.focus()
+  }, [digits, onChange])
+
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 4)
+    onChange(pasted)
+    const focusIdx = Math.min(pasted.length, 3)
+    refs[focusIdx].current?.focus()
+    e.preventDefault()
+  }, [onChange])
+
+  return (
+    <div className="space-y-1.5">
+      <label className="text-sm font-medium text-gray-700">PIN</label>
+      <div className="flex gap-3 justify-start">
+        {digits.map((d, i) => (
+          <input
+            key={i}
+            ref={refs[i]}
+            type="password"
+            inputMode="numeric"
+            maxLength={1}
+            value={d}
+            onChange={e => handleChange(i, e)}
+            onKeyDown={e => handleKey(i, e)}
+            onPaste={handlePaste}
+            autoComplete="off"
+            className={`w-14 h-14 text-center text-xl rounded-xl border-2 outline-none transition focus:ring-2 focus:ring-opacity-30 ${
+              error ? 'border-red-400' : d ? 'border-gray-400' : 'border-gray-200'
+            }`}
+            style={d ? { borderColor: primaryColor } : undefined}
+          />
+        ))}
+      </div>
+      {error && <p className="text-red-500 text-xs">{error}</p>}
+    </div>
+  )
+}
 
 export function LoginPage() {
   const [loading, setLoading] = useState(false)
@@ -247,22 +308,12 @@ export function LoginPage() {
                 )}
               </div>
 
-              {/* PIN — visible */}
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-gray-700">PIN</label>
-                <input
-                  {...register('pin')}
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  placeholder="Enter your PIN"
-                  autoComplete="off"
-                  className={`w-full h-11 px-3 text-sm rounded-md border outline-none transition tracking-widest focus:ring-2 focus:ring-red-100 ${errors.pin ? 'border-red-400' : 'border-gray-200'}`}
-                />
-                {errors.pin && (
-                  <p className="text-red-500 text-xs">{errors.pin.message}</p>
-                )}
-              </div>
+              <PinInput
+                value={watch('pin') ?? ''}
+                onChange={v => setValue('pin', v, { shouldValidate: false })}
+                error={errors.pin?.message}
+                primaryColor={colors.primaryColor}
+              />
 
               <button
                 type="submit"
