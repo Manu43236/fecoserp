@@ -1,11 +1,17 @@
+import 'dart:convert';
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:dio/dio.dart' as dio_pkg;
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:signature/signature.dart';
+import 'package:fecos_mobile/app/data/services/connectivity_service.dart';
+import 'package:fecos_mobile/app/data/services/db_service.dart';
 import 'package:fecos_mobile/app/data/services/dio_service.dart';
+import 'package:fecos_mobile/app/data/services/sync_service.dart';
 import 'package:fecos_mobile/app/modules/service_visit/controllers/service_visit_controller.dart';
 import 'package:fecos_mobile/app/widgets/fecos_snackbar.dart';
 
@@ -133,8 +139,12 @@ class PlanLine {
 // ── Controller ────────────────────────────────────────────────────────────────
 
 class WellStopController extends GetxController {
-  final _dio = Get.find<DioService>().dio;
+  final _dio          = Get.find<DioService>().dio;
+  final _connectivity = Get.find<ConnectivityService>();
+  final _dbService    = Get.find<DbService>();
   final _picker = ImagePicker();
+
+  AppDatabase get _db => _dbService.db;
 
   late final String visitId;
   late final String stopId;
@@ -205,37 +215,58 @@ class WellStopController extends GetxController {
     _captureGps();
   }
 
-  // ── Load treatment plan lines ─────────────────────────────────────────────
+  // ── Load treatment plan lines (cache-aside) ──────────────────────────────
 
   Future<void> _loadPlanLines() async {
     planLoading.value = true;
-    try {
-      final res = await _dio.get(
-        '/plans',
-        queryParameters: {'wellId': wellId, 'status': 'ACTIVE', 'size': 1},
-      );
-      final content = res.data['data']?['content'] as List?;
-      if (content == null || content.isEmpty) {
-        planLoading.value = false;
-        return;
-      }
-      final planId = content.first['id'];
-      final detailRes = await _dio.get('/plans/$planId');
-      final lines = detailRes.data['data']?['lines'] as List? ?? [];
-      planLines.value = lines.map((l) => PlanLine.fromJson(l)).toList();
+    final cacheKey = 'plan-$wellId';
 
-      // Set smart defaults for CI lines
-      for (final pl in planLines) {
-        if (pl.isCi) {
-          pl.rateFound.text = pl.recRate.toStringAsFixed(1);
-          pl.rateSetTo.text = pl.recRate.toStringAsFixed(1);
-          pl.onRate.value = true;
+    if (_connectivity.isOnline.value) {
+      try {
+        final res = await _dio.get(
+          '/plans',
+          queryParameters: {'wellId': wellId, 'status': 'ACTIVE', 'size': 1},
+        );
+        final content = res.data['data']?['content'] as List?;
+        if (content == null || content.isEmpty) {
+          planLoading.value = false;
+          return;
         }
+        final planId = content.first['id'];
+        final detailRes = await _dio.get('/plans/$planId');
+        final lines = detailRes.data['data']?['lines'] as List? ?? [];
+        await _dbService.cacheResponse(cacheKey, jsonEncode(lines));
+        _applyLines(lines);
+      } on Exception {
+        final cached = await _dbService.getCachedResponse(cacheKey);
+        if (cached != null) {
+          _applyLines(jsonDecode(cached) as List);
+        } else {
+          planLoadError.value = 'Could not load treatment plan. Tap to retry.';
+        }
+      } finally {
+        planLoading.value = false;
       }
-    } catch (e) {
-      planLoadError.value = 'Could not load treatment plan. Tap to retry.';
-    } finally {
+    } else {
+      final cached = await _dbService.getCachedResponse(cacheKey);
+      if (cached != null) {
+        _applyLines(jsonDecode(cached) as List);
+      } else {
+        planLoadError.value = 'No plan data available offline.';
+      }
       planLoading.value = false;
+    }
+  }
+
+  void _applyLines(List lines) {
+    planLines.value =
+        lines.map((l) => PlanLine.fromJson(l as Map<String, dynamic>)).toList();
+    for (final pl in planLines) {
+      if (pl.isCi) {
+        pl.rateFound.text = pl.recRate.toStringAsFixed(1);
+        pl.rateSetTo.text = pl.recRate.toStringAsFixed(1);
+        pl.onRate.value = true;
+      }
     }
   }
 
@@ -313,19 +344,14 @@ class WellStopController extends GetxController {
   // ── Validate & Submit ─────────────────────────────────────────────────────
 
   Future<void> submit() async {
-    // Signature is required
     if (!hasSigned.value) {
       FecosSnackbar.warning('Signature Required', 'Operator must sign before submitting.');
       return;
     }
-
-    // SOAR note is required when SOAR is on
     if (soar.value && soarNote.text.trim().isEmpty) {
       FecosSnackbar.warning('SOAR Note Required', 'Please describe the observation.');
       return;
     }
-
-    // Deviation reason is required for each CI line that deviates
     for (final line in planLines) {
       if (line.isCi && line.isDeviating && line.deviationReason.text.trim().isEmpty) {
         FecosSnackbar.warning('Deviation Reason Required', 'Please explain why you changed the rate for "${line.productName}".');
@@ -334,6 +360,59 @@ class WellStopController extends GetxController {
     }
 
     isSubmitting.value = true;
+
+    final sigBytes = await signatureController.toPngBytes();
+    if (sigBytes == null) {
+      isSubmitting.value = false;
+      FecosSnackbar.error('Signature Error', 'Unable to export signature. Please try again.');
+      return;
+    }
+
+    if (!_connectivity.isOnline.value) {
+      try {
+        // Save signature PNG to device so SyncService can upload it later
+        final dir = await getApplicationDocumentsDirectory();
+        final sigPath =
+            '${dir.path}/sig_${visitId}_${stopId}_${DateTime.now().millisecondsSinceEpoch}.png';
+        await File(sigPath).writeAsBytes(sigBytes);
+
+        await _db.into(_db.syncQueue).insert(SyncQueueCompanion.insert(
+          entityType: 'well-stop-report',
+          entityId:   '$visitId-$stopId',
+          operation:  'CREATE',
+          payload:    jsonEncode({
+            'visitId':              visitId,
+            'stopId':               stopId,
+            'performedAt':          performedAt.toUtc().toIso8601String(),
+            'gpsLat':               gpsLat.value,
+            'gpsLng':               gpsLng.value,
+            'gpsCapturedAt':        gpsCapturedAt?.toUtc().toIso8601String(),
+            'localPhotoPath':       photoFile.value?.path,
+            'localSamplePhotoPath': samplePhotoFile.value?.path,
+            'localSignaturePath':   sigPath,
+            'signerName':           signerName.text.trim(),
+            'signedAt':             DateTime.now().toUtc().toIso8601String(),
+            'soar':                 soar.value,
+            'soarNote':             soar.value ? soarNote.text.trim() : null,
+            'sampleType':           sampleType.text.trim().isEmpty ? null : sampleType.text.trim(),
+            'sampleNotes':          sampleNotes.text.trim().isEmpty ? null : sampleNotes.text.trim(),
+            'notes':                notes.text.trim().isEmpty ? null : notes.text.trim(),
+            'lines':                planLines.map((l) => l.toJson()).toList(),
+          }),
+        ));
+        Get.find<SyncService>().pendingCount.value++;
+        await Get.find<ServiceVisitController>().markStopReported(visitId, stopId);
+
+        isSubmitting.value = false;
+        Get.back(result: true);
+        FecosSnackbar.success('Saved Offline', 'Report saved — will sync when connected');
+      } on Exception catch (e) {
+        isSubmitting.value = false;
+        FecosSnackbar.error('Save Failed', 'Could not save offline: ${e.toString()}');
+      }
+      return;
+    }
+
     try {
       String? photoUrl;
       if (photoFile.value != null) {
@@ -345,11 +424,6 @@ class WellStopController extends GetxController {
         samplePhotoUrl = await _uploadPhoto(samplePhotoFile.value!);
       }
 
-      final sigBytes = await signatureController.toPngBytes();
-      if (sigBytes == null) {
-        FecosSnackbar.error('Signature Error', 'Unable to export signature. Please try again.');
-        return;
-      }
       final sigUrl = await _uploadSignature(sigBytes);
       signedAt = DateTime.now();
 

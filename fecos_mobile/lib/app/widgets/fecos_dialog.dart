@@ -20,18 +20,26 @@ abstract final class FecosDialog {
           title: title,
           message: message,
           actions: [
-            FecosButton(
-              label: cancelLabel,
-              variant: FecosButtonVariant.outlined,
-              onPressed: () => Get.back(result: false),
-            ),
-            const SizedBox(height: 10),
-            FecosButton(
-              label: confirmLabel,
-              variant: isDanger
-                  ? FecosButtonVariant.danger
-                  : FecosButtonVariant.primary,
-              onPressed: () => Get.back(result: true),
+            Row(
+              children: [
+                Expanded(
+                  child: FecosButton(
+                    label: cancelLabel,
+                    variant: FecosButtonVariant.outlined,
+                    onPressed: () => Get.back(result: false),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FecosButton(
+                    label: confirmLabel,
+                    variant: isDanger
+                        ? FecosButtonVariant.danger
+                        : FecosButtonVariant.primary,
+                    onPressed: () => Get.back(result: true),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

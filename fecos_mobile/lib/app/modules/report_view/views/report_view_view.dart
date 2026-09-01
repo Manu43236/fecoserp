@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:fecos_mobile/app/routes/app_pages.dart';
@@ -32,6 +33,22 @@ class ReportViewView extends GetView<ReportViewController> {
       ),
       body: Obx(() {
         if (controller.isLoading.value) return const FecosLoader();
+        if (controller.isOfflineSynced.value) {
+          return const Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.cloud_done_outlined, size: 56, color: Colors.grey),
+                SizedBox(height: 12),
+                Text(
+                  'Report submitted successfully.\nConnect to the internet to view details.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ],
+            ),
+          );
+        }
         if (controller.errorMsg.value != null) {
           return Center(
             child: Column(
@@ -66,6 +83,35 @@ class _ReportBody extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        // Pending sync banner
+        if (report.isPendingSync) ...[
+          Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF8E1),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFFFCC02)),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.cloud_upload_outlined,
+                    color: Color(0xFFE65100), size: 18),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Pending sync — this report will upload when you reconnect.',
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF5D3A00),
+                        fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+
         // Meta card
         _Card(
           child: Column(
@@ -99,17 +145,25 @@ class _ReportBody extends StatelessWidget {
         ],
 
         // Site photo
-        if (report.photoUrl != null) ...[
+        if (report.photoUrl != null || report.localPhotoPath != null) ...[
           _SectionLabel('SITE PHOTO'),
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: Image.network(
-              report.photoUrl!,
-              height: 200,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => _PhotoError(),
-            ),
+            child: report.localPhotoPath != null
+                ? Image.file(
+                    File(report.localPhotoPath!),
+                    height: 200,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => _PhotoError(),
+                  )
+                : Image.network(
+                    report.photoUrl!,
+                    height: 200,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => _PhotoError(),
+                  ),
           ),
           const SizedBox(height: 12),
         ],
@@ -186,7 +240,8 @@ class _ReportBody extends StatelessWidget {
         // Sample
         if (report.sampleType != null ||
             report.sampleNotes != null ||
-            report.samplePhotoUrl != null) ...[
+            report.samplePhotoUrl != null ||
+            report.localSamplePhotoPath != null) ...[
           _SectionLabel('SAMPLE COLLECTION'),
           Container(
             width: double.infinity,
@@ -230,7 +285,7 @@ class _ReportBody extends StatelessWidget {
                       ],
                     ),
                   ),
-                if (report.samplePhotoUrl != null)
+                if (report.samplePhotoUrl != null || report.localSamplePhotoPath != null)
                   ClipRRect(
                     borderRadius: BorderRadius.only(
                       bottomLeft: const Radius.circular(12),
@@ -242,13 +297,21 @@ class _ReportBody extends StatelessWidget {
                           ? const Radius.circular(12)
                           : Radius.zero,
                     ),
-                    child: Image.network(
-                      report.samplePhotoUrl!,
-                      height: 180,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => _PhotoError(),
-                    ),
+                    child: report.localSamplePhotoPath != null
+                        ? Image.file(
+                            File(report.localSamplePhotoPath!),
+                            height: 180,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => _PhotoError(),
+                          )
+                        : Image.network(
+                            report.samplePhotoUrl!,
+                            height: 180,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => _PhotoError(),
+                          ),
                   ),
               ],
             ),
@@ -257,7 +320,7 @@ class _ReportBody extends StatelessWidget {
         ],
 
         // Signature
-        if (report.signatureUrl != null || report.signerName != null) ...[
+        if (report.signatureUrl != null || report.localSignaturePath != null || report.signerName != null) ...[
           _SectionLabel('OPERATOR SIGNATURE'),
           Container(
             decoration: BoxDecoration(
@@ -279,12 +342,12 @@ class _ReportBody extends StatelessWidget {
                         bottom:
                             BorderSide(color: Colors.grey.shade200)),
                   ),
-                  child: report.signatureUrl != null
+                  child: report.localSignaturePath != null
                       ? ClipRRect(
                           borderRadius: const BorderRadius.vertical(
                               top: Radius.circular(12)),
-                          child: Image.network(
-                            report.signatureUrl!,
+                          child: Image.file(
+                            File(report.localSignaturePath!),
                             fit: BoxFit.contain,
                             errorBuilder: (_, _, _) => const Center(
                               child: Icon(Icons.draw_outlined,
@@ -292,10 +355,23 @@ class _ReportBody extends StatelessWidget {
                             ),
                           ),
                         )
-                      : const Center(
-                          child: Icon(Icons.draw_outlined,
-                              color: Colors.grey, size: 32),
-                        ),
+                      : report.signatureUrl != null
+                          ? ClipRRect(
+                              borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(12)),
+                              child: Image.network(
+                                report.signatureUrl!,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, _, _) => const Center(
+                                  child: Icon(Icons.draw_outlined,
+                                      color: Colors.grey, size: 32),
+                                ),
+                              ),
+                            )
+                          : const Center(
+                              child: Icon(Icons.draw_outlined,
+                                  color: Colors.grey, size: 32),
+                            ),
                 ),
                 // Operator info row
                 Padding(

@@ -9,6 +9,7 @@ import 'package:fecos_mobile/app/data/services/db_service.dart';
 import 'package:fecos_mobile/app/data/services/dio_service.dart';
 import 'package:fecos_mobile/app/data/services/sync_service.dart';
 import 'package:fecos_mobile/app/widgets/fecos_snackbar.dart';
+import 'package:fecos_mobile/app/modules/home/controllers/home_controller.dart';
 
 class DeliveryController extends GetxController {
   final _dio          = Get.find<DioService>().dio;
@@ -83,6 +84,7 @@ class DeliveryController extends GetxController {
         data: {'hasIssues': hasIssues, 'notes': notes},
       );
       await _setRoute(res.data!['data'] as Map<String, dynamic>);
+      FecosSnackbar.success('Pre-Trip Complete', hasIssues ? 'Issues noted — route can continue' : 'All clear');
       return true;
     } on DioException {
       FecosSnackbar.error('Error', 'Could not submit pre-trip check');
@@ -114,9 +116,64 @@ class DeliveryController extends GetxController {
         data: {'items': items},
       );
       await _setRoute(res.data!['data'] as Map<String, dynamic>);
+      FecosSnackbar.success('Load Confirmed', 'Quantities verified — ready to start route');
       return true;
     } on DioException catch (e) {
       final msg = e.response?.data?['error'] as String? ?? 'Could not confirm load';
+      FecosSnackbar.error('Error', msg);
+      return false;
+    } finally {
+      isUpdating.value = false;
+    }
+  }
+
+  // ── Start route (pre-trip + load confirm + IN_PROGRESS in one action) ────────
+  // Does not show per-step toasts — caller shows the single success toast.
+
+  Future<bool> startRoute({
+    required bool hasIssues,
+    String? preTripNotes,
+    required Map<String, double> loadedQtyMap,
+  }) async {
+    final performedAt = DateTime.now().toIso8601String();
+    final items = loadedQtyMap.entries
+        .map((e) => {'itemId': e.key, 'loadedQty': e.value})
+        .toList();
+
+    if (!_connectivity.isOnline.value) {
+      await _enqueue('pre-trip', routeId, {
+        'routeId': routeId, 'hasIssues': hasIssues,
+        'notes': preTripNotes, 'performedAt': performedAt,
+      });
+      await _enqueue('load-confirmation', routeId, {
+        'routeId': routeId, 'items': items, 'performedAt': performedAt,
+      });
+      await _enqueue('route-status', routeId, {
+        'routeId': routeId, 'status': 'IN_PROGRESS', 'performedAt': performedAt,
+      });
+      _patchRouteLocally(
+        preTripConfirmedAt: performedAt,
+        loadConfirmedAt: performedAt,
+        status: 'IN_PROGRESS',
+      );
+      return true;
+    }
+
+    isUpdating.value = true;
+    try {
+      await _dio.post<void>('/routes/$routeId/pre-trip',
+          data: {'hasIssues': hasIssues, 'notes': preTripNotes});
+      await _dio.post<void>('/routes/$routeId/load-confirmation',
+          data: {'items': items});
+      final res = await _dio.patch<Map<String, dynamic>>(
+        '/routes/$routeId/status',
+        queryParameters: {'status': 'IN_PROGRESS'},
+      );
+      await _setRoute(res.data!['data'] as Map<String, dynamic>);
+      await _updateHomeRoutesStatus('IN_PROGRESS');
+      return true;
+    } on DioException catch (e) {
+      final msg = e.response?.data?['error'] as String? ?? 'Could not start route';
       FecosSnackbar.error('Error', msg);
       return false;
     } finally {
@@ -143,6 +200,7 @@ class DeliveryController extends GetxController {
         queryParameters: {'status': status},
       );
       await _setRoute(res.data!['data'] as Map<String, dynamic>);
+      await _updateHomeRoutesStatus(status);
       FecosSnackbar.success('Updated', 'Route marked as ${_statusLabel(status)}');
     } on DioException {
       FecosSnackbar.error('Error', 'Could not update route status');
@@ -229,6 +287,7 @@ class DeliveryController extends GetxController {
         queryParameters: {'status': 'SKIPPED', 'skipReason': skipReason},
       );
       await _setRoute(res.data!['data'] as Map<String, dynamic>);
+      FecosSnackbar.info('Stop Skipped', 'Stop marked as unable to deliver');
     } on DioException {
       FecosSnackbar.error('Error', 'Could not skip stop');
     } finally {
@@ -255,6 +314,7 @@ class DeliveryController extends GetxController {
         data: {'items': items},
       );
       await _setRoute(res.data!['data'] as Map<String, dynamic>);
+      await _updateHomeRoutesStatus('COMPLETED');
       return true;
     } on DioException {
       FecosSnackbar.error('Error', 'Could not complete route');
@@ -315,17 +375,24 @@ class DeliveryController extends GetxController {
     if (status != null) _updateHomeRoutesStatus(status);
   }
 
-  // Updates the home routes list cache so the home screen reflects
-  // the new route status immediately without waiting for a server refresh.
   Future<void> _updateHomeRoutesStatus(String status) async {
     const key = 'driver-home-routes';
     final cached = await _dbService.getCachedResponse(key);
-    if (cached == null) return;
-    final list = (jsonDecode(cached) as List).cast<Map<String, dynamic>>();
-    final updated = list.map((item) =>
-      item['id'] == routeId ? {...item, 'status': status} : item,
-    ).toList();
-    await _dbService.cacheResponse(key, jsonEncode(updated));
+    if (cached != null) {
+      final list = (jsonDecode(cached) as List).cast<Map<String, dynamic>>();
+      final updated = list
+          .map((item) =>
+              item['id'] == routeId ? {...item, 'status': status} : item)
+          .toList();
+      await _dbService.cacheResponse(key, jsonEncode(updated));
+    }
+    if (Get.isRegistered<HomeController>()) {
+      final home = Get.find<HomeController>();
+      final idx = home.todayRoutes.indexWhere((r) => r.id == routeId);
+      if (idx != -1) {
+        home.todayRoutes[idx] = home.todayRoutes[idx].copyWith(status: status);
+      }
+    }
   }
 
   // Writes the current in-memory route back to response_cache so

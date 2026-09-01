@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:fecos_mobile/app/data/models/user_model.dart';
 import 'package:fecos_mobile/app/modules/auth/controllers/auth_controller.dart';
@@ -107,15 +108,26 @@ class MainShell extends GetView<MainController> {
 
   @override
   Widget build(BuildContext context) => Obx(
-        () => Scaffold(
-          body: IndexedStack(
-            index: controller.tabIndex.value,
-            children: _tabs,
-          ),
-          bottomNavigationBar: _NavBar(
-            currentIndex: controller.tabIndex.value,
-            items: _items,
-            onTap: controller.changeTab,
+        () => PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, _) {
+            if (didPop) return;
+            if (controller.tabIndex.value != 0) {
+              controller.changeTab(0);
+            } else {
+              SystemNavigator.pop();
+            }
+          },
+          child: Scaffold(
+            body: IndexedStack(
+              index: controller.tabIndex.value,
+              children: _tabs,
+            ),
+            bottomNavigationBar: _NavBar(
+              currentIndex: controller.tabIndex.value,
+              items: _items,
+              onTap: controller.changeTab,
+            ),
           ),
         ),
       );

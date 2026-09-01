@@ -20,7 +20,9 @@ class HomeController extends GetxController {
 
   // Service tech state
   final dashboard = Rxn<DashboardData>();
+  final todayVisits = <MyVisit>[].obs;
   final upcoming = <MyVisit>[].obs;
+  final todayVisitsVersion = 0.obs;
 
   // Truck driver state
   final todayRoutes = <RouteModel>[].obs;
@@ -36,13 +38,21 @@ class HomeController extends GetxController {
   bool get isTruckDriver => auth.user.value?.role == UserRole.truckDriver;
   bool get isAccountRep => auth.user.value?.role == UserRole.accountRep;
 
+  bool _hadPending = false;
+
   @override
   void onInit() {
     super.onInit();
     load();
     ever(connectivity.isOnline, (online) { if (online) load(); });
-    ever(syncService.isSyncing, (syncing) {
-      if (!syncing && syncService.pendingCount.value == 0) load();
+    // Only reload home after a sync actually drained the queue — not on every empty cycle
+    ever(syncService.pendingCount, (count) {
+      if (count > 0) {
+        _hadPending = true;
+      } else if (_hadPending) {
+        _hadPending = false;
+        load();
+      }
     });
   }
 
@@ -65,16 +75,64 @@ class HomeController extends GetxController {
     }
   }
 
+  String get _todayStr {
+    final now = DateTime.now();
+    return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+  }
+
   Future<void> _loadServiceTechData() async {
-    final results = await Future.wait([
-      _dio.get<Map<String, dynamic>>('/service-tech/dashboard'),
-      _dio.get<Map<String, dynamic>>('/my-upcoming-visits'),
-    ]);
-    dashboard.value = DashboardData.fromJson(
-        results[0].data!['data'] as Map<String, dynamic>);
-    upcoming.value = (results[1].data!['data'] as List)
-        .map((v) => MyVisit.fromJson(v as Map<String, dynamic>))
-        .toList();
+    if (connectivity.isOnline.value) {
+      try {
+        final results = await Future.wait([
+          _dio.get<Map<String, dynamic>>('/service-tech/dashboard'),
+          _dio.get<Map<String, dynamic>>('/my-upcoming-visits'),
+          _dio.get<Map<String, dynamic>>(
+            '/my-visits',
+            queryParameters: {'date': _todayStr},
+          ),
+        ]);
+        final dashData    = results[0].data!['data'] as Map<String, dynamic>;
+        final upcomingData = results[1].data!['data'] as List;
+        final serverToday =
+            (results[2].data!['data'] as List).cast<Map<String, dynamic>>();
+        final todayData = await _dbService.mergeQueuedState(serverToday);
+        await _dbService.cacheResponse('st-dashboard', jsonEncode(dashData));
+        await _dbService.cacheResponse('st-upcoming', jsonEncode(upcomingData));
+        await _dbService.cacheResponse('st-today-visits', jsonEncode(todayData));
+        dashboard.value = DashboardData.fromJson(dashData);
+        upcoming.value = upcomingData
+            .map((v) => MyVisit.fromJson(v as Map<String, dynamic>))
+            .toList();
+        todayVisits.value = todayData.map(MyVisit.fromJson).toList();
+        todayVisitsVersion.value++;
+      } on DioException {
+        await _loadServiceTechFromCache();
+      }
+    } else {
+      await _loadServiceTechFromCache();
+    }
+  }
+
+  Future<void> _loadServiceTechFromCache() async {
+    final cachedDash    = await _dbService.getCachedResponse('st-dashboard');
+    final cachedUpcoming = await _dbService.getCachedResponse('st-upcoming');
+    final cachedToday   = await _dbService.getCachedResponse('st-today-visits');
+    if (cachedDash != null) {
+      dashboard.value = DashboardData.fromJson(
+          jsonDecode(cachedDash) as Map<String, dynamic>);
+      upcoming.value = cachedUpcoming != null
+          ? (jsonDecode(cachedUpcoming) as List)
+              .map((v) => MyVisit.fromJson(v as Map<String, dynamic>))
+              .toList()
+          : [];
+      todayVisits.value = cachedToday != null
+          ? (jsonDecode(cachedToday) as List)
+              .map((v) => MyVisit.fromJson(v as Map<String, dynamic>))
+              .toList()
+          : [];
+    } else {
+      hasError.value = true;
+    }
   }
 
   Future<void> _loadDriverData() async {
@@ -98,6 +156,7 @@ class HomeController extends GetxController {
       todayRoutes.value = content
           .map((e) => RouteModel.fromJson(e as Map<String, dynamic>))
           .toList();
+      _prefetchRouteDetails(todayRoutes.toList());
     } else {
       final cached = await _dbService.getCachedResponse(cacheKey);
       if (cached != null) {
@@ -108,6 +167,91 @@ class HomeController extends GetxController {
       }
       // No cache yet = empty list, no error — driver can see they have no routes
     }
+  }
+
+  // Prefetch each route detail in background so they're available offline.
+  Future<void> _prefetchRouteDetails(List<RouteModel> routes) async {
+    for (final route in routes) {
+      try {
+        final existing = await _dbService.getCachedResponse('route-${route.id}');
+        if (existing != null) continue;
+        final res = await _dio.get<Map<String, dynamic>>('/routes/${route.id}');
+        await _dbService.cacheResponse(
+            'route-${route.id}', jsonEncode(res.data!['data']));
+      } catch (_) {
+        // non-critical — skip on failure
+      }
+    }
+  }
+
+  void patchVisitStatus(String visitId, String newStatus) {
+    final idx = todayVisits.indexWhere((v) => v.id == visitId);
+    if (idx == -1) return;
+    final v = todayVisits[idx];
+    todayVisits[idx] = MyVisit(
+      id: v.id,
+      name: v.name,
+      visitDate: v.visitDate,
+      status: newStatus,
+      stops: v.stops,
+    );
+    todayVisitsVersion.value++;
+    _patchTodayStatusCache(visitId, newStatus);
+  }
+
+  Future<void> _patchTodayStatusCache(
+      String visitId, String newStatus) async {
+    final cached = await _dbService.getCachedResponse('st-today-visits');
+    if (cached == null) return;
+    final raw = (jsonDecode(cached) as List).cast<Map<String, dynamic>>();
+    final idx = raw.indexWhere((v) => v['id'] == visitId);
+    if (idx == -1) return;
+    raw[idx] = {...raw[idx], 'status': newStatus};
+    await _dbService.cacheResponse('st-today-visits', jsonEncode(raw));
+  }
+
+  Future<void> markStopReported(String visitId, String stopId) async {
+    final vIdx = todayVisits.indexWhere((v) => v.id == visitId);
+    if (vIdx != -1) {
+      final v = todayVisits[vIdx];
+      final updatedStops = v.stops.map((s) {
+        if (s.id != stopId) return s;
+        return MyVisitStop(
+          id: s.id,
+          wellId: s.wellId,
+          wellName: s.wellName,
+          leaseName: s.leaseName,
+          clientName: s.clientName,
+          sequence: s.sequence,
+          status: s.status,
+          hasSoar: s.hasSoar,
+          soarAcknowledged: s.soarAcknowledged,
+          hasReport: true,
+        );
+      }).toList();
+      todayVisits[vIdx] = MyVisit(
+        id: v.id,
+        name: v.name,
+        visitDate: v.visitDate,
+        status: v.status,
+        stops: updatedStops,
+      );
+    }
+
+    todayVisitsVersion.value++;
+
+    final cachedToday = await _dbService.getCachedResponse('st-today-visits');
+    if (cachedToday == null) return;
+    final raw = (jsonDecode(cachedToday) as List).cast<Map<String, dynamic>>();
+    final rawVIdx = raw.indexWhere((v) => v['id'] == visitId);
+    if (rawVIdx == -1) return;
+    final stops =
+        (raw[rawVIdx]['stops'] as List).cast<Map<String, dynamic>>();
+    final sIdx = stops.indexWhere((s) => s['id'] == stopId);
+    if (sIdx == -1) return;
+    stops[sIdx] = {...stops[sIdx], 'hasReport': true};
+    raw[rawVIdx] = {...raw[rawVIdx], 'stops': stops};
+    await _dbService.cacheResponse('st-today-visits', jsonEncode(raw));
   }
 
   Future<void> _loadArData() async {

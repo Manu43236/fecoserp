@@ -178,6 +178,7 @@ class _StopDetailViewState extends State<StopDetailView> {
 
       if (mounted && success) {
         Get.back(result: true);
+        FecosSnackbar.success('Delivery Confirmed', '${_stop.wellName ?? 'Stop'} delivered successfully');
         final r = _deliveryController.route.value;
         if (r != null && r.stops.every((s) => !s.isPending)) {
           Get.toNamed('/wrap-up', parameters: {'id': _deliveryController.routeId});

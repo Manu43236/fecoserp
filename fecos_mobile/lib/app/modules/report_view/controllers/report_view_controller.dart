@@ -1,5 +1,8 @@
+import 'dart:convert';
 import 'package:get/get.dart';
 import 'package:dio/dio.dart' as dio_pkg;
+import 'package:fecos_mobile/app/data/services/connectivity_service.dart';
+import 'package:fecos_mobile/app/data/services/db_service.dart';
 import 'package:fecos_mobile/app/data/services/dio_service.dart';
 import 'package:fecos_mobile/app/modules/service_visit/controllers/service_visit_controller.dart';
 
@@ -29,6 +32,11 @@ class TreatmentReportData {
   final String? notes;
   final String? submittedAt;
   final List<TreatmentLineData> lines;
+  // set when data comes from local SyncQueue (not yet uploaded)
+  final bool isPendingSync;
+  final String? localPhotoPath;
+  final String? localSamplePhotoPath;
+  final String? localSignaturePath;
 
   const TreatmentReportData({
     required this.id,
@@ -56,6 +64,10 @@ class TreatmentReportData {
     this.notes,
     this.submittedAt,
     required this.lines,
+    this.isPendingSync = false,
+    this.localPhotoPath,
+    this.localSamplePhotoPath,
+    this.localSignaturePath,
   });
 
   factory TreatmentReportData.fromJson(Map<String, dynamic> j) =>
@@ -145,7 +157,10 @@ class TreatmentLineData {
 }
 
 class ReportViewController extends GetxController {
-  final _dio = Get.find<DioService>().dio;
+  final _dio          = Get.find<DioService>().dio;
+  final _connectivity = Get.find<ConnectivityService>();
+  final _dbService    = Get.find<DbService>();
+  AppDatabase get _db => _dbService.db;
 
   late final MyVisitStop stop;
   late final String visitId;
@@ -154,6 +169,7 @@ class ReportViewController extends GetxController {
   final report = Rxn<TreatmentReportData>();
   final isLoading = true.obs;
   final errorMsg = Rxn<String>();
+  final isOfflineSynced = false.obs;
 
   @override
   void onInit() {
@@ -167,6 +183,7 @@ class ReportViewController extends GetxController {
   Future<void> _loadReport() async {
     isLoading.value = true;
     errorMsg.value = null;
+    isOfflineSynced.value = false;
     try {
       final res = await _dio.get(
         '/service-visits/$visitId/stops/$stopId/treatment-report',
@@ -174,10 +191,58 @@ class ReportViewController extends GetxController {
       report.value =
           TreatmentReportData.fromJson(res.data['data'] as Map<String, dynamic>);
     } on dio_pkg.DioException catch (e) {
-      errorMsg.value =
-          e.response?.data?['error'] ?? 'Failed to load report';
+      if (!_connectivity.isOnline.value) {
+        final loaded = await _loadFromQueue();
+        if (loaded) return;
+        // Offline and not in queue = already synced, no local copy available
+        isOfflineSynced.value = true;
+      } else {
+        errorMsg.value = e.response?.data?['error'] ?? 'Failed to load report';
+      }
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  Future<bool> _loadFromQueue() async {
+    try {
+      final row = await ((_db.select(_db.syncQueue))
+            ..where((t) => t.entityType.equals('well-stop-report'))
+            ..where((t) => t.entityId.equals('$visitId-$stopId')))
+          .getSingleOrNull();
+      if (row == null) return false;
+
+      final p = jsonDecode(row.payload) as Map<String, dynamic>;
+      final lines = (p['lines'] as List? ?? [])
+          .map((l) => TreatmentLineData.fromJson(l as Map<String, dynamic>))
+          .toList();
+
+      report.value = TreatmentReportData(
+        id:                   row.id.toString(),
+        wellName:             stop.wellName,
+        leaseName:            stop.leaseName,
+        clientName:           stop.clientName,
+        techName:             '',
+        performedAt:          p['performedAt'] as String?,
+        gpsLat:               (p['gpsLat'] as num?)?.toDouble(),
+        gpsLng:               (p['gpsLng'] as num?)?.toDouble(),
+        gpsCapturedAt:        p['gpsCapturedAt'] as String?,
+        soar:                 p['soar'] == true,
+        soarNote:             p['soarNote'] as String?,
+        sampleType:           p['sampleType'] as String?,
+        sampleNotes:          p['sampleNotes'] as String?,
+        signerName:           p['signerName'] as String?,
+        signedAt:             p['signedAt'] as String?,
+        notes:                p['notes'] as String?,
+        lines:                lines,
+        isPendingSync:        true,
+        localPhotoPath:       p['localPhotoPath'] as String?,
+        localSamplePhotoPath: p['localSamplePhotoPath'] as String?,
+        localSignaturePath:   p['localSignaturePath'] as String?,
+      );
+      return true;
+    } on Exception {
+      return false;
     }
   }
 

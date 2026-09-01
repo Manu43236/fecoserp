@@ -91,8 +91,8 @@ class RouteStop {
         deliveryPhotoUrl: json['deliveryPhotoUrl'] as String?,
         deliveryLat: (json['deliveryLat'] as num?)?.toDouble(),
         deliveryLng: (json['deliveryLng'] as num?)?.toDouble(),
-        deliveredAt: json['deliveredAt'] as String?,
-        receivedAt: json['receivedAt'] as String?,
+        deliveredAt: RouteModel._parseDateTime(json['deliveredAt']),
+        receivedAt: RouteModel._parseDateTime(json['receivedAt']),
         syncedLate: json['syncedLate'] as bool? ?? false,
       );
 }
@@ -133,10 +133,12 @@ class RouteModel {
     List<RouteStop>? stops,
     String? loadConfirmedAt,
     String? preTripConfirmedAt,
+    int? completedStopCount,
   }) => RouteModel(
     id: id, driverName: driverName, truckNumber: truckNumber,
     routeDate: routeDate, status: status ?? this.status,
-    stopCount: stopCount, completedStopCount: completedStopCount,
+    stopCount: stopCount,
+    completedStopCount: completedStopCount ?? this.completedStopCount,
     stops: stops ?? this.stops, notes: notes,
     loadConfirmedAt: loadConfirmedAt ?? this.loadConfirmedAt,
     preTripConfirmedAt: preTripConfirmedAt ?? this.preTripConfirmedAt,
@@ -159,7 +161,19 @@ class RouteModel {
             .map((e) => RouteStop.fromJson(e as Map<String, dynamic>))
             .toList(),
         notes: json['notes'] as String?,
-        loadConfirmedAt: json['loadConfirmedAt'] as String?,
-        preTripConfirmedAt: json['preTripConfirmedAt'] as String?,
+        loadConfirmedAt: _parseDateTime(json['loadConfirmedAt']),
+        preTripConfirmedAt: _parseDateTime(json['preTripConfirmedAt']),
       );
+
+  // Jackson serializes LocalDateTime as [year,month,day,h,m,s] by default.
+  // Handle both that and ISO strings defensively.
+  static String? _parseDateTime(dynamic v) {
+    if (v == null) return null;
+    if (v is String) return v;
+    if (v is List && v.length >= 6) {
+      final pad = (dynamic n) => n.toString().padLeft(2, '0');
+      return '${v[0]}-${pad(v[1])}-${pad(v[2])}T${pad(v[3])}:${pad(v[4])}:${pad(v[5])}';
+    }
+    return null;
+  }
 }
