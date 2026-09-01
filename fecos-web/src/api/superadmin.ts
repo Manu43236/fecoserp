@@ -49,6 +49,8 @@ export const saApi = {
   uploadTenantLogo: (id: string, file: File) => {
     const fd = new FormData()
     fd.append('file', file)
-    return api.post<ApiResponse<{ url: string }>>(`/api/v1/sa/tenants/${id}/logo`, fd)
+    return api.post<ApiResponse<{ url: string }>>(`/api/v1/sa/tenants/${id}/logo`, fd, {
+      headers: { 'Content-Type': undefined },
+    })
   },
 }
