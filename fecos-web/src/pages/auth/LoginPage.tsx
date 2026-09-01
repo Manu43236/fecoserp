@@ -190,7 +190,7 @@ export function LoginPage() {
   const login = useAuthStore((s) => s.login)
   const navigate = useNavigate()
 
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormData>({
+  const { handleSubmit, watch, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
   })
 
