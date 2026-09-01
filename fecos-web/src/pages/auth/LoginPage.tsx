@@ -169,7 +169,7 @@ function PinInput({ value, onChange, error, primaryColor }: {
             onKeyDown={e => handleKey(i, e)}
             onPaste={handlePaste}
             autoComplete="off"
-            className={`w-14 h-14 text-center text-xl rounded-xl border-2 outline-none transition focus:ring-2 focus:ring-opacity-30 ${
+            className={`w-14 h-14 text-center text-xl rounded-xl border-2 outline-none transition focus:ring-2 focus:ring-red-100 ${
               error ? 'border-red-400' : d ? 'border-gray-400' : 'border-gray-200'
             }`}
             style={d ? { borderColor: primaryColor } : undefined}
