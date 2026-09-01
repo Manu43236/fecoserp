@@ -18,4 +18,5 @@ public class UpdateTenantRequest {
     private String accentColor;
 
     private String plan;
+    private String logoUrl;
 }

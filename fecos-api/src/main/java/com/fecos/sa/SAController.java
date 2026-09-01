@@ -4,21 +4,28 @@ import com.fecos.auth.AuthResponse;
 import com.fecos.auth.AuthService;
 import com.fecos.common.ApiResponse;
 import com.fecos.tenant.CreateTenantRequest;
+import com.fecos.tenant.TenantEntity;
 import com.fecos.tenant.TenantRepository;
 import com.fecos.tenant.UpdateTenantRequest;
 import com.fecos.tenant.TenantResponse;
 import com.fecos.tenant.TenantService;
+import com.fecos.upload.S3UploadService;
 import com.fecos.users.SACreateUserRequest;
 import com.fecos.users.SAUserResponse;
 import com.fecos.users.UpdateUserRequest;
 import com.fecos.users.UserRepository;
 import com.fecos.users.UserResponse;
 import com.fecos.users.UserService;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 
 import java.util.HashMap;
 import java.util.List;
@@ -36,6 +43,7 @@ public class SAController {
     private final AuthService authService;
     private final UserRepository userRepository;
     private final UserService userService;
+    private final S3UploadService s3;
 
     @GetMapping("/tenants")
     public ResponseEntity<ApiResponse<List<TenantResponse>>> listTenants() {
@@ -84,6 +92,18 @@ public class SAController {
             @PathVariable UUID id,
             @Valid @RequestBody UpdateUserRequest req) {
         return ResponseEntity.ok(ApiResponse.ok(userService.updateById(id, req)));
+    }
+
+    @PostMapping(value = "/tenants/{id}/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<Map<String, String>>> uploadTenantLogo(
+            @PathVariable UUID id,
+            @RequestParam("file") MultipartFile file) throws IOException {
+        TenantEntity tenant = tenantRepository.findByIdAndIsDeletedFalse(id)
+                .orElseThrow(() -> new EntityNotFoundException("Tenant not found"));
+        String url = s3.upload(tenant.getCompanyName(), "tenant-logos", file);
+        tenant.setLogoUrl(url);
+        tenantRepository.save(tenant);
+        return ResponseEntity.ok(ApiResponse.ok(Map.of("url", url)));
     }
 
     @PostMapping("/tenants/{id}/impersonate")

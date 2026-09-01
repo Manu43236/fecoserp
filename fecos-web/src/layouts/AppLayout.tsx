@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
+import { useTenantStore } from '@/store/tenantStore'
 import type { Role } from '@/types'
 import fecosLogo from '@/assets/fecos_logo.png'
 
@@ -249,6 +250,7 @@ function FlatSidebarNav({ items, onNavigate }: { items: NavItem[]; onNavigate: (
 
 export function AppLayout() {
   const { user, logout, saSession, exitImpersonation, isImpersonated } = useAuthStore()
+  const tenantLogoUrl = useTenantStore(s => s.config?.logoUrl)
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -287,7 +289,10 @@ export function AppLayout() {
       >
         {/* Logo */}
         <div className="h-[60px] flex items-center px-5 shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-          <img src={fecosLogo} alt="FECOS" className="h-7 object-contain" />
+          {tenantLogoUrl
+            ? <img src={tenantLogoUrl} alt={user?.companyName ?? 'Logo'} className="h-8 max-w-[160px] object-contain" />
+            : <img src={fecosLogo} alt="FECOS" className="h-7 object-contain" />
+          }
         </div>
 
         {/* Nav */}
@@ -344,7 +349,10 @@ export function AppLayout() {
           >
             <Menu size={20} />
           </button>
-          <img src={fecosLogo} alt="FECOS" className="h-6 object-contain" />
+          {tenantLogoUrl
+            ? <img src={tenantLogoUrl} alt={user?.companyName ?? 'Logo'} className="h-7 max-w-[120px] object-contain" />
+            : <img src={fecosLogo} alt="FECOS" className="h-6 object-contain" />
+          }
         </div>
 
         {/* Impersonation banner */}

@@ -4,7 +4,7 @@ import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import toast from 'react-hot-toast'
-import { Building2, Plus, LogIn, Pencil, Trash2, CheckCircle, XCircle, ChevronRight, ChevronDown } from 'lucide-react'
+import { Building2, Plus, LogIn, Pencil, Trash2, CheckCircle, XCircle, ChevronRight, ChevronDown, Upload, X } from 'lucide-react'
 import { saApi, type CreateTenantPayload } from '@/api/superadmin'
 import type { Tenant } from '@/types'
 
@@ -18,6 +18,7 @@ const schema = z.object({
   primaryColor:      z.string().optional(),
   darkColor:         z.string().optional(),
   accentColor:       z.string().optional(),
+  logoUrl:           z.string().optional(),
   plan:              z.string().optional(),
   adminFullName:     z.string().optional(),
   adminMobileNumber: z.string().optional(),
@@ -27,7 +28,7 @@ type FormData = z.infer<typeof schema>
 
 const EMPTY: FormData = {
   companyName: '', subdomain: '', ownerName: '', contactPhone: '', contactEmail: '',
-  primaryColor: '#751903', darkColor: '#3F0C00', accentColor: '#E5D4CF',
+  primaryColor: '#751903', darkColor: '#3F0C00', accentColor: '#E5D4CF', logoUrl: '',
   plan: 'PILOT', adminFullName: '', adminMobileNumber: '', adminPin: '',
 }
 
@@ -37,6 +38,7 @@ function fromTenant(t: Tenant): FormData {
     ownerName: t.ownerName ?? '', contactPhone: t.contactPhone ?? '',
     contactEmail: t.contactEmail ?? '', primaryColor: t.primaryColor ?? '#751903',
     darkColor: t.darkColor ?? '#3F0C00', accentColor: t.accentColor ?? '#E5D4CF',
+    logoUrl: t.logoUrl ?? '',
     plan: t.plan, adminFullName: '', adminMobileNumber: '', adminPin: '',
   }
 }
@@ -45,11 +47,14 @@ function fromTenant(t: Tenant): FormData {
 function TenantDialog({ open, onClose, tenant }: { open: boolean; onClose: () => void; tenant?: Tenant }) {
   const qc = useQueryClient()
   const isEdit = !!tenant
+  const [logoUploading, setLogoUploading] = useState(false)
 
-  const { register, handleSubmit, formState: { errors }, reset, control } = useForm<FormData>({
+  const { register, handleSubmit, formState: { errors }, reset, control, setValue, watch } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: EMPTY,
   })
+
+  const logoUrl = watch('logoUrl')
 
   useEffect(() => {
     if (open) reset(tenant ? fromTenant(tenant) : EMPTY)
@@ -68,6 +73,21 @@ function TenantDialog({ open, onClose, tenant }: { open: boolean; onClose: () =>
     onError: (e: unknown) =>
       toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed'),
   })
+
+  async function handleLogoUpload(file: File) {
+    if (!isEdit) return
+    setLogoUploading(true)
+    try {
+      const res = await saApi.uploadTenantLogo(tenant!.id, file)
+      setValue('logoUrl', res.data.data?.url ?? '')
+      toast.success('Logo uploaded')
+      qc.invalidateQueries({ queryKey: ['sa-tenants'] })
+    } catch {
+      toast.error('Logo upload failed')
+    } finally {
+      setLogoUploading(false)
+    }
+  }
 
   if (!open) return null
 
@@ -160,10 +180,45 @@ function TenantDialog({ open, onClose, tenant }: { open: boolean; onClose: () =>
 
           <section>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Branding</p>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-3 mb-3">
               <Field label="Primary Color" name="primaryColor" type="color" />
               <Field label="Dark Color" name="darkColor" type="color" />
               <Field label="Accent Color" name="accentColor" type="color" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Company Logo</label>
+              <div className="flex items-center gap-3">
+                {logoUrl ? (
+                  <div className="relative group w-24 h-12 rounded border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden">
+                    <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-1" />
+                    <button
+                      type="button"
+                      onClick={() => setValue('logoUrl', '')}
+                      className="absolute top-0.5 right-0.5 hidden group-hover:flex bg-white rounded-full p-0.5 shadow"
+                    >
+                      <X size={10} className="text-gray-500" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-24 h-12 rounded border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center">
+                    <Building2 size={18} className="text-gray-300" />
+                  </div>
+                )}
+                {isEdit ? (
+                  <label className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors ${logoUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <Upload size={12} />
+                    {logoUploading ? 'Uploading…' : 'Upload Logo'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={e => { const f = e.target.files?.[0]; if (f) handleLogoUpload(f) }}
+                    />
+                  </label>
+                ) : (
+                  <p className="text-xs text-gray-400">Save tenant first, then upload logo</p>
+                )}
+              </div>
             </div>
           </section>
 
@@ -265,9 +320,12 @@ function TenantRow({ tenant, onEdit, onDelete, onImpersonate }: {
               </div>
               <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Branding</p>
-                <div className="flex gap-2 mt-1">
+                <div className="flex items-center gap-2 mt-1">
                   {[tenant.primaryColor, tenant.darkColor, tenant.accentColor].map((c, i) =>
                     c ? <div key={i} className="w-6 h-6 rounded border border-gray-200" style={{ backgroundColor: c }} title={c} /> : null
+                  )}
+                  {tenant.logoUrl && (
+                    <img src={tenant.logoUrl} alt="Logo" className="h-6 w-auto object-contain rounded border border-gray-200 bg-gray-50 px-1" />
                   )}
                 </div>
               </div>

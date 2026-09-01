@@ -81,6 +81,7 @@ public class TenantService {
         if (req.getDarkColor() != null) tenant.setDarkColor(req.getDarkColor());
         if (req.getAccentColor() != null) tenant.setAccentColor(req.getAccentColor());
         if (req.getPlan() != null) tenant.setPlan(TenantPlan.valueOf(req.getPlan()));
+        if (req.getLogoUrl() != null) tenant.setLogoUrl(req.getLogoUrl());
 
         return TenantResponse.from(tenantRepository.save(tenant));
     }

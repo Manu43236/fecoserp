@@ -10,6 +10,7 @@ export interface CreateTenantPayload {
   primaryColor?: string
   darkColor?: string
   accentColor?: string
+  logoUrl?: string
   plan?: string
   adminFullName: string
   adminMobileNumber: string
@@ -44,4 +45,10 @@ export const saApi = {
 
   impersonate: (id: string) =>
     api.post<ApiResponse<ImpersonateResponse>>(`/api/v1/sa/tenants/${id}/impersonate`),
+
+  uploadTenantLogo: (id: string, file: File) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return api.post<ApiResponse<{ url: string }>>(`/api/v1/sa/tenants/${id}/logo`, fd)
+  },
 }
