@@ -23,6 +23,7 @@ public class BusinessReportService {
     private final UserRepository userRepo;
     private final MonthlyCostSummaryPdf monthlyCostPdf;
     private final LabAnalysisPdf labAnalysisPdf;
+    private final ServiceVisitCopyPdf serviceVisitCopyPdf;
 
     // ── Create record ─────────────────────────────────────────────────────────
 
@@ -66,6 +67,9 @@ public class BusinessReportService {
                             entity.getPeriodMonth(), entity.getPeriodYear());
             case LAB_ANALYSIS ->
                     labAnalysisPdf.generate(tenantId, entity.getClientId(),
+                            entity.getPeriodMonth(), entity.getPeriodYear());
+            case SERVICE_VISIT_COPY ->
+                    serviceVisitCopyPdf.generate(tenantId, entity.getClientId(),
                             entity.getPeriodMonth(), entity.getPeriodYear());
             default -> generatePlaceholderPdf(entity);
         };
