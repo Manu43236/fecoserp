@@ -288,7 +288,7 @@ export function AppLayout() {
         style={{ backgroundColor: 'var(--color-dark)' }}
       >
         {/* Logo */}
-        <div className="h-[60px] flex items-center px-5 shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <div className="h-[60px] flex items-center justify-center px-5 shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           {tenantLogoUrl
             ? <img src={tenantLogoUrl} alt={user?.companyName ?? 'Logo'} className="h-8 max-w-[160px] object-contain" />
             : <img src={fecosLogo} alt="FECOS" className="h-7 object-contain" />
