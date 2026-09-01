@@ -12,7 +12,6 @@ import java.net.URI;
 /**
  * Shared PDF builder for all FECOS reports.
  * Every page gets the FECOS icon watermark centered at 6% opacity.
- * Usage: FecosPdfBuilder.start(out) → add content → .build()
  */
 @Component
 public class FecosPdfBuilder {
@@ -28,11 +27,45 @@ public class FecosPdfBuilder {
     public static final Font DANGER  = new Font(Font.HELVETICA, 10, Font.BOLD,   new Color(0xDC, 0x26, 0x26));
     public static final Font SUCCESS = new Font(Font.HELVETICA, 10, Font.BOLD,   new Color(0x15, 0x80, 0x3D));
 
+    // ── Watermark page event ──────────────────────────────────────────────────
+
+    private static final class WatermarkEvent extends PdfPageEventHelper {
+        private Image watermark;
+
+        WatermarkEvent() {
+            try (InputStream in = FecosPdfBuilder.class.getResourceAsStream("/fecos_icon.png")) {
+                if (in != null) {
+                    watermark = Image.getInstance(in.readAllBytes());
+                    watermark.scaleToFit(220, 220);
+                }
+            } catch (Exception ignored) {}
+        }
+
+        @Override
+        public void onEndPage(PdfWriter writer, Document document) {
+            if (watermark == null) return;
+            try {
+                var cb = writer.getDirectContentUnder();
+                var gs = new PdfGState();
+                gs.setFillOpacity(0.06f);
+                gs.setBlendMode(PdfGState.BM_NORMAL);
+                cb.saveState();
+                cb.setGState(gs);
+                float x = (document.getPageSize().getWidth()  - watermark.getScaledWidth())  / 2f;
+                float y = (document.getPageSize().getHeight() - watermark.getScaledHeight()) / 2f;
+                watermark.setAbsolutePosition(x, y);
+                cb.addImage(watermark);
+                cb.restoreState();
+            } catch (Exception ignored) {}
+        }
+    }
+
     // ── Builder entry point ───────────────────────────────────────────────────
 
     public Session start(ByteArrayOutputStream out) throws DocumentException {
-        var doc = new Document(PageSize.A4, 40, 40, 48, 48);
-        PdfWriter.getInstance(doc, out);
+        var doc    = new Document(PageSize.A4, 40, 40, 48, 48);
+        var writer = PdfWriter.getInstance(doc, out);
+        writer.setPageEvent(new WatermarkEvent());
         doc.open();
         return new Session(doc);
     }
@@ -44,37 +77,29 @@ public class FecosPdfBuilder {
 
         Session(Document doc) { this.doc = doc; }
 
-        /** Renders tenant logo + company name + divider at the top of the document. */
+        /**
+         * Header: shows tenant logo only when available; falls back to company name text.
+         */
         public Session header(String companyName, byte[] logoBytes) throws DocumentException {
-            boolean hasLogo = logoBytes != null;
-            var table = new PdfPTable(hasLogo ? 2 : 1);
-            table.setWidthPercentage(100);
-            table.setSpacingAfter(10);
-            if (hasLogo) {
+            if (logoBytes != null) {
                 try {
-                    table.setWidths(new float[]{12, 88});
                     var img = Image.getInstance(logoBytes);
-                    img.scaleToFit(44, 44);
-                    var lc = new PdfPCell(img, true);
-                    lc.setBorder(Rectangle.NO_BORDER);
-                    lc.setPaddingRight(8);
-                    lc.setVerticalAlignment(Element.ALIGN_MIDDLE);
-                    table.addCell(lc);
-                } catch (Exception ignored) {
-                    hasLogo = false;
+                    img.scaleToFit(200, 56);
+                    img.setSpacingAfter(6);
+                    doc.add(img);
+                } catch (Exception e) {
+                    // logo decode failed — fall back to text
+                    doc.add(new Paragraph(companyName != null && !companyName.isBlank() ? companyName : "FECOS", COMPANY));
                 }
+            } else {
+                var name = companyName != null && !companyName.isBlank() ? companyName : "FECOS";
+                var p = new Paragraph(name, COMPANY);
+                p.setSpacingAfter(4);
+                doc.add(p);
             }
-            var name = companyName != null && !companyName.isBlank() ? companyName : "FECOS";
-            var nc = new PdfPCell(new Phrase(name, COMPANY));
-            nc.setBorder(Rectangle.NO_BORDER);
-            nc.setPadding(4);
-            nc.setVerticalAlignment(Element.ALIGN_MIDDLE);
-            table.addCell(nc);
-            doc.add(table);
 
-            // divider
-            var line = new com.lowagie.text.pdf.draw.LineSeparator(1f, 100f,
-                    new Color(0xE5, 0xE7, 0xEB), Element.ALIGN_CENTER, -2);
+            var line = new com.lowagie.text.pdf.draw.LineSeparator(
+                    1f, 100f, new Color(0xE5, 0xE7, 0xEB), Element.ALIGN_CENTER, -2);
             doc.add(new Chunk(line));
             var gap = new Paragraph(" ");
             gap.setSpacingAfter(6);
@@ -154,9 +179,7 @@ public class FecosPdfBuilder {
                     p.setSpacingAfter(8);
                     doc.add(p);
                 }
-            } catch (Exception ignored) {
-                // skip image silently if fetch fails
-            }
+            } catch (Exception ignored) {}
             return this;
         }
 
@@ -194,9 +217,7 @@ public class FecosPdfBuilder {
 
         public byte[] build() {
             doc.close();
-            // bytes are in the ByteArrayOutputStream passed to start()
-            return new byte[0]; // caller uses the stream directly
+            return new byte[0]; // caller uses the ByteArrayOutputStream directly
         }
     }
-
 }
