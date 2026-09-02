@@ -101,7 +101,7 @@ type LineFormData = z.infer<typeof lineSchema>
 
 
 function LevelBar({ pct }: { pct: number }) {
-  const color = pct <= 10 ? '#ef4444' : pct <= 20 ? '#f97316' : pct <= 40 ? '#eab308' : '#10b981'
+  const color = pct >= 60 ? '#10b981' : pct >= 30 ? '#f59e0b' : '#ef4444'
   return (
     <div className="flex items-center gap-2 mt-1">
       <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -116,9 +116,8 @@ function TankVisual({ pct }: { pct: number }) {
   const idRef = useRef(`tank-${Math.random().toString(36).slice(2)}`)
   const id = idRef.current
   const clamped = Math.min(Math.max(pct, 0), 100)
-  const color    = pct <= 10 ? '#ef4444' : pct <= 20 ? '#f97316' : pct <= 40 ? '#eab308' : '#10b981'
-  const fillSolid= pct <= 10 ? '#ef4444' : pct <= 20 ? '#f97316' : pct <= 40 ? '#eab308' : '#10b981'
-  const fillAlpha= pct <= 10 ? 'rgba(239,68,68,0.22)' : pct <= 20 ? 'rgba(249,115,22,0.22)' : pct <= 40 ? 'rgba(234,179,8,0.22)' : 'rgba(16,185,129,0.22)'
+  const color    = pct >= 60 ? '#10b981' : pct >= 30 ? '#f59e0b' : '#ef4444'
+  const fillAlpha= pct >= 60 ? 'rgba(16,185,129,0.22)' : pct >= 30 ? 'rgba(245,158,11,0.22)' : 'rgba(239,68,68,0.22)'
 
   // cylinder geometry
   const cx = 80, bodyW = 100, bodyH = 150, ry = 14
@@ -932,15 +931,15 @@ function PlanDrawer({
                               <div className="flex items-center justify-between mb-1">
                                 <p className="text-[10px] text-gray-400 font-medium">Current Level</p>
                                 <p className="text-sm font-bold tabular-nums"
-                                  style={{ color: tank.calculatedLevelPct <= 10 ? '#ef4444' : tank.calculatedLevelPct <= 20 ? '#f97316' : tank.calculatedLevelPct <= 40 ? '#eab308' : '#10b981' }}>
+                                  style={{ color: tank.calculatedLevelPct >= 60 ? '#10b981' : tank.calculatedLevelPct >= 30 ? '#f59e0b' : '#ef4444' }}>
                                   {tank.calculatedLevelPct.toFixed(2)}%
                                 </p>
                               </div>
                               <TankVisual pct={tank.calculatedLevelPct} />
-                              {tank.calculatedLevelPct <= 20 && (
+                              {tank.calculatedLevelPct < 60 && (
                                 <p className="text-xs font-semibold text-orange-600 flex items-center gap-1.5 mt-1.5">
                                   <AlertTriangle size={11} />
-                                  {tank.calculatedLevelPct <= 10 ? 'Critical — refill urgently' : 'Refill needed soon'}
+                                  {tank.calculatedLevelPct < 30 ? 'Critical — refill urgently' : 'Refill needed soon'}
                                 </p>
                               )}
                             </div>
@@ -977,15 +976,15 @@ function PlanDrawer({
                               <div className="flex items-center justify-between mb-1">
                                 <p className="text-[10px] text-gray-400 font-medium">Est. Level</p>
                                 <p className="text-sm font-bold tabular-nums"
-                                  style={{ color: line.calculatedLevelPct <= 10 ? '#ef4444' : line.calculatedLevelPct <= 20 ? '#f97316' : line.calculatedLevelPct <= 40 ? '#eab308' : '#10b981' }}>
+                                  style={{ color: line.calculatedLevelPct >= 60 ? '#10b981' : line.calculatedLevelPct >= 30 ? '#f59e0b' : '#ef4444' }}>
                                   {line.calculatedLevelPct.toFixed(2)}%
                                 </p>
                               </div>
                               <TankVisual pct={line.calculatedLevelPct} />
-                              {line.calculatedLevelPct <= 20 && (
+                              {line.calculatedLevelPct < 60 && (
                                 <p className="text-xs font-semibold text-orange-600 flex items-center gap-1.5 mt-1.5">
                                   <AlertTriangle size={11} />
-                                  {line.calculatedLevelPct <= 10 ? 'Critical — refill urgently' : 'Refill needed soon'}
+                                  {line.calculatedLevelPct < 30 ? 'Critical — refill urgently' : 'Refill needed soon'}
                                 </p>
                               )}
                             </div>
