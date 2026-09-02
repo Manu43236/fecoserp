@@ -112,6 +112,40 @@ function LevelBar({ pct }: { pct: number }) {
   )
 }
 
+function TankVisual({ pct }: { pct: number }) {
+  const clamped = Math.min(Math.max(pct, 0), 100)
+  const color = pct <= 10 ? '#ef4444' : pct <= 20 ? '#f97316' : pct <= 40 ? '#eab308' : '#10b981'
+  const fill  = pct <= 10 ? 'rgba(239,68,68,0.18)' : pct <= 20 ? 'rgba(249,115,22,0.18)' : pct <= 40 ? 'rgba(234,179,8,0.18)' : 'rgba(16,185,129,0.18)'
+  return (
+    <>
+      <style>{`@keyframes tank-wave{0%,100%{transform:translateX(0)}50%{transform:translateX(-25%)}}.tank-wave{animation:tank-wave 3s ease-in-out infinite}`}</style>
+      <div className="relative w-full mt-2" style={{ height: 80 }}>
+        <div className="absolute inset-0 rounded-lg overflow-hidden bg-white" style={{ border: `1.5px solid ${color}55` }}>
+          <div
+            className="absolute bottom-0 left-0 right-0 transition-all duration-1000 ease-out"
+            style={{ height: `${clamped}%`, backgroundColor: fill }}
+          />
+          {clamped > 1 && clamped < 99 && (
+            <div
+              className="absolute left-0 overflow-hidden"
+              style={{ bottom: `calc(${clamped}% - 7px)`, height: 14, width: '100%', transition: 'bottom 1s ease-out' }}
+            >
+              <svg className="tank-wave" viewBox="0 0 200 14" preserveAspectRatio="none" style={{ width: '200%', height: '100%' }}>
+                <path d="M0,7 C25,0 50,14 75,7 C100,0 125,14 150,7 C175,0 200,14 200,7 L200,14 L0,14 Z" fill={fill} />
+              </svg>
+            </div>
+          )}
+        </div>
+        <div className="absolute right-2 top-1 bottom-1 flex flex-col justify-between pointer-events-none">
+          {['100', '75', '50', '25', '0'].map(t => (
+            <span key={t} className="text-[8px] text-gray-300 leading-none">{t}</span>
+          ))}
+        </div>
+      </div>
+    </>
+  )
+}
+
 function TankStatusBadge({ status }: { status: TankStatus }) {
   const map: Record<TankStatus, { bg: string; text: string; label: string }> = {
     AVAILABLE: { bg: 'bg-emerald-50', text: 'text-emerald-700', label: 'Available' },
@@ -865,7 +899,7 @@ function PlanDrawer({
                                   {tank.calculatedLevelPct.toFixed(2)}%
                                 </p>
                               </div>
-                              <LevelBar pct={tank.calculatedLevelPct} />
+                              <TankVisual pct={tank.calculatedLevelPct} />
                               {tank.calculatedLevelPct <= 20 && (
                                 <p className="text-xs font-semibold text-orange-600 flex items-center gap-1.5 mt-1.5">
                                   <AlertTriangle size={11} />
@@ -910,7 +944,7 @@ function PlanDrawer({
                                   {line.calculatedLevelPct.toFixed(2)}%
                                 </p>
                               </div>
-                              <LevelBar pct={line.calculatedLevelPct} />
+                              <TankVisual pct={line.calculatedLevelPct} />
                               {line.calculatedLevelPct <= 20 && (
                                 <p className="text-xs font-semibold text-orange-600 flex items-center gap-1.5 mt-1.5">
                                   <AlertTriangle size={11} />
