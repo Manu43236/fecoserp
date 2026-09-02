@@ -925,21 +925,21 @@ export default function RoutesPage() {
   const role    = user?.role
   const canEdit = role === 'ADMIN' || role === 'MANAGER'
 
-  const [view, setView]                 = useState<'list' | 'board'>('board')
+  const [view, setView]                 = useState<'list' | 'board'>('list')
   const [boardDate, setBoardDate]       = useState(toDateStr(new Date()))
   const [search, setSearch]             = useState('')
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
+  const [dateFilter, setDateFilter]     = useState('')
   const [page, setPage]                 = useState(0)
   const [formOpen, setFormOpen]         = useState(false)
   const [editing, setEditing]           = useState<RouteRecord | undefined>()
   const [selected, setSelected]         = useState<RouteRecord | undefined>()
 
-  const listParams = { status: statusFilter || undefined, page, size: PAGE_SIZE }
+  const listParams = { status: statusFilter || undefined, routeDate: dateFilter || undefined, page, size: PAGE_SIZE }
 
   const { data, isLoading } = useQuery({
     queryKey: ['routes', listParams],
     queryFn:  () => routesApi.list(listParams),
-    enabled:  view === 'list',
   })
 
   const { data: driversData } = useQuery({
@@ -1029,6 +1029,18 @@ export default function RoutesPage() {
                 className="h-9 pl-8 pr-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 w-56"
               />
             </div>
+            <input
+              type="date"
+              value={dateFilter}
+              onChange={e => { setDateFilter(e.target.value); setPage(0) }}
+              className="h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 text-gray-700"
+            />
+            {dateFilter && (
+              <button onClick={() => { setDateFilter(''); setPage(0) }}
+                className="h-9 px-3 text-xs font-medium rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors flex items-center gap-1">
+                <X size={12} /> Clear date
+              </button>
+            )}
             <SearchableDropdown
               value={statusFilter}
               onChange={v => { setStatusFilter(v); setPage(0) }}
