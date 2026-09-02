@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -113,36 +113,73 @@ function LevelBar({ pct }: { pct: number }) {
 }
 
 function TankVisual({ pct }: { pct: number }) {
+  const idRef = useRef(`tank-${Math.random().toString(36).slice(2)}`)
+  const id = idRef.current
   const clamped = Math.min(Math.max(pct, 0), 100)
-  const color = pct <= 10 ? '#ef4444' : pct <= 20 ? '#f97316' : pct <= 40 ? '#eab308' : '#10b981'
-  const fill  = pct <= 10 ? 'rgba(239,68,68,0.18)' : pct <= 20 ? 'rgba(249,115,22,0.18)' : pct <= 40 ? 'rgba(234,179,8,0.18)' : 'rgba(16,185,129,0.18)'
+  const color    = pct <= 10 ? '#ef4444' : pct <= 20 ? '#f97316' : pct <= 40 ? '#eab308' : '#10b981'
+  const fillSolid= pct <= 10 ? '#ef4444' : pct <= 20 ? '#f97316' : pct <= 40 ? '#eab308' : '#10b981'
+  const fillAlpha= pct <= 10 ? 'rgba(239,68,68,0.22)' : pct <= 20 ? 'rgba(249,115,22,0.22)' : pct <= 40 ? 'rgba(234,179,8,0.22)' : 'rgba(16,185,129,0.22)'
+
+  // cylinder geometry
+  const cx = 80, bodyW = 100, bodyH = 150, ry = 14
+  const bodyX = cx - bodyW / 2          // 30
+  const bodyTopY = 24
+  const bodyBotY = bodyTopY + bodyH      // 174
+  const fillH = (bodyH * clamped) / 100
+  const fillTopY = bodyBotY - fillH
+
   return (
-    <>
-      <style>{`@keyframes tank-wave{0%,100%{transform:translateX(0)}50%{transform:translateX(-25%)}}.tank-wave{animation:tank-wave 3s ease-in-out infinite}`}</style>
-      <div className="relative w-full mt-2" style={{ height: 80 }}>
-        <div className="absolute inset-0 rounded-lg overflow-hidden bg-white" style={{ border: `1.5px solid ${color}55` }}>
-          <div
-            className="absolute bottom-0 left-0 right-0 transition-all duration-1000 ease-out"
-            style={{ height: `${clamped}%`, backgroundColor: fill }}
-          />
-          {clamped > 1 && clamped < 99 && (
-            <div
-              className="absolute left-0 overflow-hidden"
-              style={{ bottom: `calc(${clamped}% - 7px)`, height: 14, width: '100%', transition: 'bottom 1s ease-out' }}
-            >
-              <svg className="tank-wave" viewBox="0 0 200 14" preserveAspectRatio="none" style={{ width: '200%', height: '100%' }}>
-                <path d="M0,7 C25,0 50,14 75,7 C100,0 125,14 150,7 C175,0 200,14 200,7 L200,14 L0,14 Z" fill={fill} />
-              </svg>
-            </div>
-          )}
-        </div>
-        <div className="absolute right-2 top-1 bottom-1 flex flex-col justify-between pointer-events-none">
-          {['100', '75', '50', '25', '0'].map(t => (
-            <span key={t} className="text-[8px] text-gray-300 leading-none">{t}</span>
-          ))}
-        </div>
-      </div>
-    </>
+    <div className="flex justify-center mt-3 mb-1">
+      <style>{`@keyframes tw{0%,100%{transform:translateX(0)}50%{transform:translateX(-50%)}}.tw{animation:tw 3s ease-in-out infinite}`}</style>
+      <svg width="170" height="200" viewBox="0 0 170 200">
+        <defs>
+          <clipPath id={`body-${id}`}>
+            <rect x={bodyX} y={bodyTopY} width={bodyW} height={bodyH} />
+          </clipPath>
+        </defs>
+
+        {/* ── tank wall background ── */}
+        <rect x={bodyX} y={bodyTopY} width={bodyW} height={bodyH} fill="#f9fafb" stroke="#d1d5db" strokeWidth="2.5" />
+
+        {/* ── fluid fill ── */}
+        <rect x={bodyX} y={fillTopY} width={bodyW} height={fillH} fill={fillAlpha} clipPath={`url(#body-${id})`}
+          style={{ transition: 'y 1s ease, height 1s ease' }} />
+
+        {/* ── wave at liquid surface ── */}
+        {clamped > 1 && clamped < 99 && (
+          <g clipPath={`url(#body-${id})`} style={{ transition: 'transform 1s ease' }}>
+            <svg x={bodyX - bodyW} y={fillTopY - 7} width={bodyW * 2} height={14} viewBox="0 0 200 14" preserveAspectRatio="none">
+              <path className="tw"
+                d="M0,7 C25,0 50,14 75,7 C100,0 125,14 150,7 C175,0 200,14 200,7 L200,14 L0,14 Z"
+                fill={fillAlpha} />
+            </svg>
+          </g>
+        )}
+
+        {/* ── bottom ellipse cap ── */}
+        <ellipse cx={cx} cy={bodyBotY} rx={bodyW / 2} ry={ry}
+          fill={clamped > 0 ? fillAlpha : '#f9fafb'} stroke="#d1d5db" strokeWidth="2.5" />
+
+        {/* ── top ellipse cap ── */}
+        <ellipse cx={cx} cy={bodyTopY} rx={bodyW / 2} ry={ry} fill="#f0f0f0" stroke="#d1d5db" strokeWidth="2.5" />
+
+        {/* ── level tick marks ── */}
+        {[0, 25, 50, 75, 100].map(tick => {
+          const y = bodyBotY - (bodyH * tick) / 100
+          return (
+            <g key={tick}>
+              <line x1={bodyX + bodyW} y1={y} x2={bodyX + bodyW + 6} y2={y} stroke="#d1d5db" strokeWidth="1" />
+              <text x={bodyX + bodyW + 9} y={y + 3.5} fontSize="8" fill="#9ca3af">{tick}</text>
+            </g>
+          )
+        })}
+
+        {/* ── percentage label ── */}
+        <text x={cx} y={bodyTopY + bodyH / 2 + 6} textAnchor="middle" fontSize="15" fontWeight="700" fill={color}>
+          {clamped.toFixed(2)}%
+        </text>
+      </svg>
+    </div>
   )
 }
 
