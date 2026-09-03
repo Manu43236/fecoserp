@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, AlertTriangle, FlaskConical, RefreshCw } from 'lucide-react'
+import { ChevronRight, AlertTriangle, FlaskConical, RefreshCw, Users, Waves, Container, ArrowRight } from 'lucide-react'
 import { dashboardApi, type DashboardStats } from '@/api/dashboard'
 import { tanksApi, type TankRecord } from '@/api/tanks'
 
@@ -90,39 +90,51 @@ function OpsPanel({
     >
       <div className="flex items-center justify-between mb-4">
         <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{label}</p>
-        <span
-          className="text-xs font-bold px-2 py-0.5 rounded-full"
-          style={{
-            backgroundColor: pct === 100 ? '#d1fae5' : 'rgba(var(--color-primary-rgb, 120,40,31), 0.08)',
-            color: pct === 100 ? '#059669' : 'var(--color-primary)',
-          }}
-        >
-          {pct}% done
-        </span>
+        {total > 0 && (
+          <span
+            className="text-xs font-bold px-2 py-0.5 rounded-full"
+            style={{
+              backgroundColor: pct === 100 ? '#d1fae5' : 'rgba(var(--color-primary-rgb, 120,40,31), 0.08)',
+              color: pct === 100 ? '#059669' : 'var(--color-primary)',
+            }}
+          >
+            {pct}% done
+          </span>
+        )}
       </div>
-      <div className="grid grid-cols-3 gap-3 mb-4">
-        <div className="text-center p-2.5 rounded-lg bg-gray-50">
-          <p className="text-2xl font-black text-gray-900 tabular-nums">{active}</p>
-          <p className="text-[10px] font-semibold text-gray-400 mt-0.5">In Progress</p>
+
+      {total === 0 ? (
+        <div className="flex flex-col items-center justify-center py-5 text-center">
+          <p className="text-sm text-gray-400">Nothing scheduled today</p>
+          <p className="text-xs text-gray-300 mt-1">Routes and visits will appear here</p>
         </div>
-        <div className="text-center p-2.5 rounded-lg bg-emerald-50">
-          <p className="text-2xl font-black tabular-nums" style={{ color: '#10b981' }}>{completed}</p>
-          <p className="text-[10px] font-semibold text-emerald-500 mt-0.5">Completed</p>
-        </div>
-        <div className="text-center p-2.5 rounded-lg bg-gray-50">
-          <p className="text-2xl font-black text-gray-400 tabular-nums">{notStarted}</p>
-          <p className="text-[10px] font-semibold text-gray-400 mt-0.5">Not Started</p>
-        </div>
-      </div>
-      <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all duration-700"
-          style={{
-            width: `${pct}%`,
-            backgroundColor: pct === 100 ? '#10b981' : 'var(--color-primary)',
-          }}
-        />
-      </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="text-center p-2.5 rounded-lg bg-gray-50">
+              <p className="text-2xl font-black text-gray-900 tabular-nums">{active}</p>
+              <p className="text-[10px] font-semibold text-gray-400 mt-0.5">In Progress</p>
+            </div>
+            <div className="text-center p-2.5 rounded-lg bg-emerald-50">
+              <p className="text-2xl font-black tabular-nums" style={{ color: '#10b981' }}>{completed}</p>
+              <p className="text-[10px] font-semibold text-emerald-500 mt-0.5">Completed</p>
+            </div>
+            <div className="text-center p-2.5 rounded-lg bg-gray-50">
+              <p className="text-2xl font-black text-gray-400 tabular-nums">{notStarted}</p>
+              <p className="text-[10px] font-semibold text-gray-400 mt-0.5">Not Started</p>
+            </div>
+          </div>
+          <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-700"
+              style={{
+                width: `${pct}%`,
+                backgroundColor: pct === 100 ? '#10b981' : 'var(--color-primary)',
+              }}
+            />
+          </div>
+        </>
+      )}
     </button>
   )
 }
@@ -372,23 +384,53 @@ export default function DashboardPage() {
         {!isLoading && (
           <div>
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Assets</p>
-            <div className="grid grid-cols-4 gap-3">
-              {[
-                { label: 'Clients', value: stats.totalClients,  path: '/clients' },
-                { label: 'Wells',   value: stats.totalWells,    path: '/wells'   },
-                { label: 'Tanks',   value: stats.totalTanks,    path: '/tanks'   },
-                { label: 'Lab Done Today', value: stats.labCompleted, path: '/lab/results' },
-              ].map(({ label, value, path }) => (
-                <button
-                  key={label}
-                  onClick={() => navigate(path)}
-                  className="bg-white border border-gray-100 rounded-xl p-4 text-left hover:border-gray-200 transition-colors"
-                >
-                  <p className="text-2xl font-black text-gray-900 tabular-nums">{value}</p>
-                  <p className="text-[10px] font-semibold text-gray-400 mt-1">{label}</p>
-                </button>
-              ))}
-            </div>
+
+            {stats.totalClients === 0 && stats.totalWells === 0 && stats.totalTanks === 0 ? (
+              <div className="bg-white border border-gray-100 rounded-2xl p-6">
+                <p className="text-sm font-bold text-gray-700 mb-1">Get started with FECOS</p>
+                <p className="text-xs text-gray-400 mb-4">Set up your account in 3 steps — takes less than 5 minutes.</p>
+                <div className="space-y-2">
+                  {[
+                    { icon: Users,     label: 'Add your first client',     sub: 'Operators, companies you service', path: '/clients' },
+                    { icon: Waves,     label: 'Add wells to your clients', sub: 'Each well gets its own treatment plan', path: '/wells' },
+                    { icon: Container, label: 'Install your first tank',   sub: 'Track fluid levels in real time',  path: '/tanks'   },
+                  ].map(({ icon: Icon, label, sub, path }) => (
+                    <button
+                      key={label}
+                      onClick={() => navigate(path)}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-colors text-left"
+                    >
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--color-primary)' }}>
+                        <Icon size={14} className="text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-800">{label}</p>
+                        <p className="text-xs text-gray-400">{sub}</p>
+                      </div>
+                      <ArrowRight size={14} className="text-gray-300 shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-4 gap-3">
+                {[
+                  { label: 'Clients', value: stats.totalClients,  path: '/clients' },
+                  { label: 'Wells',   value: stats.totalWells,    path: '/wells'   },
+                  { label: 'Tanks',   value: stats.totalTanks,    path: '/tanks'   },
+                  { label: 'Lab Done Today', value: stats.labCompleted, path: '/lab/results' },
+                ].map(({ label, value, path }) => (
+                  <button
+                    key={label}
+                    onClick={() => navigate(path)}
+                    className="bg-white border border-gray-100 rounded-xl p-4 text-left hover:border-gray-200 transition-colors"
+                  >
+                    <p className="text-2xl font-black text-gray-900 tabular-nums">{value}</p>
+                    <p className="text-[10px] font-semibold text-gray-400 mt-1">{label}</p>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
