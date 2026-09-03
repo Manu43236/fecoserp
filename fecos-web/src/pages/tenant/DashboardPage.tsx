@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import {
-  ChevronRight, AlertTriangle, FlaskConical, RefreshCw,
-  Users, Waves, Container, ArrowRight, Truck, Flag,
-  CalendarDays, Activity, Package, FileText, Sparkles, ClipboardList,
+  AlertTriangle, FlaskConical, RefreshCw, Truck, Flag,
+  CalendarDays, Sparkles, ClipboardList, ArrowUpRight,
+  Users, Waves, Container, FileText, Package, Activity,
+  ChevronRight,
 } from 'lucide-react'
 import { dashboardApi, type DashboardStats } from '@/api/dashboard'
 import { tanksApi, type TankRecord } from '@/api/tanks'
@@ -11,12 +12,8 @@ import { tanksApi, type TankRecord } from '@/api/tanks'
 function todayLabel() {
   return new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
 }
-function tankColor(pct: number) {
-  return pct >= 60 ? '#10b981' : pct >= 30 ? '#f59e0b' : '#ef4444'
-}
-function tankFill(pct: number) {
-  return pct >= 60 ? 'rgba(16,185,129,0.15)' : pct >= 30 ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)'
-}
+function tankColor(pct: number) { return pct >= 60 ? '#10b981' : pct >= 30 ? '#f59e0b' : '#ef4444' }
+function tankFill(pct: number)  { return pct >= 60 ? 'rgba(16,185,129,0.15)' : pct >= 30 ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)' }
 
 // ── mini cylinder ─────────────────────────────────────────────────────────────
 function MiniCylinder({ tank, onClick }: { tank: TankRecord; onClick: () => void }) {
@@ -31,92 +28,77 @@ function MiniCylinder({ tank, onClick }: { tank: TankRecord; onClick: () => void
       className="flex flex-col items-center gap-1 p-2.5 rounded-xl bg-white border hover:border-gray-300 transition-colors shrink-0"
       style={{ borderColor: `${color}55`, minWidth: 72 }}>
       <svg width="40" height="68" viewBox="0 0 40 68">
-        <defs><clipPath id={`c-${tank.id}`}><rect x={cx - bW/2} y={topY} width={bW} height={bH}/></clipPath></defs>
+        <defs><clipPath id={`c-${tank.id}`}><rect x={cx-bW/2} y={topY} width={bW} height={bH}/></clipPath></defs>
         <rect x={cx-bW/2} y={topY} width={bW} height={bH} fill="#f9fafb" stroke="#e5e7eb" strokeWidth="1.5"/>
         {fH > 0 && <rect x={cx-bW/2} y={fY} width={bW} height={fH} fill={fill} clipPath={`url(#c-${tank.id})`}/>}
         <ellipse cx={cx} cy={botY} rx={bW/2} ry={ry} fill={fH > 0 ? fill : '#f9fafb'} stroke="#e5e7eb" strokeWidth="1.5"/>
         <ellipse cx={cx} cy={topY} rx={bW/2} ry={ry} fill="#efefef" stroke="#e5e7eb" strokeWidth="1.5"/>
-        <text x={cx} y={topY + bH/2 + 4} textAnchor="middle" fontSize="8.5" fontWeight="800" fill={color}>{pct.toFixed(0)}%</text>
+        <text x={cx} y={topY+bH/2+4} textAnchor="middle" fontSize="8.5" fontWeight="800" fill={color}>{pct.toFixed(0)}%</text>
       </svg>
       <span className="text-[9px] font-semibold text-gray-500 truncate max-w-[64px] text-center leading-tight">
         {tank.serialNumber ?? `${tank.capacityGallons}g`}
       </span>
-      {tank.wellName && (
-        <span className="text-[8px] text-gray-400 truncate max-w-[64px] text-center">{tank.wellName}</span>
-      )}
+      {tank.wellName && <span className="text-[8px] text-gray-400 truncate max-w-[64px] text-center">{tank.wellName}</span>}
     </button>
   )
 }
 
-// ── stat chip with icon ───────────────────────────────────────────────────────
-function StatChip({
-  value, label, urgent, icon: Icon, onClick,
-}: { value: number; label: string; urgent?: boolean; icon: React.ElementType; onClick?: () => void }) {
-  const isAlert = urgent && value > 0
-  return (
-    <button onClick={onClick} disabled={!onClick}
-      className={`flex-1 flex flex-col items-center justify-center gap-2 py-5 rounded-2xl border transition-all
-        ${onClick ? 'cursor-pointer' : 'cursor-default'}
-        ${isAlert ? 'bg-red-50 border-red-200 hover:bg-red-100' : 'bg-white border-gray-100 hover:border-gray-200 hover:shadow-sm'}`}>
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center
-        ${isAlert ? 'bg-red-100' : 'bg-gray-50'}`}>
-        <Icon size={18} style={{ color: isAlert ? '#ef4444' : 'var(--color-primary)' }} />
-      </div>
-      <span className="text-3xl font-black tabular-nums leading-none"
-        style={{ color: isAlert ? '#ef4444' : 'var(--color-primary)' }}>
-        {value}
-      </span>
-      <span className={`text-[10px] font-semibold uppercase tracking-wide ${isAlert ? 'text-red-500' : 'text-gray-400'}`}>
-        {label}
-      </span>
-    </button>
-  )
-}
-
-// ── ops panel ─────────────────────────────────────────────────────────────────
-function OpsPanel({ label, active, completed, total, onClick }:
-  { label: string; active: number; completed: number; total: number; onClick: () => void }) {
-  const pct        = total > 0 ? Math.round((completed / total) * 100) : 0
-  const notStarted = Math.max(total - active - completed, 0)
+// ── dark metric card ──────────────────────────────────────────────────────────
+function MetricCard({
+  value, label, icon: Icon, gradient, onClick,
+}: { value: number; label: string; icon: React.ElementType; gradient: string; onClick?: () => void }) {
   return (
     <button onClick={onClick}
-      className="flex-1 bg-white border border-gray-100 rounded-2xl p-5 text-left hover:border-gray-200 hover:shadow-sm transition-all">
+      className="flex-1 rounded-2xl p-5 text-left group transition-all duration-200 hover:brightness-110 active:scale-[0.98]"
+      style={{ background: gradient }}>
+      <div className="flex items-start justify-between mb-5">
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'rgba(255,255,255,0.15)' }}>
+          <Icon size={16} className="text-white" />
+        </div>
+        <ArrowUpRight size={13} className="text-white/20 group-hover:text-white/50 transition-colors mt-0.5" />
+      </div>
+      <p className="text-5xl font-black text-white tabular-nums leading-none">{value}</p>
+      <p className="text-[11px] font-bold text-white/55 mt-2.5 uppercase tracking-widest">{label}</p>
+    </button>
+  )
+}
+
+// ── ops card ──────────────────────────────────────────────────────────────────
+function OpsCard({ label, active, completed, total, onClick }:
+  { label: string; active: number; completed: number; total: number; onClick: () => void }) {
+  const pct     = total > 0 ? Math.round((completed / total) * 100) : 0
+  const pending = Math.max(total - active - completed, 0)
+  return (
+    <button onClick={onClick}
+      className="flex-1 bg-white border border-gray-200 rounded-2xl p-5 text-left hover:border-gray-300 hover:shadow-sm transition-all">
       <div className="flex items-center justify-between mb-4">
-        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">{label}</p>
+        <p className="text-sm font-bold text-gray-900">{label}</p>
         {total > 0 && (
-          <span className="text-xs font-bold px-2.5 py-1 rounded-full"
-            style={{
-              backgroundColor: pct === 100 ? '#d1fae5' : 'rgba(var(--color-primary-rgb,120,40,31),0.08)',
-              color: pct === 100 ? '#059669' : 'var(--color-primary)',
-            }}>
+          <span className="text-xs font-bold px-2.5 py-0.5 rounded-full"
+            style={{ backgroundColor: pct === 100 ? '#d1fae5' : '#dbeafe', color: pct === 100 ? '#065f46' : '#1e40af' }}>
             {pct}% done
           </span>
         )}
       </div>
       {total === 0 ? (
-        <div className="flex flex-col items-center justify-center py-6 text-center">
-          <p className="text-sm text-gray-400">Nothing scheduled today</p>
-          <p className="text-xs text-gray-300 mt-1">Will appear here once created</p>
-        </div>
+        <p className="text-sm text-gray-400 pb-1">No activity today</p>
       ) : (
         <>
-          <div className="grid grid-cols-3 gap-3 mb-4">
-            <div className="text-center p-3 rounded-xl bg-gray-50">
-              <p className="text-2xl font-black text-gray-900 tabular-nums">{active}</p>
-              <p className="text-[10px] font-semibold text-gray-400 mt-0.5">In Progress</p>
-            </div>
-            <div className="text-center p-3 rounded-xl bg-emerald-50">
-              <p className="text-2xl font-black tabular-nums" style={{ color: '#10b981' }}>{completed}</p>
-              <p className="text-[10px] font-semibold text-emerald-500 mt-0.5">Completed</p>
-            </div>
-            <div className="text-center p-3 rounded-xl bg-gray-50">
-              <p className="text-2xl font-black text-gray-400 tabular-nums">{notStarted}</p>
-              <p className="text-[10px] font-semibold text-gray-400 mt-0.5">Not Started</p>
-            </div>
+          <div className="flex gap-2 mb-3">
+            {[
+              { n: active,    lbl: 'Active',  bg: '#eff6ff', col: '#1d4ed8' },
+              { n: completed, lbl: 'Done',    bg: '#ecfdf5', col: '#059669' },
+              { n: pending,   lbl: 'Pending', bg: '#f9fafb', col: '#6b7280' },
+            ].map(({ n, lbl, bg, col }) => (
+              <div key={lbl} className="flex-1 rounded-xl p-2.5 text-center" style={{ backgroundColor: bg }}>
+                <p className="text-xl font-black tabular-nums" style={{ color: col }}>{n}</p>
+                <p className="text-[10px] font-semibold mt-0.5" style={{ color: col, opacity: 0.7 }}>{lbl}</p>
+              </div>
+            ))}
           </div>
-          <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
             <div className="h-full rounded-full transition-all duration-700"
-              style={{ width: `${pct}%`, backgroundColor: pct === 100 ? '#10b981' : 'var(--color-primary)' }} />
+              style={{ width: `${pct}%`, backgroundColor: pct === 100 ? '#10b981' : '#1E3A5F' }} />
           </div>
         </>
       )}
@@ -124,15 +106,15 @@ function OpsPanel({ label, active, completed, total, onClick }:
   )
 }
 
-// ── action row ────────────────────────────────────────────────────────────────
-function ActionRow({ count, label, sub, path, icon: Icon, urgent }:
+// ── action alert ──────────────────────────────────────────────────────────────
+function ActionAlert({ count, label, sub, path, icon: Icon, urgent }:
   { count: number; label: string; sub: string; path: string; icon: React.ElementType; urgent?: boolean }) {
   const navigate = useNavigate()
   if (count === 0) return null
   return (
     <button onClick={() => navigate(path)}
       className={`w-full flex items-center gap-3 p-3.5 rounded-xl text-left transition-colors
-        ${urgent ? 'bg-red-50 border border-red-200 hover:bg-red-100' : 'bg-amber-50 border border-amber-200 hover:bg-amber-100'}`}>
+        ${urgent ? 'bg-red-50 border border-red-200 hover:bg-red-100' : 'bg-amber-50 border border-amber-100 hover:bg-amber-100'}`}>
       <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${urgent ? 'bg-red-500' : 'bg-amber-500'}`}>
         <Icon size={16} className="text-white" />
       </div>
@@ -140,7 +122,7 @@ function ActionRow({ count, label, sub, path, icon: Icon, urgent }:
         <p className={`text-sm font-bold ${urgent ? 'text-red-800' : 'text-amber-800'}`}>{count} {label}</p>
         <p className={`text-xs ${urgent ? 'text-red-500' : 'text-amber-600'}`}>{sub}</p>
       </div>
-      <ChevronRight size={15} className={urgent ? 'text-red-400' : 'text-amber-400'} />
+      <ChevronRight size={15} className={urgent ? 'text-red-300' : 'text-amber-300'} />
     </button>
   )
 }
@@ -150,7 +132,7 @@ function TankHealthBar({ critical, warning, healthy }: { critical: number; warni
   const total = critical + warning + healthy
   if (total === 0) return null
   return (
-    <div className="flex rounded-full overflow-hidden h-2 w-full">
+    <div className="flex rounded-full overflow-hidden h-2 w-full bg-gray-100">
       {critical > 0 && <div style={{ flex: critical, backgroundColor: '#ef4444' }} />}
       {warning  > 0 && <div style={{ flex: warning,  backgroundColor: '#f59e0b' }} />}
       {healthy  > 0 && <div style={{ flex: healthy,  backgroundColor: '#10b981' }} />}
@@ -159,109 +141,72 @@ function TankHealthBar({ critical, warning, healthy }: { critical: number; warni
 }
 
 // ── skeleton ──────────────────────────────────────────────────────────────────
-function Skeleton({ className }: { className?: string }) {
-  return <div className={`bg-gray-100 rounded-2xl animate-pulse ${className ?? ''}`} />
+function Sk({ className }: { className?: string }) {
+  return <div className={`bg-gray-200/70 rounded-2xl animate-pulse ${className ?? ''}`} />
 }
 
-// ── welcome / empty state ─────────────────────────────────────────────────────
+// ── welcome (zero state) ──────────────────────────────────────────────────────
 function WelcomeDashboard() {
   const navigate = useNavigate()
-
   const steps = [
-    { num: 1, icon: Users,     title: 'Add Clients',    desc: 'Operators and companies you service',       path: '/clients' },
-    { num: 2, icon: Waves,     title: 'Add Wells',      desc: 'Link each well to a client and lease',      path: '/wells'   },
-    { num: 3, icon: Container, title: 'Install Tanks',  desc: 'Track fluid levels in real time',           path: '/tanks'   },
+    { n: 1, icon: Users,     title: 'Add Clients',   desc: 'Operators and companies you service', path: '/clients' },
+    { n: 2, icon: Waves,     title: 'Add Wells',     desc: 'Link each well to a client lease',    path: '/wells'   },
+    { n: 3, icon: Container, title: 'Install Tanks', desc: 'Monitor fluid levels in real time',   path: '/tanks'   },
   ]
-
-  const features = [
-    { icon: FlaskConical,  label: 'Lab Management'   },
-    { icon: Activity,      label: 'Treatment Plans'  },
-    { icon: Truck,         label: 'Dispatch & Routes'},
-    { icon: ClipboardList, label: 'SOAR Reports'     },
-    { icon: Package,       label: 'Inventory'        },
-    { icon: FileText,      label: '10+ Reports'      },
+  const chips = [
+    { icon: FlaskConical,  l: 'Lab Management'    },
+    { icon: Activity,      l: 'Treatment Plans'   },
+    { icon: Truck,         l: 'Dispatch & Routes' },
+    { icon: ClipboardList, l: 'SOAR Reports'      },
+    { icon: Package,       l: 'Inventory'         },
+    { icon: FileText,      l: '10+ Reports'       },
   ]
-
   return (
     <div className="px-8 py-6 max-w-5xl mx-auto space-y-6">
-
-      {/* Hero banner */}
-      <div className="rounded-2xl p-8 text-white relative overflow-hidden" style={{ backgroundColor: 'var(--color-primary)' }}>
-        <div className="absolute inset-0 opacity-10"
-          style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, white 0%, transparent 60%)' }} />
+      <div className="rounded-2xl p-8 text-white relative overflow-hidden"
+        style={{ background: 'linear-gradient(135deg, #1E3A5F 0%, #0f2341 100%)' }}>
+        <div className="absolute right-0 top-0 bottom-0 w-64 opacity-10"
+          style={{ background: 'radial-gradient(ellipse at right, white, transparent)' }} />
         <div className="relative flex items-start justify-between gap-8">
-          <div className="flex-1">
+          <div>
             <div className="flex items-center gap-2 mb-3">
-              <Sparkles size={14} className="opacity-70" />
-              <span className="text-xs font-semibold opacity-70 uppercase tracking-widest">Welcome to FECOS</span>
+              <Sparkles size={13} className="opacity-60" />
+              <span className="text-[11px] font-bold opacity-60 uppercase tracking-widest">Welcome to FECOS</span>
             </div>
-            <h2 className="text-2xl font-black mb-2 leading-tight">
-              Your field operations<br />platform is ready.
-            </h2>
-            <p className="text-sm opacity-70 max-w-sm leading-relaxed">
-              Complete field ops — lab management, treatment plans, tank monitoring, SOAR reporting, dispatch, inventory, and more. Online and offline.
+            <h2 className="text-3xl font-black mb-3 leading-tight">Your platform is ready.</h2>
+            <p className="text-sm opacity-65 max-w-sm leading-relaxed">
+              Complete field ops — lab, treatment plans, tank monitoring, SOAR, dispatch, inventory. Online and offline.
             </p>
           </div>
-          <div className="hidden md:flex flex-wrap gap-2 max-w-[240px] self-center">
-            {features.map(({ icon: Icon, label }) => (
-              <div key={label}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold"
-                style={{ backgroundColor: 'rgba(255,255,255,0.15)' }}>
-                <Icon size={11} />
-                {label}
+          <div className="hidden md:flex flex-wrap gap-2 max-w-[220px]">
+            {chips.map(({ icon: Icon, l }) => (
+              <div key={l} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold"
+                style={{ backgroundColor: 'rgba(255,255,255,0.12)' }}>
+                <Icon size={10} />{l}
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Setup steps */}
       <div>
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Get started — 3 steps</p>
+        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Get started — 3 steps</p>
         <div className="grid grid-cols-3 gap-4">
-          {steps.map(({ num, icon: Icon, title, desc, path }) => (
-            <button key={num} onClick={() => navigate(path)}
-              className="bg-white border border-gray-100 rounded-2xl p-6 text-left hover:border-gray-300 hover:shadow-md transition-all group">
+          {steps.map(({ n, icon: Icon, title, desc, path }) => (
+            <button key={n} onClick={() => navigate(path)}
+              className="bg-white border border-gray-200 rounded-2xl p-6 text-left hover:border-gray-300 hover:shadow-md transition-all group">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-black text-white shrink-0"
-                  style={{ backgroundColor: 'var(--color-primary)' }}>
-                  {num}
-                </div>
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-gray-50">
-                  <Icon size={15} className="text-gray-500" />
+                  style={{ backgroundColor: '#1E3A5F' }}>{n}</div>
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-slate-50">
+                  <Icon size={15} className="text-slate-500" />
                 </div>
               </div>
               <p className="text-sm font-bold text-gray-900 mb-1">{title}</p>
               <p className="text-xs text-gray-400 leading-relaxed mb-4">{desc}</p>
-              <div className="flex items-center gap-1 text-xs font-bold" style={{ color: 'var(--color-primary)' }}>
-                Go to {title}
-                <ArrowRight size={11} className="group-hover:translate-x-1 transition-transform" />
+              <div className="flex items-center gap-1 text-xs font-bold" style={{ color: '#1E3A5F' }}>
+                Go to {title} <ArrowUpRight size={11} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
               </div>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Quick links */}
-      <div>
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Explore the platform</p>
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { icon: ClipboardList, label: 'Schedule & Service Visits', path: '/schedule', desc: 'Plan and track field service' },
-            { icon: Truck,         label: 'Routes & Dispatch',         path: '/routes',   desc: 'Driver routes with offline delivery' },
-            { icon: FlaskConical,  label: 'Lab & Chemistry',           path: '/lab/queue',desc: 'QC samples and results' },
-          ].map(({ icon: Icon, label, path, desc }) => (
-            <button key={label} onClick={() => navigate(path)}
-              className="bg-white border border-gray-100 rounded-xl p-4 text-left hover:border-gray-200 hover:shadow-sm transition-all group flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                style={{ backgroundColor: 'rgba(var(--color-primary-rgb,120,40,31),0.08)' }}>
-                <Icon size={16} style={{ color: 'var(--color-primary)' }} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-800 leading-tight">{label}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
-              </div>
-              <ChevronRight size={13} className="text-gray-300 group-hover:text-gray-400 shrink-0 transition-colors" />
             </button>
           ))}
         </div>
@@ -279,7 +224,6 @@ export default function DashboardPage() {
     queryFn:  () => dashboardApi.get().then(r => r.data.data!),
     refetchInterval: 60_000,
   })
-
   const { data: tanksData, isLoading: tanksLoading } = useQuery({
     queryKey: ['tanks-dashboard'],
     queryFn:  () => tanksApi.list({ size: 5000 }).then(r => r.data.data?.content ?? []),
@@ -300,74 +244,110 @@ export default function DashboardPage() {
   const healthy   = installed.filter(t => t.calculatedLevelPct >= 60)
   const atRisk    = [...critical, ...warning].sort((a, b) => a.calculatedLevelPct - b.calculatedLevelPct)
 
-  const visitTotal  = stats.activeVisitsToday + stats.completedVisitsToday
-  const routeTotal  = stats.activeRoutesToday + stats.completedRoutesToday
-  const hasActions  = stats.soarFlagsUnacknowledged > 0 || stats.labPending > 0
-  const isEmpty     = !isLoading && stats.totalClients === 0 && stats.totalWells === 0 && stats.totalTanks === 0
+  const visitTotal = stats.activeVisitsToday + stats.completedVisitsToday
+  const routeTotal = stats.activeRoutesToday + stats.completedRoutesToday
+  const hasActions = stats.soarFlagsUnacknowledged > 0 || stats.labPending > 0
+  const isEmpty    = !isLoading && stats.totalClients === 0 && stats.totalWells === 0 && stats.totalTanks === 0
 
   const updatedTime = dataUpdatedAt
     ? new Date(dataUpdatedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
     : null
 
-  return (
-    <div className="min-h-screen bg-gray-50">
+  // asset tile accent colors
+  const assetTiles = [
+    { label: 'Clients',        value: stats.totalClients, path: '/clients',     accent: '#1E3A5F' },
+    { label: 'Wells',          value: stats.totalWells,   path: '/wells',       accent: '#0d9488' },
+    { label: 'Tanks',          value: stats.totalTanks,   path: '/tanks',       accent: '#7c3aed' },
+    { label: 'Lab Done Today', value: stats.labCompleted, path: '/lab/results', accent: '#0369a1' },
+  ]
 
-      {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-8 py-4">
+  return (
+    <div className="min-h-screen" style={{ backgroundColor: '#f1f5f9' }}>
+
+      {/* ── Header ── */}
+      <div className="bg-white border-b border-gray-200 px-8 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-lg font-black text-gray-900 tracking-tight">Field Operations Center</h1>
             <p className="text-xs text-gray-400 mt-0.5">{todayLabel()}</p>
           </div>
           <button onClick={() => refetch()}
-            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors">
+            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-700 transition-colors">
             <RefreshCw size={11} className={isFetching ? 'animate-spin' : ''} />
             {updatedTime ? `Updated ${updatedTime}` : 'Refreshing…'}
           </button>
         </div>
       </div>
 
-      {/* Empty / onboarding state */}
+      {/* ── Zero state ── */}
       {isEmpty && <WelcomeDashboard />}
 
-      {/* Operational dashboard */}
+      {/* ── Operational dashboard ── */}
       {!isEmpty && (
-        <div className="px-8 py-6 max-w-5xl mx-auto space-y-6">
+        <div className="px-8 py-6 max-w-5xl mx-auto space-y-5">
 
-          {/* Stat chips */}
+          {/* 4 dark metric cards */}
           {isLoading ? (
-            <div className="grid grid-cols-4 gap-3">
-              {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-32" />)}
-            </div>
+            <div className="flex gap-3">{[...Array(4)].map((_, i) => <Sk key={i} className="flex-1 h-36" />)}</div>
           ) : (
             <div className="flex gap-3">
-              <StatChip value={stats.activeVisitsToday}        label="Visits Active"    icon={CalendarDays} onClick={() => navigate('/schedule')} />
-              <StatChip value={stats.activeRoutesToday}         label="Deliveries Active" icon={Truck}       onClick={() => navigate('/routes')}   />
-              <StatChip value={critical.length}                label="Critical Tanks"  icon={AlertTriangle} urgent onClick={() => navigate('/tanks')}    />
-              <StatChip value={stats.soarFlagsUnacknowledged}  label="SOAR Flags"      icon={Flag}          urgent onClick={() => navigate('/schedule')} />
+              <MetricCard
+                value={stats.activeVisitsToday}
+                label="Visits Active"
+                icon={CalendarDays}
+                gradient="linear-gradient(135deg, #1E3A5F 0%, #0f2341 100%)"
+                onClick={() => navigate('/schedule')}
+              />
+              <MetricCard
+                value={stats.activeRoutesToday}
+                label="Deliveries Active"
+                icon={Truck}
+                gradient="linear-gradient(135deg, #134e4a 0%, #0d3531 100%)"
+                onClick={() => navigate('/routes')}
+              />
+              <MetricCard
+                value={critical.length}
+                label="Critical Tanks"
+                icon={AlertTriangle}
+                gradient={critical.length > 0
+                  ? 'linear-gradient(135deg, #dc2626 0%, #7f1d1d 100%)'
+                  : 'linear-gradient(135deg, #374151 0%, #1f2937 100%)'}
+                onClick={() => navigate('/tanks')}
+              />
+              <MetricCard
+                value={stats.soarFlagsUnacknowledged}
+                label="SOAR Flags"
+                icon={Flag}
+                gradient={stats.soarFlagsUnacknowledged > 0
+                  ? 'linear-gradient(135deg, #d97706 0%, #78350f 100%)'
+                  : 'linear-gradient(135deg, #374151 0%, #1f2937 100%)'}
+                onClick={() => navigate('/schedule')}
+              />
             </div>
           )}
 
           {/* Needs action */}
           {!isLoading && hasActions && (
             <div className="space-y-2">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Needs Action</p>
-              <ActionRow count={stats.soarFlagsUnacknowledged} label={`SOAR flag${stats.soarFlagsUnacknowledged !== 1 ? 's' : ''} unacknowledged`}
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Needs Action</p>
+              <ActionAlert count={stats.soarFlagsUnacknowledged}
+                label={`SOAR flag${stats.soarFlagsUnacknowledged !== 1 ? 's' : ''} unacknowledged`}
                 sub="Open service visits to review and acknowledge" path="/schedule" icon={AlertTriangle} urgent />
-              <ActionRow count={stats.labPending} label={`lab sample${stats.labPending !== 1 ? 's' : ''} pending`}
+              <ActionAlert count={stats.labPending}
+                label={`lab sample${stats.labPending !== 1 ? 's' : ''} pending`}
                 sub="Results need to be entered or reviewed" path="/lab/queue" icon={FlaskConical} />
             </div>
           )}
 
           {/* Today's operations */}
           <div>
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Today's Operations</p>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Today's Operations</p>
             {isLoading ? (
-              <div className="flex gap-4"><Skeleton className="flex-1 h-44" /><Skeleton className="flex-1 h-44" /></div>
+              <div className="flex gap-4"><Sk className="flex-1 h-40" /><Sk className="flex-1 h-40" /></div>
             ) : (
               <div className="flex gap-4">
-                <OpsPanel label="Service Visits" active={stats.activeVisitsToday}  completed={stats.completedVisitsToday} total={visitTotal} onClick={() => navigate('/schedule')} />
-                <OpsPanel label="Deliveries"     active={stats.activeRoutesToday}  completed={stats.completedRoutesToday} total={routeTotal} onClick={() => navigate('/routes')}   />
+                <OpsCard label="Service Visits" active={stats.activeVisitsToday}  completed={stats.completedVisitsToday} total={visitTotal} onClick={() => navigate('/schedule')} />
+                <OpsCard label="Deliveries"     active={stats.activeRoutesToday}  completed={stats.completedRoutesToday} total={routeTotal} onClick={() => navigate('/routes')}   />
               </div>
             )}
           </div>
@@ -375,27 +355,24 @@ export default function DashboardPage() {
           {/* Tank health */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tank Health</p>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Tank Health</p>
               <button onClick={() => navigate('/tanks')}
-                className="text-[10px] font-semibold flex items-center gap-1" style={{ color: 'var(--color-primary)' }}>
+                className="text-[10px] font-bold flex items-center gap-1 text-slate-500 hover:text-slate-700 transition-colors">
                 All tanks <ChevronRight size={11} />
               </button>
             </div>
-            {tanksLoading ? <Skeleton className="h-28" /> : (
-              <div className="bg-white border border-gray-100 rounded-2xl p-5 space-y-4">
-                <div className="flex gap-4">
+            {tanksLoading ? <Sk className="h-28" /> : (
+              <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-4">
+                <div className="flex">
                   {[
                     { count: critical.length, label: 'Critical <30%',  color: '#ef4444' },
                     { count: warning.length,  label: 'Warning 30–60%', color: '#f59e0b' },
                     { count: healthy.length,  label: 'Healthy >60%',   color: '#10b981' },
                   ].map(({ count, label, color }, i) => (
-                    <>
-                      {i > 0 && <div key={`d${i}`} className="w-px bg-gray-100" />}
-                      <div key={label} className="flex-1 text-center">
-                        <p className="text-2xl font-black tabular-nums" style={{ color }}>{count}</p>
-                        <p className="text-[10px] font-semibold text-gray-400 mt-0.5">{label}</p>
-                      </div>
-                    </>
+                    <div key={label} className={`flex-1 text-center ${i > 0 ? 'border-l border-gray-100' : ''}`}>
+                      <p className="text-3xl font-black tabular-nums" style={{ color }}>{count}</p>
+                      <p className="text-[10px] font-semibold text-gray-400 mt-1">{label}</p>
+                    </div>
                   ))}
                 </div>
                 <TankHealthBar critical={critical.length} warning={warning.length} healthy={healthy.length} />
@@ -405,27 +382,24 @@ export default function DashboardPage() {
                   </div>
                 )}
                 {installed.length === 0 && (
-                  <p className="text-xs text-gray-400 text-center py-2">No tanks currently installed</p>
+                  <p className="text-xs text-gray-400 text-center py-1">No tanks installed — add tanks to monitor levels</p>
                 )}
               </div>
             )}
           </div>
 
-          {/* Assets */}
+          {/* Asset counts */}
           {!isLoading && (
             <div>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Assets</p>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Assets</p>
               <div className="grid grid-cols-4 gap-3">
-                {[
-                  { label: 'Clients',        value: stats.totalClients,  path: '/clients'      },
-                  { label: 'Wells',          value: stats.totalWells,    path: '/wells'        },
-                  { label: 'Tanks',          value: stats.totalTanks,    path: '/tanks'        },
-                  { label: 'Lab Done Today', value: stats.labCompleted,  path: '/lab/results'  },
-                ].map(({ label, value, path }) => (
+                {assetTiles.map(({ label, value, path, accent }) => (
                   <button key={label} onClick={() => navigate(path)}
-                    className="bg-white border border-gray-100 rounded-xl p-4 text-left hover:border-gray-200 hover:shadow-sm transition-all">
-                    <p className="text-2xl font-black text-gray-900 tabular-nums">{value}</p>
-                    <p className="text-[10px] font-semibold text-gray-400 mt-1">{label}</p>
+                    className="bg-white border border-gray-200 rounded-xl p-4 text-left hover:shadow-sm hover:border-gray-300 transition-all overflow-hidden relative group">
+                    <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl transition-all group-hover:w-1.5"
+                      style={{ backgroundColor: accent }} />
+                    <p className="text-3xl font-black text-gray-900 tabular-nums pl-2">{value}</p>
+                    <p className="text-[10px] font-bold text-gray-400 mt-1.5 pl-2 uppercase tracking-wide">{label}</p>
                   </button>
                 ))}
               </div>
