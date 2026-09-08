@@ -61,25 +61,6 @@ class _SplashViewState extends State<SplashView>
                 width: 200,
                 fit: BoxFit.contain,
               ),
-              const SizedBox(height: 16),
-              const Text(
-                'FIELD OPERATIONS',
-                style: TextStyle(
-                  color: AppColors.accent,
-                  fontSize: 12,
-                  letterSpacing: 3.5,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 64),
-              SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: AppColors.accent.withValues(alpha: 0.4),
-                ),
-              ),
             ],
           ),
         ),

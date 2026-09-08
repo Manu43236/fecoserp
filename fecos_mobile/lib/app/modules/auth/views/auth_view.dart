@@ -71,16 +71,6 @@ class _AuthViewState extends State<AuthView> {
                         width: 200,
                         fit: BoxFit.contain,
                       ),
-                      const SizedBox(height: 10),
-                      const Text(
-                        'FIELD OPERATIONS',
-                        style: TextStyle(
-                          color: AppColors.accent,
-                          fontSize: 12,
-                          letterSpacing: 3.5,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -143,18 +133,10 @@ class _AuthViewState extends State<AuthView> {
 
                       // PIN
                       const _FieldLabel('PIN'),
-                      const SizedBox(height: 6),
-                      _Field(
+                      const SizedBox(height: 10),
+                      _PinBoxes(
                         controller: _pinCtrl,
-                        hint: '• • • •',
-                        keyboardType: TextInputType.number,
-                        letterSpacing: 8,
-                        fontSize: 18,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                          LengthLimitingTextInputFormatter(6),
-                        ],
-                        onSubmitted: (_) => _submit(controller),
+                        onSubmitted: () => _submit(controller),
                       ),
 
                       const SizedBox(height: 20),
@@ -244,6 +226,90 @@ class _PrefixBox extends StatelessWidget {
           fontWeight: FontWeight.w600,
           color: AppColors.primary,
         ),
+      ),
+    );
+  }
+}
+
+class _PinBoxes extends StatefulWidget {
+  const _PinBoxes({required this.controller, required this.onSubmitted});
+  final TextEditingController controller;
+  final VoidCallback onSubmitted;
+
+  @override
+  State<_PinBoxes> createState() => _PinBoxesState();
+}
+
+class _PinBoxesState extends State<_PinBoxes> {
+  final _focus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pin = widget.controller.text;
+    return GestureDetector(
+      onTap: () => _focus.requestFocus(),
+      child: Stack(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: List.generate(4, (i) {
+              final filled = i < pin.length;
+              final isFocused = _focus.hasFocus && i == pin.length.clamp(0, 3);
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                width: 64,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9F5F4),
+                  border: Border.all(
+                    color: isFocused ? AppColors.primary : AppColors.border,
+                    width: isFocused ? 2 : 1,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                alignment: Alignment.center,
+                child: filled
+                    ? Container(
+                        width: 10,
+                        height: 10,
+                        decoration: const BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                        ),
+                      )
+                    : null,
+              );
+            }),
+          ),
+          Positioned.fill(
+            child: Opacity(
+              opacity: 0,
+              child: TextField(
+                controller: widget.controller,
+                focusNode: _focus,
+                keyboardType: TextInputType.number,
+                obscureText: true,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(4),
+                ],
+                onSubmitted: (_) => widget.onSubmitted(),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
