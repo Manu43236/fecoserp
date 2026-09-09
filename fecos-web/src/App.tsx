@@ -8,6 +8,7 @@ import { useAuthStore } from '@/store/authStore'
 import type { Role } from '@/types'
 
 import { AuthGuard, SuperAdminGuard, GuestGuard } from '@/layouts/AuthGuard'
+import { PrivacyPolicyPage } from '@/pages/public/PrivacyPolicyPage'
 import { AppLayout } from '@/layouts/AppLayout'
 import { SuperAdminLayout } from '@/layouts/SuperAdminLayout'
 import { LoginPage } from '@/pages/auth/LoginPage'
@@ -46,6 +47,7 @@ function getPortal(): 'console' | 'tenant' {
 function ConsoleRoutes() {
   return (
     <Routes>
+      <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
       <Route element={<GuestGuard />}>
         <Route path="/login" element={<LoginPage />} />
       </Route>
