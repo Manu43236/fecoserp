@@ -100,3 +100,4 @@ spring:
 logging:
   level:
     com.fecos: WARN
+
