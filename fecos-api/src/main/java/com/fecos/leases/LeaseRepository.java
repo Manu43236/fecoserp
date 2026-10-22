@@ -33,4 +33,6 @@ public interface LeaseRepository extends JpaRepository<LeaseEntity, UUID> {
     Optional<LeaseEntity> findByIdAndTenantIdAndIsDeletedFalse(UUID id, UUID tenantId);
 
     boolean existsByLeaseNameAndClientIdAndTenantIdAndIsDeletedFalse(String leaseName, UUID clientId, UUID tenantId);
+
+    Optional<LeaseEntity> findByLeaseNameAndTenantIdAndIsDeletedFalse(String leaseName, UUID tenantId);
 }

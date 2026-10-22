@@ -1,8 +1,10 @@
 package com.fecos.wells;
 
+import com.fecos.common.BulkResult;
 import com.fecos.leases.LeaseRepository;
 import com.fecos.clients.ClientRepository;
 import com.fecos.users.UserRepository;
+import com.opencsv.CSVReader;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -10,7 +12,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -51,10 +57,58 @@ public class WellService {
     }
 
     @Transactional
+    public BulkResult bulkCreate(MultipartFile file) throws Exception {
+        UUID tenantId = currentTenantId();
+        UUID userId   = currentUserId();
+        int created   = 0;
+        List<BulkResult.RowError> errors = new ArrayList<>();
+
+        // CSV columns: leaseName,wellName,wellNumber,apiNumber,pumpType
+        try (var reader = new CSVReader(new InputStreamReader(file.getInputStream()))) {
+            reader.readNext(); // skip header
+            String[] row;
+            int rowNum = 2;
+            while ((row = reader.readNext()) != null) {
+                try {
+                    if (row.length < 2 || row[0].isBlank() || row[1].isBlank()) { rowNum++; continue; }
+                    String leaseName  = row[0].trim();
+                    String wellName   = row[1].trim();
+                    String wellNumber = row.length > 2 ? row[2].trim() : null;
+                    String apiNumber  = row.length > 3 ? row[3].trim() : null;
+                    String pumpType   = row.length > 4 ? row[4].trim() : null;
+
+                    var lease = leaseRepository.findByLeaseNameAndTenantIdAndIsDeletedFalse(leaseName, tenantId)
+                            .orElseThrow(() -> new IllegalArgumentException("Lease \"" + leaseName + "\" not found"));
+
+                    WellEntity w = new WellEntity();
+                    w.setTenantId(tenantId);
+                    w.setCreatedBy(userId);
+                    w.setLeaseId(lease.getId());
+                    w.setWellName(wellName);
+                    w.setWellNumber(notBlank(wellNumber));
+                    w.setApiNumber(notBlank(apiNumber));
+                    w.setPumpType(pumpType != null && !pumpType.isBlank() ? pumpType : "Rod Pump");
+                    w.setActive(true);
+                    wellRepository.save(w);
+                    created++;
+                } catch (Exception e) {
+                    errors.add(new BulkResult.RowError(rowNum, e.getMessage()));
+                }
+                rowNum++;
+            }
+        }
+        return new BulkResult(created, errors);
+    }
+
+    @Transactional
     public void delete(UUID id) {
         WellEntity w = findForTenant(id);
         w.setDeleted(true);
         wellRepository.save(w);
+    }
+
+    private static String notBlank(String s) {
+        return (s == null || s.isBlank()) ? null : s;
     }
 
     private void apply(WellEntity w, WellRequest req) {

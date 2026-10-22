@@ -1,12 +1,14 @@
 package com.fecos.leases;
 
 import com.fecos.common.ApiResponse;
+import com.fecos.common.BulkResult;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
 
@@ -45,6 +47,12 @@ public class LeaseController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<LeaseResponse>> update(@PathVariable UUID id, @Valid @RequestBody LeaseRequest req) {
         return ResponseEntity.ok(ApiResponse.ok("Lease updated", leaseService.update(id, req)));
+    }
+
+    @PostMapping("/bulk")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<BulkResult>> bulk(@RequestParam("file") MultipartFile file) throws Exception {
+        return ResponseEntity.ok(ApiResponse.ok("Bulk import complete", leaseService.bulkCreate(file)));
     }
 
     @DeleteMapping("/{id}")

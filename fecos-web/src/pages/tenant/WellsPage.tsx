@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import toast from 'react-hot-toast'
 import { Plus, Search, X, Drill, ChevronRight, MapPin } from 'lucide-react'
 import { wellsApi, type WellRecord, type WellPayload } from '@/api/wells'
+import { BulkUploadButton } from '@/components/ui/BulkUploadButton'
 import { leasesApi, type LeaseRecord } from '@/api/leases'
 import { pumpTypesApi, type PumpTypeRecord } from '@/api/pumpTypes'
 import { SearchableDropdown, type DropdownOption } from '@/components/ui/SearchableDropdown'
@@ -361,11 +362,20 @@ export function WellsPage() {
           <p className="text-sm text-gray-500 mt-0.5">{total} well{total !== 1 ? 's' : ''} total</p>
         </div>
         {canEdit && (
-          <button onClick={openCreate}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg transition"
-            style={{ backgroundColor: 'var(--color-primary)' }}>
-            <Plus size={15} /> New Well
-          </button>
+          <div className="flex items-center gap-2">
+            <BulkUploadButton
+              templateHeaders={['leaseName', 'wellName', 'wellNumber', 'apiNumber', 'pumpType']}
+              templateFilename="wells_template.csv"
+              templateSampleRow={['Fasken North Lease', 'Fasken North #1', 'FN-001', '42-329-12345', 'Rod Pump']}
+              onUpload={wellsApi.bulkCreate}
+              onSuccess={() => qc.invalidateQueries({ queryKey: ['wells'] })}
+            />
+            <button onClick={openCreate}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg transition"
+              style={{ backgroundColor: 'var(--color-primary)' }}>
+              <Plus size={15} /> New Well
+            </button>
+          </div>
         )}
       </div>
 

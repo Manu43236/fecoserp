@@ -34,4 +34,10 @@ export const leasesApi = {
   create: (data: LeasePayload) => api.post<ApiResponse<LeaseRecord>>('/api/v1/leases', data),
   update: (id: string, data: LeasePayload) => api.put<ApiResponse<LeaseRecord>>(`/api/v1/leases/${id}`, data),
   delete: (id: string)      => api.delete<ApiResponse<void>>(`/api/v1/leases/${id}`),
+
+  bulkCreate: (file: File) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return api.post('/api/v1/leases/bulk', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+  },
 }

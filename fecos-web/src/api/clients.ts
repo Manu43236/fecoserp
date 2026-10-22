@@ -44,4 +44,10 @@ export const clientsApi = {
 
   delete: (id: string) =>
     api.delete<ApiResponse<void>>(`/api/v1/clients/${id}`),
+
+  bulkCreate: (file: File) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return api.post('/api/v1/clients/bulk', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+  },
 }

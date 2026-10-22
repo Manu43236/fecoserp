@@ -29,4 +29,10 @@ export const wellsApi = {
   create: (data: WellPayload)  => api.post<ApiResponse<WellRecord>>('/api/v1/wells', data),
   update: (id: string, data: WellPayload) => api.put<ApiResponse<WellRecord>>(`/api/v1/wells/${id}`, data),
   delete: (id: string)      => api.delete<ApiResponse<void>>(`/api/v1/wells/${id}`),
+
+  bulkCreate: (file: File) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return api.post('/api/v1/wells/bulk', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+  },
 }

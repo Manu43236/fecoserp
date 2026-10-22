@@ -9,6 +9,7 @@ import {
   MapPin, User, ChevronRight,
 } from 'lucide-react'
 import { clientsApi, type ClientRecord, type ClientPayload } from '@/api/clients'
+import { BulkUploadButton } from '@/components/ui/BulkUploadButton'
 import { usersApi, type UserRecord } from '@/api/users'
 import { SearchableDropdown, type DropdownOption } from '@/components/ui/SearchableDropdown'
 import { useAuthStore } from '@/store/authStore'
@@ -480,14 +481,23 @@ export function ClientsPage() {
           <p className="text-sm text-gray-500 mt-0.5">{total} client{total !== 1 ? 's' : ''} total</p>
         </div>
         {canEdit && (
-          <button
-            onClick={openCreate}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg transition"
-            style={{ backgroundColor: 'var(--color-primary)' }}
-          >
-            <Plus size={15} />
-            New Client
-          </button>
+          <div className="flex items-center gap-2">
+            <BulkUploadButton
+              templateHeaders={['companyName', 'contactName', 'contactPhone', 'contactEmail', 'billingAddress']}
+              templateFilename="clients_template.csv"
+              templateSampleRow={['Fasken Oil and Ranch', 'James Fasken', '(432) 555-0101', 'jfasken@faskenoil.com', '6101 W I-20 Midland TX 79706']}
+              onUpload={clientsApi.bulkCreate}
+              onSuccess={() => qc.invalidateQueries({ queryKey: ['clients'] })}
+            />
+            <button
+              onClick={openCreate}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg transition"
+              style={{ backgroundColor: 'var(--color-primary)' }}
+            >
+              <Plus size={15} />
+              New Client
+            </button>
+          </div>
         )}
       </div>
 

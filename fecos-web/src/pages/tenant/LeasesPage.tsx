@@ -8,6 +8,7 @@ import {
   Plus, Search, X, MapPin, ChevronRight, Building2, Navigation,
 } from 'lucide-react'
 import { leasesApi, type LeaseRecord, type LeasePayload } from '@/api/leases'
+import { BulkUploadButton } from '@/components/ui/BulkUploadButton'
 import { clientsApi, type ClientRecord } from '@/api/clients'
 import { SearchableDropdown, type DropdownOption } from '@/components/ui/SearchableDropdown'
 import { useAuthStore } from '@/store/authStore'
@@ -405,11 +406,20 @@ export function LeasesPage() {
           <p className="text-sm text-gray-500 mt-0.5">{total} lease{total !== 1 ? 's' : ''} total</p>
         </div>
         {canEdit && (
-          <button onClick={openCreate}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg transition"
-            style={{ backgroundColor: 'var(--color-primary)' }}>
-            <Plus size={15} /> New Lease
-          </button>
+          <div className="flex items-center gap-2">
+            <BulkUploadButton
+              templateHeaders={['clientCompanyName', 'leaseName', 'county', 'state', 'gpsLat', 'gpsLng', 'directions']}
+              templateFilename="leases_template.csv"
+              templateSampleRow={['Fasken Oil and Ranch', 'Fasken North Lease', 'Midland', 'TX', '31.9973', '-102.0779', 'From I-20 exit 136 north 3 miles']}
+              onUpload={leasesApi.bulkCreate}
+              onSuccess={() => qc.invalidateQueries({ queryKey: ['leases'] })}
+            />
+            <button onClick={openCreate}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg transition"
+              style={{ backgroundColor: 'var(--color-primary)' }}>
+              <Plus size={15} /> New Lease
+            </button>
+          </div>
         )}
       </div>
 
