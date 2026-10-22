@@ -160,6 +160,28 @@ public class ServiceVisitService {
         if (req.notes()  != null) stop.setNotes(req.notes());
         stopRepo.save(stop);
 
+        // Auto-advance visit status when stops change
+        if (req.status() != null) {
+            ServiceVisitEntity visit = visitRepo.findByIdAndTenantIdAndIsDeletedFalse(visitId, tenantId)
+                    .orElseThrow(() -> new RuntimeException("Visit not found"));
+
+            if (visit.getStatus() != ServiceVisitStatus.CANCELLED && visit.getStatus() != ServiceVisitStatus.COMPLETED) {
+                var allStops = stopRepo.findAllByServiceVisitIdAndIsDeletedFalseOrderBySequenceAsc(visitId);
+                boolean allDone = allStops.stream()
+                        .allMatch(s -> s.getStatus() == ServiceVisitStopStatus.COMPLETED
+                                    || s.getStatus() == ServiceVisitStopStatus.SKIPPED);
+                boolean anyDone = allStops.stream()
+                        .anyMatch(s -> s.getStatus() == ServiceVisitStopStatus.COMPLETED);
+
+                if (allDone) {
+                    visit.setStatus(ServiceVisitStatus.COMPLETED);
+                } else if (anyDone && visit.getStatus() == ServiceVisitStatus.SCHEDULED) {
+                    visit.setStatus(ServiceVisitStatus.IN_PROGRESS);
+                }
+                visitRepo.save(visit);
+            }
+        }
+
         return get(visitId);
     }
 

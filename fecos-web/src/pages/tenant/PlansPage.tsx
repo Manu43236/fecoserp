@@ -197,6 +197,23 @@ function TankStatusBadge({ status }: { status: TankStatus }) {
   )
 }
 
+function estimatedEmptyDate(
+  remainingGallons: number,
+  recRate: number,
+  method: PlanMethod,
+  schedule: PlanSchedule | null,
+): Date | null {
+  if (remainingGallons <= 0 || recRate <= 0) return null
+  const divisor = method === 'CONTINUOUS' ? 1
+    : schedule === 'WEEKLY' ? 7
+    : schedule === 'BIWEEKLY' ? 14
+    : schedule === 'MONTHLY' ? 30
+    : 1
+  const dailyRate = recRate / divisor
+  if (dailyRate <= 0) return null
+  return new Date(Date.now() + (remainingGallons / dailyRate) * 86_400_000)
+}
+
 // ── Plan form panel (440px right slide) ───────────────────────────────────────
 function PlanFormPanel({
   open, onClose, plan, wellsData, leasesData, repOptions, canEdit,
@@ -936,6 +953,30 @@ function PlanDrawer({
                                 </p>
                               </div>
                               <TankVisual pct={tank.calculatedLevelPct} />
+                              {(() => {
+                                const emptyAt = estimatedEmptyDate(tank.calculatedLevelGallons, line.recRate, line.method, line.schedule)
+                                if (!emptyAt) return null
+                                const daysLeft = (emptyAt.getTime() - Date.now()) / 86_400_000
+                                const urgent = daysLeft < 3
+                                return (
+                                  <div className={`mt-2.5 flex items-center justify-between px-3 py-2.5 rounded-lg border ${urgent ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'}`}>
+                                    <div>
+                                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-0.5">Est. Tank Empty</p>
+                                      <p className={`text-sm font-bold ${urgent ? 'text-red-600' : 'text-gray-800'}`}>
+                                        {emptyAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                      </p>
+                                      <p className={`text-xs mt-0.5 ${urgent ? 'text-red-500' : 'text-gray-500'}`}>
+                                        {emptyAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                                        {' · '}
+                                        {daysLeft < 1
+                                          ? `${Math.round(daysLeft * 24)}h left`
+                                          : `${daysLeft.toFixed(1)} days left`}
+                                      </p>
+                                    </div>
+                                    {urgent && <AlertTriangle size={16} className="text-red-500 shrink-0" />}
+                                  </div>
+                                )
+                              })()}
                               {tank.calculatedLevelPct < 60 && (
                                 <p className="text-xs font-semibold text-orange-600 flex items-center gap-1.5 mt-1.5">
                                   <AlertTriangle size={11} />
