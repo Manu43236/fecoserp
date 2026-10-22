@@ -408,9 +408,17 @@ export function LeasesPage() {
         {canEdit && (
           <div className="flex items-center gap-2">
             <BulkUploadButton
+              label="Bulk Upload"
               templateHeaders={['clientCompanyName', 'leaseName', 'county', 'state', 'gpsLat', 'gpsLng', 'directions']}
               templateFilename="leases_template.csv"
               templateSampleRow={['Fasken Oil and Ranch', 'Fasken North Lease', 'Midland', 'TX', '31.9973', '-102.0779', 'From I-20 exit 136 north 3 miles']}
+              notes={[
+                'Download the template and open it in Excel or Google Sheets.',
+                'clientCompanyName must exactly match an existing client name in the system.',
+                'leaseName is required; county, state, GPS coordinates, and directions are optional.',
+                'GPS format: decimal degrees (e.g. 31.9973 / -102.0779).',
+                'Save as CSV and upload — duplicate lease names per client will be skipped.',
+              ]}
               onUpload={leasesApi.bulkCreate}
               onSuccess={() => qc.invalidateQueries({ queryKey: ['leases'] })}
             />

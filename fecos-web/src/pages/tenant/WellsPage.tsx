@@ -364,9 +364,17 @@ export function WellsPage() {
         {canEdit && (
           <div className="flex items-center gap-2">
             <BulkUploadButton
+              label="Bulk Upload"
               templateHeaders={['leaseName', 'wellName', 'wellNumber', 'apiNumber', 'pumpType']}
               templateFilename="wells_template.csv"
               templateSampleRow={['Fasken North Lease', 'Fasken North #1', 'FN-001', '42-329-12345', 'Rod Pump']}
+              notes={[
+                'Download the template and open it in Excel or Google Sheets.',
+                'leaseName must exactly match an existing lease name in the system.',
+                'wellName is required; wellNumber, apiNumber, and pumpType are optional.',
+                'API number format: XX-XXX-XXXXX (e.g. 42-329-12345).',
+                'pumpType defaults to "Rod Pump" if left blank.',
+              ]}
               onUpload={wellsApi.bulkCreate}
               onSuccess={() => qc.invalidateQueries({ queryKey: ['wells'] })}
             />

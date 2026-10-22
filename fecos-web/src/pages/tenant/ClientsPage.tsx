@@ -483,9 +483,17 @@ export function ClientsPage() {
         {canEdit && (
           <div className="flex items-center gap-2">
             <BulkUploadButton
+              label="Bulk Upload"
               templateHeaders={['companyName', 'contactName', 'contactPhone', 'contactEmail', 'billingAddress']}
               templateFilename="clients_template.csv"
               templateSampleRow={['Fasken Oil and Ranch', 'James Fasken', '(432) 555-0101', 'jfasken@faskenoil.com', '6101 W I-20 Midland TX 79706']}
+              notes={[
+                'Download the template CSV and open it in Excel or Google Sheets.',
+                'Fill in each row — companyName is required; all other fields are optional.',
+                'Phone format: (432) 555-0101. Leave blank if unknown.',
+                'Save the file as CSV and upload it here.',
+                'Duplicate company names will be skipped with an error shown per row.',
+              ]}
               onUpload={clientsApi.bulkCreate}
               onSuccess={() => qc.invalidateQueries({ queryKey: ['clients'] })}
             />
