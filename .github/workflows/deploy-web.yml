@@ -7,6 +7,7 @@ on:
     paths:
       - 'fecos-web/**'
       - 'nginx.conf'
+      - 'docker-compose.prod.yml'
 
 jobs:
   deploy:

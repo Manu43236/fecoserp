@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - "fecos-api/**"
+      - "docker-compose.prod.yml"
 
 jobs:
   deploy:
