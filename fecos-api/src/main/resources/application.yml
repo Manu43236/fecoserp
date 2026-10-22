@@ -92,7 +92,7 @@ spring:
     activate:
       on-profile: prod
   datasource:
-    url: jdbc:mysql://${DB_HOST}:3306/fecos_prod?useSSL=true&serverTimezone=UTC
+    url: jdbc:mysql://${DB_HOST}:3306/fecos_prod?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
     username: ${DB_USER}
     password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
