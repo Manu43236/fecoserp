@@ -25,7 +25,7 @@ jobs:
           ssh -p 1992 ubuntu@${{ secrets.EC2_HOST }} '
             set -e
             cd /app/fecos
-            rm -f .git/index.lock .git/FETCH_HEAD.lock
+            rm -f .git/index.lock .git/FETCH_HEAD.lock .git/refs/remotes/origin/main
             git fetch origin main
             rm -f .git/index.lock
             git reset --hard FETCH_HEAD
