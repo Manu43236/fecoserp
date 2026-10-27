@@ -8,6 +8,7 @@ import com.fecos.users.Role;
 import com.fecos.users.UserEntity;
 import com.fecos.users.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -34,11 +36,15 @@ public class AuthService {
         if (!passwordEncoder.matches(request.getPin(), user.getPinHash()))
             throw new BadCredentialsException("Invalid credentials");
 
-        signInLogRepository.save(SignInLogEntity.builder()
-                .userId(user.getId())
-                .tenantId(user.getTenantId())
-                .platform(platform)
-                .build());
+        try {
+            signInLogRepository.save(SignInLogEntity.builder()
+                    .userId(user.getId())
+                    .tenantId(user.getTenantId())
+                    .platform(platform)
+                    .build());
+        } catch (Exception e) {
+            log.error("Failed to save sign-in log for user {}: {}", user.getId(), e.getMessage());
+        }
 
         return buildResponse(user, generateToken(user));
     }
