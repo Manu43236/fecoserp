@@ -20,7 +20,7 @@ public class SignInLogEntity {
     @Column(nullable = false)
     private UUID userId;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private UUID tenantId;
 
     @Column(nullable = false, length = 10)
