@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Search, ChevronLeft, ChevronRight, Monitor, Smartphone, Phone, Mail, X, Building2, Plus, Pencil, Lock, Eye, EyeOff } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, Monitor, Smartphone, Phone, Mail, X, Building2, Plus, Pencil, Lock, Eye, EyeOff, Clock } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -379,6 +379,19 @@ function UserDrawer({
                   <button onClick={() => setPinVisible(v => !v)} className="ml-1 text-gray-400 hover:text-gray-600 transition-colors">
                     {pinVisible ? <EyeOff size={13} /> : <Eye size={13} />}
                   </button>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0">
+                  <Clock size={13} className="text-gray-400" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400">Last Sign-In</p>
+                  <p className={`text-sm font-medium ${user.lastSignedInAt ? 'text-gray-800' : 'text-gray-400'}`}>
+                    {user.lastSignedInAt
+                      ? new Date(user.lastSignedInAt).toLocaleString()
+                      : 'Never'}
+                  </p>
                 </div>
               </div>
             </div>

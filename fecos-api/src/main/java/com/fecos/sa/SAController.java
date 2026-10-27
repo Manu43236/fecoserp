@@ -2,6 +2,8 @@ package com.fecos.sa;
 
 import com.fecos.auth.AuthResponse;
 import com.fecos.auth.AuthService;
+import com.fecos.auth.SignInLogRepository;
+import com.fecos.auth.SignInLogResponse;
 import com.fecos.common.ApiResponse;
 import com.fecos.tenant.CreateTenantRequest;
 import com.fecos.tenant.TenantEntity;
@@ -26,11 +28,13 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 
 @RestController
 @RequestMapping("/api/v1/sa")
@@ -44,6 +48,7 @@ public class SAController {
     private final UserRepository userRepository;
     private final UserService userService;
     private final S3UploadService s3;
+    private final SignInLogRepository signInLogRepository;
 
     @GetMapping("/tenants")
     public ResponseEntity<ApiResponse<List<TenantResponse>>> listTenants() {
@@ -75,10 +80,14 @@ public class SAController {
         tenantRepository.findAllByIsDeletedFalseOrderByCompanyNameAsc()
                 .forEach(t -> tenantNames.put(t.getId(), t.getCompanyName() != null ? t.getCompanyName() : "—"));
 
+        Map<UUID, Instant> lastSignIns = new HashMap<>();
+        signInLogRepository.findLastSignInPerUser()
+                .forEach(row -> lastSignIns.put((UUID) row[0], (Instant) row[1]));
+
         List<SAUserResponse> users = (tenantId != null
                 ? userRepository.findAllByTenantIdAndIsDeletedFalseOrderByCreatedAtDesc(tenantId)
                 : userRepository.findAllByIsDeletedFalseOrderByCreatedAtDesc())
-                .stream().map(u -> SAUserResponse.from(u, tenantNames)).toList();
+                .stream().map(u -> SAUserResponse.from(u, tenantNames, lastSignIns)).toList();
         return ResponseEntity.ok(ApiResponse.ok(users));
     }
 
@@ -109,5 +118,39 @@ public class SAController {
     @PostMapping("/tenants/{id}/impersonate")
     public ResponseEntity<ApiResponse<AuthResponse>> impersonate(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(authService.impersonateToken(id)));
+    }
+
+    @GetMapping("/sign-in-logs")
+    public ResponseEntity<ApiResponse<List<SignInLogResponse>>> signInLogs(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        Map<UUID, String> tenantNames = new HashMap<>();
+        tenantRepository.findAllByIsDeletedFalseOrderByCompanyNameAsc()
+                .forEach(t -> tenantNames.put(t.getId(), t.getCompanyName() != null ? t.getCompanyName() : "—"));
+
+        Map<UUID, com.fecos.users.UserEntity> userMap = new HashMap<>();
+        userRepository.findAllByIsDeletedFalseOrderByCreatedAtDesc()
+                .forEach(u -> userMap.put(u.getId(), u));
+
+        Page<com.fecos.auth.SignInLogEntity> logs = signInLogRepository
+                .findAllByOrderBySignedInAtDesc(PageRequest.of(page, size));
+
+        List<SignInLogResponse> result = logs.stream().map(log -> {
+            com.fecos.users.UserEntity u = userMap.get(log.getUserId());
+            String name   = u != null ? u.getFullName()     : "Unknown";
+            String mobile = u != null ? u.getMobileNumber() : "—";
+            String tname  = tenantNames.getOrDefault(log.getTenantId(), "—");
+            return new SignInLogResponse(
+                    log.getUserId().toString(),
+                    name,
+                    mobile,
+                    log.getTenantId().toString(),
+                    tname,
+                    log.getPlatform(),
+                    log.getSignedInAt()
+            );
+        }).toList();
+
+        return ResponseEntity.ok(ApiResponse.ok(result));
     }
 }

@@ -29,6 +29,7 @@ export interface UpdateUserPayload {
 export interface SAUserRecord extends UserRecord {
   tenantId: string | null
   tenantName: string
+  lastSignedInAt: string | null
 }
 
 export interface SACreateUserPayload {

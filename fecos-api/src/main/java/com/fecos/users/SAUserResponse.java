@@ -14,9 +14,10 @@ public record SAUserResponse(
         Instant createdAt,
         String tenantId,
         String tenantName,
-        String pin
+        String pin,
+        Instant lastSignedInAt
 ) {
-    public static SAUserResponse from(UserEntity u, Map<UUID, String> tenantNames) {
+    public static SAUserResponse from(UserEntity u, Map<UUID, String> tenantNames, Map<UUID, Instant> lastSignIns) {
         String tid = u.getTenantId() != null ? u.getTenantId().toString() : null;
         String tname = u.getTenantId() != null ? tenantNames.getOrDefault(u.getTenantId(), "—") : "—";
         return new SAUserResponse(
@@ -29,7 +30,8 @@ public record SAUserResponse(
                 u.getCreatedAt(),
                 tid,
                 tname,
-                u.getPin()
+                u.getPin(),
+                lastSignIns.get(u.getId())
         );
     }
 }

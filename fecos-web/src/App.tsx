@@ -15,6 +15,7 @@ import { LoginPage } from '@/pages/auth/LoginPage'
 import { PlaceholderPage } from '@/pages/shared/PlaceholderPage'
 import { TenantsPage } from '@/pages/super-admin/TenantsPage'
 import { SAUsersPage } from '@/pages/super-admin/SAUsersPage'
+import { SASignInLogsPage } from '@/pages/super-admin/SASignInLogsPage'
 import { UsersPage } from '@/pages/tenant/UsersPage'
 import { ClientsPage } from '@/pages/tenant/ClientsPage'
 import { LeasesPage } from '@/pages/tenant/LeasesPage'
@@ -58,6 +59,7 @@ function ConsoleRoutes() {
             <Route path="/sa/tenants"       element={<TenantsPage />} />
             <Route path="/sa/subscriptions" element={<PlaceholderPage title="Subscriptions" />} />
             <Route path="/sa/users"         element={<SAUsersPage />} />
+            <Route path="/sa/sign-in-logs"  element={<SASignInLogsPage />} />
             <Route path="/sa/settings"      element={<PlaceholderPage title="Settings" />} />
           </Route>
         </Route>

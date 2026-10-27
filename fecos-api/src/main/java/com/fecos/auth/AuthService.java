@@ -24,14 +24,21 @@ public class AuthService {
     private final TenantRepository tenantRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final SignInLogRepository signInLogRepository;
 
-    public AuthResponse login(AuthRequest request) {
+    public AuthResponse login(AuthRequest request, String platform) {
         UUID tenantId = TenantContext.get();
         UserEntity user = findUser(request.getMobileNumber(), tenantId);
 
         if (!user.isActive()) throw new BadCredentialsException("Account is disabled");
         if (!passwordEncoder.matches(request.getPin(), user.getPinHash()))
             throw new BadCredentialsException("Invalid credentials");
+
+        signInLogRepository.save(SignInLogEntity.builder()
+                .userId(user.getId())
+                .tenantId(user.getTenantId())
+                .platform(platform)
+                .build());
 
         return buildResponse(user, generateToken(user));
     }

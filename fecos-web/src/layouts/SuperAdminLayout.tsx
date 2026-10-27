@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
-import { LayoutDashboard, Building2, CreditCard, Users, Settings, LogOut, ShieldCheck, Menu } from 'lucide-react'
+import { LayoutDashboard, Building2, CreditCard, Users, Settings, LogOut, ShieldCheck, Menu, Activity } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import fecosLogo from '@/assets/fecos_logo.png'
@@ -12,6 +12,7 @@ const nav: NavItem[] = [
   { label: 'Tenants',       path: '/sa/tenants',       icon: Building2       },
   { label: 'Subscriptions', path: '/sa/subscriptions', icon: CreditCard      },
   { label: 'Users',         path: '/sa/users',         icon: Users           },
+  { label: 'Sign-In Logs',  path: '/sa/sign-in-logs',  icon: Activity        },
   { label: 'Settings',      path: '/sa/settings',      icon: Settings        },
 ]
 

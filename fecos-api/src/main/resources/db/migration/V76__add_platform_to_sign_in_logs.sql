@@ -1,0 +1,1 @@
+ALTER TABLE sign_in_logs ADD COLUMN platform VARCHAR(10) NOT NULL DEFAULT 'WEB';

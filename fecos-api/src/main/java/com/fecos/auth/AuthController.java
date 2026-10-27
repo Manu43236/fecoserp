@@ -1,6 +1,7 @@
 package com.fecos.auth;
 
 import com.fecos.common.ApiResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -15,8 +16,12 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody AuthRequest request) {
-        return ResponseEntity.ok(ApiResponse.ok(authService.login(request)));
+    public ResponseEntity<ApiResponse<AuthResponse>> login(
+            @Valid @RequestBody AuthRequest request,
+            HttpServletRequest httpRequest) {
+        String ua = httpRequest.getHeader("User-Agent");
+        String platform = (ua != null && ua.contains("Dart/")) ? "MOBILE" : "WEB";
+        return ResponseEntity.ok(ApiResponse.ok(authService.login(request, platform)));
     }
 
     @GetMapping("/me")
