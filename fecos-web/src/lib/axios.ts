@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { useAuthStore } from '@/store/authStore'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '',
@@ -26,7 +27,7 @@ api.interceptors.response.use(
   (err) => {
     const isLoginEndpoint = (err.config?.url as string | undefined)?.includes('/auth/login')
     if (err.response?.status === 401 && !isLoginEndpoint) {
-      localStorage.removeItem('fecos_token')
+      useAuthStore.getState().logout()
       window.location.href = '/login'
     }
     return Promise.reject(err)

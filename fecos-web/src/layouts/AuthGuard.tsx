@@ -17,7 +17,7 @@ export function AuthGuard() {
 
 export function SuperAdminGuard() {
   const { user } = useAuthStore()
-  if (user?.role !== 'SUPER_ADMIN') return <Navigate to="/dashboard" replace />
+  if (user?.role !== 'SUPER_ADMIN') return <Navigate to="/login" replace />
   return <Outlet />
 }
 
