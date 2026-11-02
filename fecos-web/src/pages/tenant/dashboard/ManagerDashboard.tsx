@@ -31,13 +31,15 @@ export function ManagerDashboard({ stats, name }: Props) {
         ]}
       />
 
-      <LiveOpsHero
-        activeVisits={stats.activeVisitsToday}
-        completedVisits={stats.completedVisitsToday}
-        scheduledVisits={stats.scheduledVisitsToday}
-        activeRoutes={stats.activeRoutesToday}
-        completedRoutes={stats.completedRoutesToday}
-      />
+      {(stats.activeVisitsToday + stats.completedVisitsToday + stats.activeRoutesToday + stats.completedRoutesToday) > 0 && (
+        <LiveOpsHero
+          activeVisits={stats.activeVisitsToday}
+          completedVisits={stats.completedVisitsToday}
+          scheduledVisits={stats.scheduledVisitsToday}
+          activeRoutes={stats.activeRoutesToday}
+          completedRoutes={stats.completedRoutesToday}
+        />
+      )}
 
       <AlertStrip alerts={alerts} />
 

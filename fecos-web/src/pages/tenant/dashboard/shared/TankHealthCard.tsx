@@ -56,9 +56,15 @@ export function TankHealthCard({ critical, warning, healthy, atRiskTanks = [], t
   const cWarning  = useCountUp(warning)
   const cHealthy  = useCountUp(healthy)
 
+  const hasCritical = critical > 0
+
   return (
-    <div className="bg-white border border-gray-100 rounded-2xl p-5 flex flex-col gap-4"
-      style={{ borderLeft: '3px solid var(--color-primary)' }}>
+    <div className="rounded-2xl p-5 flex flex-col gap-4 transition-colors"
+      style={{
+        backgroundColor: hasCritical ? 'rgba(239,68,68,0.04)' : 'white',
+        border: `1.5px solid ${hasCritical ? 'rgba(239,68,68,0.25)' : '#f3f4f6'}`,
+        borderLeft: `3px solid ${hasCritical ? '#ef4444' : 'var(--color-primary)'}`,
+      }}>
       <div className="flex items-center justify-between">
         <p className="text-sm font-bold text-gray-900">{title}</p>
         <button onClick={() => navigate('/tanks')}

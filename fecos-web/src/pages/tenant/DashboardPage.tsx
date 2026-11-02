@@ -62,7 +62,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#f1f5f9' }}>
+    <div className="min-h-screen" style={{ backgroundColor: '#edf0f7' }}>
       <div className="max-w-5xl mx-auto px-6 py-6">
 
         {/* refresh chip — top-right only, no heading (CommandBar is the header) */}

@@ -8,7 +8,7 @@ interface Props {
   value: number
   icon: LucideIcon
   path?: string
-  accent?: string   // color for number + icon, defaults to var(--color-primary)
+  accent?: string
   size?: 'sm' | 'md' | 'lg'
 }
 
@@ -17,30 +17,37 @@ export function StatCard({ label, value, icon: Icon, path, accent, size = 'md' }
   const displayed = useCountUp(value)
   const color     = accent ?? 'var(--color-primary)'
 
-  const numberSize = size === 'lg' ? 'text-6xl' : size === 'sm' ? 'text-3xl' : 'text-5xl'
+  const numberSize = size === 'lg' ? 'text-7xl' : size === 'sm' ? 'text-4xl' : 'text-6xl'
 
   return (
     <button
       onClick={() => path && navigate(path)}
-      className={`group bg-white border border-gray-100 rounded-2xl p-5 text-left
-        hover:shadow-md hover:border-gray-200 transition-all duration-200 w-full
+      className={`group rounded-2xl p-5 text-left
+        hover:shadow-lg transition-all duration-200 w-full
         ${path ? 'cursor-pointer' : 'cursor-default'}`}
-      style={{ borderLeft: `3px solid ${color}` }}
+      style={{
+        backgroundColor: `color-mix(in srgb, ${color} 5%, white)`,
+        border: `1.5px solid color-mix(in srgb, ${color} 15%, white)`,
+      }}
     >
-      <div className="flex items-start justify-between mb-4">
+      <div className="flex items-start justify-between mb-5">
         <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-          style={{ backgroundColor: `color-mix(in srgb, ${color} 12%, white)` }}>
+          style={{ backgroundColor: `color-mix(in srgb, ${color} 15%, white)` }}>
           <Icon size={18} style={{ color }} />
         </div>
         {path && (
-          <ArrowUpRight size={14} className="text-gray-300 group-hover:text-gray-500 transition-colors mt-0.5" />
+          <ArrowUpRight size={14} className="opacity-20 group-hover:opacity-60 transition-opacity mt-0.5"
+            style={{ color }} />
         )}
       </div>
       <p className={`font-black font-mono tabular-nums leading-none ${numberSize}`}
         style={{ color }}>
         {displayed}
       </p>
-      <p className="text-[11px] font-bold text-gray-400 mt-2 uppercase tracking-widest">{label}</p>
+      <p className="text-[11px] font-bold mt-2.5 uppercase tracking-widest"
+        style={{ color: `color-mix(in srgb, ${color} 60%, #6b7280)` }}>
+        {label}
+      </p>
     </button>
   )
 }

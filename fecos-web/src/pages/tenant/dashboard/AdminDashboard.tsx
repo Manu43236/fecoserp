@@ -34,14 +34,16 @@ export function AdminDashboard({ stats, name }: Props) {
         ]}
       />
 
-      {/* 2 — Live ops hero (full-width dark card with huge numbers) */}
-      <LiveOpsHero
-        activeVisits={stats.activeVisitsToday}
-        completedVisits={stats.completedVisitsToday}
-        scheduledVisits={stats.scheduledVisitsToday}
-        activeRoutes={stats.activeRoutesToday}
-        completedRoutes={stats.completedRoutesToday}
-      />
+      {/* 2 — Live ops hero: only shown when there is actual activity today */}
+      {(stats.activeVisitsToday + stats.completedVisitsToday + stats.activeRoutesToday + stats.completedRoutesToday) > 0 && (
+        <LiveOpsHero
+          activeVisits={stats.activeVisitsToday}
+          completedVisits={stats.completedVisitsToday}
+          scheduledVisits={stats.scheduledVisitsToday}
+          activeRoutes={stats.activeRoutesToday}
+          completedRoutes={stats.completedRoutesToday}
+        />
+      )}
 
       {/* 3 — Urgent alerts (only renders when count > 0) */}
       <AlertStrip alerts={alerts} />
