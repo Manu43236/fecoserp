@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Search, ChevronLeft, ChevronRight, Monitor, Smartphone, Phone, Mail, X, Building2, Plus, Pencil, Lock, Eye, EyeOff, Clock } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, Monitor, Smartphone, Phone, Mail, X, Building2, Plus, Pencil, Lock, Eye, EyeOff, Clock, KeyRound } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -281,10 +281,74 @@ function EditDialog({ open, onClose, user }: { open: boolean; onClose: () => voi
   )
 }
 
+// ── Reset PIN Dialog ──────────────────────────────────────────────────────────
+const pinSchema = z.object({
+  pin: z.string().regex(/^\d{4}$/, 'PIN must be exactly 4 digits'),
+})
+type PinForm = z.infer<typeof pinSchema>
+
+function ResetPinDialog({ open, onClose, user }: { open: boolean; onClose: () => void; user?: SAUserRecord }) {
+  const qc = useQueryClient()
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<PinForm>({
+    resolver: zodResolver(pinSchema),
+  })
+
+  useEffect(() => { if (open) reset({ pin: '' }) }, [open])
+
+  const mutation = useMutation({
+    mutationFn: (data: PinForm) => saUsersApi.resetPin(user!.id, data.pin),
+    onSuccess: () => { toast.success('PIN updated'); qc.invalidateQueries({ queryKey: ['sa-users'] }); onClose() },
+    onError: (e: unknown) =>
+      toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed'),
+  })
+
+  if (!open || !user) return null
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">Reset PIN</h2>
+            <p className="text-xs text-gray-400 mt-0.5">{user.fullName} · {user.tenantName}</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors">
+            <X size={14} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit(d => mutation.mutate(d))} className="px-6 py-5 space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">New PIN *</label>
+            <input
+              {...register('pin')}
+              type="text" inputMode="numeric" maxLength={4} placeholder="4 digits"
+              className="w-full h-10 px-3.5 text-sm border border-gray-200 rounded-lg outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-50 tracking-widest font-mono"
+            />
+            {errors.pin && <p className="text-red-500 text-xs mt-1">{errors.pin.message}</p>}
+          </div>
+
+          <div className="flex justify-end gap-3 pt-1">
+            <button type="button" onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+              Cancel
+            </button>
+            <button type="submit" disabled={mutation.isPending}
+              className="px-5 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-60 transition-opacity"
+              style={{ backgroundColor: 'var(--color-primary)' }}>
+              {mutation.isPending ? 'Saving…' : 'Set PIN'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 // ── Detail Drawer ─────────────────────────────────────────────────────────────
 function UserDrawer({
-  user, onClose, onEdit,
-}: { user: SAUserRecord | undefined; onClose: () => void; onEdit: (u: SAUserRecord) => void }) {
+  user, onClose, onEdit, onResetPin,
+}: { user: SAUserRecord | undefined; onClose: () => void; onEdit: (u: SAUserRecord) => void; onResetPin: (u: SAUserRecord) => void }) {
   const open = !!user
   const r = user ? roleMap[user.role] : null
   const [pinVisible, setPinVisible] = useState(false)
@@ -396,13 +460,20 @@ function UserDrawer({
               </div>
             </div>
 
-            <div className="px-5 py-4 mt-auto border-t border-gray-100">
+            <div className="px-5 py-4 mt-auto border-t border-gray-100 space-y-2">
               <button
                 onClick={() => onEdit(user)}
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors text-left"
               >
                 <Pencil size={14} className="text-gray-500 shrink-0" />
                 <span className="text-sm font-medium text-gray-700">Edit Details</span>
+              </button>
+              <button
+                onClick={() => onResetPin(user)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors text-left"
+              >
+                <KeyRound size={14} className="text-gray-500 shrink-0" />
+                <span className="text-sm font-medium text-gray-700">Reset PIN</span>
               </button>
             </div>
           </>
@@ -421,6 +492,7 @@ export function SAUsersPage() {
   const [selected, setSelected] = useState<SAUserRecord | undefined>()
   const [createOpen, setCreateOpen] = useState(false)
   const [editUser, setEditUser] = useState<SAUserRecord | undefined>()
+  const [resetPinUser, setResetPinUser] = useState<SAUserRecord | undefined>()
 
   const { data, isLoading } = useQuery({
     queryKey: ['sa-users'],
@@ -452,6 +524,11 @@ export function SAUsersPage() {
 
   function openEdit(u: SAUserRecord) {
     setEditUser(u)
+    setSelected(undefined)
+  }
+
+  function openResetPin(u: SAUserRecord) {
+    setResetPinUser(u)
     setSelected(undefined)
   }
 
@@ -590,9 +667,10 @@ export function SAUsersPage() {
         )}
       </div>
 
-      <UserDrawer user={selected} onClose={() => setSelected(undefined)} onEdit={openEdit} />
+      <UserDrawer user={selected} onClose={() => setSelected(undefined)} onEdit={openEdit} onResetPin={openResetPin} />
       <CreateDialog open={createOpen} onClose={() => setCreateOpen(false)} tenants={tenants} />
       <EditDialog open={!!editUser} onClose={() => setEditUser(undefined)} user={editUser} />
+      <ResetPinDialog open={!!resetPinUser} onClose={() => setResetPinUser(undefined)} user={resetPinUser} />
     </div>
   )
 }

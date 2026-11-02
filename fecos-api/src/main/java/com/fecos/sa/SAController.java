@@ -103,6 +103,14 @@ public class SAController {
         return ResponseEntity.ok(ApiResponse.ok(userService.updateById(id, req)));
     }
 
+    @PostMapping("/users/{id}/reset-pin")
+    public ResponseEntity<ApiResponse<Void>> resetUserPin(
+            @PathVariable UUID id,
+            @Valid @RequestBody com.fecos.users.ResetPinRequest req) {
+        userService.resetPinById(id, req);
+        return ResponseEntity.ok(ApiResponse.ok(null));
+    }
+
     @PostMapping(value = "/tenants/{id}/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<Map<String, String>>> uploadTenantLogo(
             @PathVariable UUID id,

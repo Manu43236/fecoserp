@@ -42,12 +42,14 @@ export interface SACreateUserPayload {
 }
 
 export const saUsersApi = {
-  list:   (tenantId?: string) =>
+  list:     (tenantId?: string) =>
     api.get<ApiResponse<SAUserRecord[]>>('/api/v1/sa/users', { params: tenantId ? { tenantId } : {} }),
-  create: (data: SACreateUserPayload) =>
+  create:   (data: SACreateUserPayload) =>
     api.post<ApiResponse<UserRecord>>('/api/v1/sa/users', data),
-  update: (id: string, data: UpdateUserPayload) =>
+  update:   (id: string, data: UpdateUserPayload) =>
     api.put<ApiResponse<UserRecord>>(`/api/v1/sa/users/${id}`, data),
+  resetPin: (id: string, pin: string) =>
+    api.post<ApiResponse<void>>(`/api/v1/sa/users/${id}/reset-pin`, { pin }),
 }
 
 export const usersApi = {

@@ -99,6 +99,16 @@ public class UserService {
     }
 
     @Transactional
+    public void resetPinById(UUID id, ResetPinRequest req) {
+        UserEntity user = userRepository.findById(id)
+                .filter(u -> !u.isDeleted())
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+        user.setPin(req.getPin());
+        user.setPinHash(passwordEncoder.encode(req.getPin()));
+        userRepository.save(user);
+    }
+
+    @Transactional
     public void delete(UUID id) {
         UserEntity user = findForTenant(id);
         String currentId = SecurityContextHolder.getContext().getAuthentication().getName();
