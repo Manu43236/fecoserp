@@ -39,4 +39,10 @@ public interface WellRepository extends JpaRepository<WellEntity, UUID> {
     long countByLeaseIdAndTenantIdAndIsDeletedFalse(UUID leaseId, UUID tenantId);
 
     long countByTenantIdAndIsDeletedFalse(UUID tenantId);
+
+    @Query("SELECT w.id FROM WellEntity w WHERE w.tenantId = :tenantId AND w.leaseId IN :leaseIds AND w.isDeleted = false")
+    List<UUID> findIdsByTenantIdAndLeaseIdIn(
+            @Param("tenantId") UUID tenantId, @Param("leaseIds") java.util.Collection<UUID> leaseIds);
+
+    long countByTenantIdAndLeaseIdInAndIsDeletedFalse(UUID tenantId, java.util.Collection<UUID> leaseIds);
 }

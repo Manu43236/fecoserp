@@ -18,4 +18,8 @@ public interface LabResultRepository extends JpaRepository<LabResultEntity, UUID
 
     Page<LabResultEntity> findAllByTenantIdAndApprovalStatusAndIsDeletedFalseOrderByCreatedAtDesc(
             UUID tenantId, ApprovalStatus approvalStatus, Pageable pageable);
+
+    long countByTenantIdAndApprovalStatusAndIsDeletedFalse(UUID tenantId, ApprovalStatus approvalStatus);
+
+    long countByTenantIdAndHasCriticalValuesTrueAndIsDeletedFalse(UUID tenantId);
 }

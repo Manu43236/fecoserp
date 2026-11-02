@@ -34,4 +34,14 @@ public interface ClientRepository extends JpaRepository<ClientEntity, UUID> {
     Optional<ClientEntity> findByCompanyNameAndTenantIdAndIsDeletedFalse(String companyName, UUID tenantId);
 
     long countByTenantIdAndIsDeletedFalse(UUID tenantId);
+
+    long countByTenantIdAndIsActiveAndIsDeletedFalse(UUID tenantId, boolean isActive);
+
+    long countByTenantIdAndAccountRepIdAndIsDeletedFalse(UUID tenantId, UUID accountRepId);
+
+    long countByTenantIdAndAccountRepIdAndIsActiveAndIsDeletedFalse(UUID tenantId, UUID accountRepId, boolean isActive);
+
+    @Query("SELECT c.id FROM ClientEntity c WHERE c.tenantId = :tenantId AND c.accountRepId = :repId AND c.isDeleted = false")
+    java.util.List<UUID> findIdsByTenantIdAndAccountRepId(
+            @Param("tenantId") UUID tenantId, @Param("repId") UUID repId);
 }

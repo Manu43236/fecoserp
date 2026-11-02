@@ -35,4 +35,8 @@ public interface LeaseRepository extends JpaRepository<LeaseEntity, UUID> {
     boolean existsByLeaseNameAndClientIdAndTenantIdAndIsDeletedFalse(String leaseName, UUID clientId, UUID tenantId);
 
     Optional<LeaseEntity> findByLeaseNameAndTenantIdAndIsDeletedFalse(String leaseName, UUID tenantId);
+
+    @Query("SELECT l.id FROM LeaseEntity l WHERE l.tenantId = :tenantId AND l.clientId IN :clientIds AND l.isDeleted = false")
+    List<UUID> findIdsByTenantIdAndClientIdIn(
+            @Param("tenantId") UUID tenantId, @Param("clientIds") java.util.Collection<UUID> clientIds);
 }

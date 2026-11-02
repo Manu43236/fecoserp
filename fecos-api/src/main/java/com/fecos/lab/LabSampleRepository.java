@@ -37,4 +37,27 @@ public interface LabSampleRepository extends JpaRepository<LabSampleEntity, UUID
     long countByTenantIdAndIsDeletedFalse(UUID tenantId);
 
     long countByTenantIdAndStatusAndIsDeletedFalse(UUID tenantId, LabSampleStatus status);
+
+    @Query("""
+        SELECT COUNT(s) FROM LabSampleEntity s
+        WHERE s.tenantId = :tenantId
+          AND s.isDeleted = false
+          AND s.status IN ('RECEIVED', 'IN_PROGRESS')
+          AND s.receivedAt < :cutoff
+        """)
+    long countOverdue(@Param("tenantId") UUID tenantId,
+                      @Param("cutoff") java.time.LocalDateTime cutoff);
+
+    @Query("""
+        SELECT COUNT(s) FROM LabSampleEntity s
+        WHERE s.tenantId = :tenantId
+          AND s.isDeleted = false
+          AND s.status = 'COMPLETED'
+          AND s.receivedAt >= :from
+        """)
+    long countCompletedSince(@Param("tenantId") UUID tenantId,
+                             @Param("from") java.time.LocalDateTime from);
+
+    long countByTenantIdAndWellIdInAndStatusAndIsDeletedFalse(
+            UUID tenantId, java.util.Collection<UUID> wellIds, LabSampleStatus status);
 }
