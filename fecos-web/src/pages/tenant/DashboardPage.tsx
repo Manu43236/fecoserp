@@ -43,7 +43,8 @@ export default function DashboardPage() {
     refetchInterval: 60_000,
   })
 
-  const stats = data ?? ZERO_STATS
+  // merge so missing fields from older backend versions fall back to 0
+  const stats = { ...ZERO_STATS, ...(data ?? {}) }
   const name  = user?.fullName ?? 'User'
 
   const updatedTime = dataUpdatedAt
@@ -62,10 +63,10 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#f1f5f9' }}>
-      <div className="max-w-5xl mx-auto px-6 py-6 space-y-0">
+      <div className="max-w-5xl mx-auto px-6 py-6">
 
-        <div className="flex items-center justify-between mb-5">
-          <h1 className="text-xl font-black text-gray-900 tracking-tight">Dashboard</h1>
+        {/* refresh chip — top-right only, no heading (CommandBar is the header) */}
+        <div className="flex justify-end mb-4">
           <button onClick={() => refetch()}
             className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-700 transition-colors">
             <RefreshCw size={11} className={isFetching ? 'animate-spin' : ''} />
