@@ -1,4 +1,4 @@
-import { Building2, Drill, Cylinder, Droplets, FlaskConical, CheckCircle2 } from 'lucide-react'
+import { Building2, Drill, Cylinder, Droplets, FlaskConical, CheckCircle2, TestTube } from 'lucide-react'
 import type { DashboardStats } from '@/api/dashboard'
 import { CommandBar } from './shared/CommandBar'
 import { StatCard } from './shared/StatCard'
@@ -44,10 +44,11 @@ export function ManagerDashboard({ stats, name }: Props) {
       <AlertStrip alerts={alerts} />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Clients"        value={stats.totalClients}  icon={Building2} path="/clients" />
-        <StatCard label="Active Clients" value={stats.activeClients} icon={Building2} path="/clients" accent="#10b981" />
-        <StatCard label="Wells"          value={stats.totalWells}    icon={Drill}     path="/wells" />
-        <StatCard label="Tanks"          value={stats.totalTanks}    icon={Cylinder}  path="/tanks" />
+        <StatCard label="Clients"    value={stats.totalClients} icon={Building2} path="/clients"
+          sub={stats.activeClients > 0 ? `${stats.activeClients} active` : undefined} />
+        <StatCard label="Wells"      value={stats.totalWells}   icon={Drill}     path="/wells" />
+        <StatCard label="Tanks"      value={stats.totalTanks}   icon={Cylinder}  path="/tanks" />
+        <StatCard label="Lab Pending" value={stats.labPending}  icon={TestTube}  path="/lab/queue" accent="#f59e0b" />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

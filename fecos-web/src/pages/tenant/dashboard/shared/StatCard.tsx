@@ -10,9 +10,10 @@ interface Props {
   path?: string
   accent?: string
   size?: 'sm' | 'md' | 'lg'
+  sub?: string   // secondary line below the label e.g. "2 active"
 }
 
-export function StatCard({ label, value, icon: Icon, path, accent, size = 'md' }: Props) {
+export function StatCard({ label, value, icon: Icon, path, accent, size = 'md', sub }: Props) {
   const navigate  = useNavigate()
   const displayed = useCountUp(value)
   const color     = accent ?? 'var(--color-primary)'
@@ -48,6 +49,11 @@ export function StatCard({ label, value, icon: Icon, path, accent, size = 'md' }
         style={{ color: `color-mix(in srgb, ${color} 60%, #6b7280)` }}>
         {label}
       </p>
+      {sub && (
+        <p className="text-[10px] font-semibold mt-0.5" style={{ color: `color-mix(in srgb, ${color} 45%, #9ca3af)` }}>
+          {sub}
+        </p>
+      )}
     </button>
   )
 }

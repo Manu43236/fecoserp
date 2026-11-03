@@ -177,10 +177,13 @@ public class DashboardService {
 
     private record TankCounts(long critical, long warning, long healthy) {}
 
+    // tanks in ASSIGNED or INSTALLED status are "in service" and should be health-monitored
+    private static final List<TankStatus> IN_SERVICE = List.of(TankStatus.ASSIGNED, TankStatus.INSTALLED);
+
     private TankCounts tankCounts(UUID tenantId, List<UUID> wellIds) {
         List<TankEntity> tanks = wellIds == null
-                ? tankRepository.findAllByTenantIdAndStatusAndIsDeletedFalse(tenantId, TankStatus.INSTALLED)
-                : tankRepository.findAllByTenantIdAndWellIdInAndStatusAndIsDeletedFalse(tenantId, wellIds, TankStatus.INSTALLED);
+                ? tankRepository.findAllByTenantIdAndStatusInAndIsDeletedFalse(tenantId, IN_SERVICE)
+                : tankRepository.findAllByTenantIdAndWellIdInAndStatusInAndIsDeletedFalse(tenantId, wellIds, IN_SERVICE);
 
         long critical = 0, warning = 0, healthy = 0;
         for (TankEntity t : tanks) {

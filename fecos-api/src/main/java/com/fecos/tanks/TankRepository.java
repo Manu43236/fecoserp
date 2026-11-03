@@ -22,6 +22,12 @@ public interface TankRepository extends JpaRepository<TankEntity, UUID> {
 
     List<TankEntity> findAllByTenantIdAndStatusAndIsDeletedFalse(UUID tenantId, TankStatus status);
 
+    List<TankEntity> findAllByTenantIdAndStatusInAndIsDeletedFalse(
+            UUID tenantId, java.util.Collection<TankStatus> statuses);
+
     List<TankEntity> findAllByTenantIdAndWellIdInAndStatusAndIsDeletedFalse(
             UUID tenantId, java.util.Collection<UUID> wellIds, TankStatus status);
+
+    List<TankEntity> findAllByTenantIdAndWellIdInAndStatusInAndIsDeletedFalse(
+            UUID tenantId, java.util.Collection<UUID> wellIds, java.util.Collection<TankStatus> statuses);
 }
