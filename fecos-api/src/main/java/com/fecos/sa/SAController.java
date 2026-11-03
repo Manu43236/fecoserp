@@ -152,7 +152,7 @@ public class SAController {
                     log.getUserId().toString(),
                     name,
                     mobile,
-                    log.getTenantId().toString(),
+                    log.getTenantId() != null ? log.getTenantId().toString() : null,
                     tname,
                     log.getPlatform(),
                     log.getSignedInAt()
