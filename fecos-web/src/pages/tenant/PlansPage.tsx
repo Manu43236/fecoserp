@@ -73,12 +73,13 @@ const SCHEDULE_OPTIONS: DropdownOption[] = [
 
 // ── Plan form schema ───────────────────────────────────────────────────────────
 const planSchema = z.object({
-  wellId:       z.string().min(1, 'Well is required'),
-  accountRepId: z.string().optional().or(z.literal('')),
-  status:       z.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'SUSPENDED', 'COMPLETED', 'INACTIVE', 'SUPERSEDED']).optional(),
-  notes:        z.string().optional().or(z.literal('')),
-  startDate:    z.string().optional().or(z.literal('')),
-  endDate:      z.string().optional().or(z.literal('')),
+  wellId:        z.string().min(1, 'Well is required'),
+  accountRepId:  z.string().optional().or(z.literal('')),
+  status:        z.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'SUSPENDED', 'COMPLETED', 'INACTIVE', 'SUPERSEDED']).optional(),
+  notes:         z.string().optional().or(z.literal('')),
+  visitSchedule: z.enum(['DAILY', 'WEEKLY', 'BIWEEKLY', 'MONTHLY']).optional().or(z.literal('')),
+  startDate:     z.string().optional().or(z.literal('')),
+  endDate:       z.string().optional().or(z.literal('')),
 })
 type PlanFormData = z.infer<typeof planSchema>
 
@@ -246,12 +247,13 @@ function PlanFormPanel({
   const { handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<PlanFormData>({
     resolver: zodResolver(planSchema),
     defaultValues: {
-      wellId:       plan?.wellId       ?? prefillWellId ?? '',
-      accountRepId: plan?.accountRepId ?? '',
-      status:       plan?.status       ?? 'DRAFT',
-      notes:        plan?.notes        ?? '',
-      startDate:    plan?.startDate    ?? '',
-      endDate:      plan?.endDate      ?? '',
+      wellId:        plan?.wellId        ?? prefillWellId ?? '',
+      accountRepId:  plan?.accountRepId  ?? '',
+      status:        plan?.status        ?? 'DRAFT',
+      notes:         plan?.notes         ?? '',
+      visitSchedule: plan?.visitSchedule ?? '',
+      startDate:     plan?.startDate     ?? '',
+      endDate:       plan?.endDate       ?? '',
     },
   })
 
@@ -269,12 +271,13 @@ function PlanFormPanel({
 
   function onSubmit(data: PlanFormData) {
     mutation.mutate({
-      wellId:       data.wellId,
-      accountRepId: data.accountRepId || null,
-      status:       isEdit ? (plan!.status as PlanStatus) : 'DRAFT',
-      notes:        data.notes || undefined,
-      startDate:    data.startDate || null,
-      endDate:      null,
+      wellId:        data.wellId,
+      accountRepId:  data.accountRepId || null,
+      status:        isEdit ? (plan!.status as PlanStatus) : 'DRAFT',
+      notes:         data.notes || undefined,
+      visitSchedule: (data.visitSchedule as PlanSchedule) || null,
+      startDate:     data.startDate || null,
+      endDate:       null,
     })
   }
 
@@ -408,6 +411,21 @@ function PlanFormPanel({
                 </div>
               )
             })()}
+
+            {/* Visit Schedule */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Service Visit Frequency
+              </label>
+              <SearchableDropdown
+                value={watch('visitSchedule') || null}
+                onChange={v => setValue('visitSchedule', v ?? '')}
+                options={SCHEDULE_OPTIONS}
+                placeholder="How often should this well be visited?"
+                searchPlaceholder="Search…"
+              />
+              <p className="text-xs text-gray-400">Used to flag which wells are due for a visit</p>
+            </div>
 
             {/* Notes */}
             <div className="space-y-1.5">

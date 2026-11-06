@@ -42,6 +42,7 @@ export interface PlanRecord {
   accountRepName: string | null
   status: PlanStatus
   notes: string | null
+  visitSchedule: PlanSchedule | null
   startDate: string | null
   endDate: string | null
   startedAt: string | null
@@ -57,6 +58,7 @@ export interface PlanPayload {
   accountRepId?: string | null
   status: PlanStatus
   notes?: string
+  visitSchedule?: PlanSchedule | null
   startDate?: string | null
   endDate?: string | null
 }

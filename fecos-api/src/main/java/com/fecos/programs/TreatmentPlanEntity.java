@@ -28,6 +28,10 @@ public class TreatmentPlanEntity extends TenantAwareEntity {
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "visit_schedule", length = 20)
+    private TreatmentPlanSchedule visitSchedule;
+
     @Column(name = "lab_sample_id")
     private UUID labSampleId;
 

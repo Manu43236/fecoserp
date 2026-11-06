@@ -205,9 +205,9 @@ public class ServiceVisitService {
         for (TreatmentPlanEntity plan : activePlans) {
             if (plan.getWellId() == null) continue;
 
-            // Find the dominant schedule across plan lines — use the plan-level schedule if stored,
-            // else default to DAILY (most conservative for suggestions)
-            TreatmentPlanSchedule schedule = TreatmentPlanSchedule.DAILY;
+            TreatmentPlanSchedule schedule = plan.getVisitSchedule() != null
+                    ? plan.getVisitSchedule()
+                    : TreatmentPlanSchedule.DAILY;
 
             Optional<LocalDate> lastVisit =
                     stopRepo.findLastCompletedVisitDateForWell(tenantId, plan.getWellId());

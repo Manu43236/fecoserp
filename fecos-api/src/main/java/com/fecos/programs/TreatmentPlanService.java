@@ -209,6 +209,7 @@ public class TreatmentPlanService {
         p.setWellId(req.getWellId());
         p.setAccountRepId(req.getAccountRepId());
         p.setNotes(req.getNotes());
+        p.setVisitSchedule(req.getVisitSchedule());
         p.setStartDate(req.getStartDate());
         p.setEndDate(req.getEndDate());
 

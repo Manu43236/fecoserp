@@ -23,4 +23,6 @@ public class TreatmentPlanRequest {
     private LocalDate startDate;
 
     private LocalDate endDate;
+
+    private TreatmentPlanSchedule visitSchedule;
 }
