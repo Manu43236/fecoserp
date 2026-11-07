@@ -1112,7 +1112,7 @@ function PlanDrawer({
                     {/* ── Section 4: Actions ───────────────────────────────── */}
                     {(canEdit && !isReadOnly && line.tankOwner === 'OWN' && tank) || (line.tankOwner === 'OWN' && tank) ? (
                       <div className="border-t border-gray-100 px-4 py-2.5 flex items-center gap-2 flex-wrap bg-gray-50">
-                        {canEdit && !isReadOnly && tank.status === 'ASSIGNED' && (
+                        {canEdit && !isReadOnly && (tank.status === 'ASSIGNED' || tank.status === 'AVAILABLE') && (
                           <button onClick={() => handleMarkInstalled(tank.id)} disabled={tankEventMutation.isPending}
                             className="flex items-center gap-1.5 h-7 px-3 text-xs font-semibold rounded-lg border border-blue-200 text-blue-700 hover:bg-blue-50 transition-colors disabled:opacity-60">
                             Mark Installed
