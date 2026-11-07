@@ -419,7 +419,7 @@ function PlanFormPanel({
               </label>
               <SearchableDropdown
                 value={watch('visitSchedule') || null}
-                onChange={v => setValue('visitSchedule', v ?? '')}
+                onChange={v => setValue('visitSchedule', (v as PlanSchedule) ?? undefined)}
                 options={SCHEDULE_OPTIONS}
                 placeholder="How often should this well be visited?"
                 searchPlaceholder="Search…"
@@ -584,6 +584,7 @@ function PlanDrawer({
       toast.success('Product added')
       qc.invalidateQueries({ queryKey: ['plan', plan.id] })
       qc.invalidateQueries({ queryKey: ['plans'] })
+      qc.invalidateQueries({ queryKey: ['tanks-all'] })
       reset(); setShowLineForm(false)
     },
     onError: () => toast.error('Failed to add product'),
@@ -608,6 +609,7 @@ function PlanDrawer({
       toast.success('Product removed')
       qc.invalidateQueries({ queryKey: ['plan', plan.id] })
       qc.invalidateQueries({ queryKey: ['plans'] })
+      qc.invalidateQueries({ queryKey: ['tanks-all'] })
     },
     onError: () => toast.error('Failed to remove product'),
   })
@@ -623,7 +625,7 @@ function PlanDrawer({
   })
 
   const transitionMutation = useMutation({
-    mutationFn: (action: string) => plansApi[action as keyof typeof plansApi](plan.id) as Promise<unknown>,
+    mutationFn: (action: string) => (plansApi[action as keyof typeof plansApi] as (id: string) => Promise<unknown>)(plan.id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['plan', plan.id] })
       qc.invalidateQueries({ queryKey: ['plans'] })
@@ -704,7 +706,7 @@ function PlanDrawer({
                   <Pencil size={13} />
                 </button>
               )}
-              {canDelete && !isReadOnly && (
+              {canDelete && p.status === 'DRAFT' && (
                 <button
                   onClick={() => { if (confirm('Delete this program?')) deletePlanMutation.mutate() }}
                   className="w-8 h-8 flex items-center justify-center rounded-lg border border-red-100 text-red-500 hover:bg-red-50 transition-colors">
@@ -721,14 +723,14 @@ function PlanDrawer({
           <div className="flex items-center gap-2 flex-wrap">
             <StatusBadge status={p.status} />
             {canEdit && p.status === 'DRAFT' && (() => {
-              const tankReady   = lines.length > 0 && lines.every(l => !!l.tankId)
-              const pumpReady   = lines.length > 0 && lines.every(l => l.pumpDeployed)
-              const isReady     = tankReady && pumpReady
+              const tankReady = lines.length > 0 && lines.every(l => !!l.tankId && tankMap.get(l.tankId)?.status === 'INSTALLED')
+              const pumpReady = lines.length > 0 && lines.every(l => l.pumpDeployed)
+              const isReady   = tankReady && pumpReady
               return (
                 <button
                   onClick={() => transitionMutation.mutate('start')}
                   disabled={!isReady || transitionMutation.isPending}
-                  title={!isReady ? (!tankReady ? 'Assign tanks to all products first' : 'Deploy pumps to all tanks first') : undefined}
+                  title={!isReady ? (!tankReady ? 'All tanks must be installed at the well first' : 'Deploy pumps to all tanks first') : undefined}
                   className="h-7 px-3 text-xs font-semibold rounded-lg text-white transition disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{ backgroundColor: 'var(--color-primary)' }}>
                   Start Treatment
@@ -764,21 +766,35 @@ function PlanDrawer({
 
           {/* Readiness checklist — DRAFT only */}
           {p.status === 'DRAFT' && lines.length > 0 && (() => {
-            const tankReady = lines.every(l => !!l.tankId)
+            const tankReady = lines.every(l => !!l.tankId && tankMap.get(l.tankId)?.status === 'INSTALLED')
             const pumpReady = lines.every(l => l.pumpDeployed)
             if (tankReady && pumpReady) return null
             return (
               <div className="mt-2 space-y-1.5">
                 <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Required before start</p>
-                <div className="flex items-center gap-1.5 text-xs">
-                  <span className={tankReady ? 'text-emerald-500' : 'text-red-400'}>{tankReady ? '✓' : '✗'}</span>
-                  <span className={tankReady ? 'text-gray-500' : 'text-red-500'}>Tank assigned to all products</span>
-                </div>
+                {lines.map(l => {
+                  const tankStatus = l.tankId ? tankMap.get(l.tankId)?.status : undefined
+                  const assigned = !!l.tankId
+                  const installed = tankStatus === 'INSTALLED'
+                  if (!assigned) return (
+                    <div key={l.id} className="flex items-center gap-1.5 text-xs">
+                      <span className="text-red-400">✗</span>
+                      <span className="text-red-500">{l.productName}: no tank assigned</span>
+                    </div>
+                  )
+                  if (!installed) return (
+                    <div key={l.id} className="flex items-center gap-1.5 text-xs">
+                      <span className="text-red-400">✗</span>
+                      <span className="text-red-500">{l.productName}: tank not installed at well (status: {tankStatus ?? '…'})</span>
+                    </div>
+                  )
+                  return null
+                })}
                 {lines.map(l => {
                   if (l.pumpDeployed) return null
                   if (!l.tankId) return null
                   return (
-                    <div key={l.id} className="flex items-center gap-1.5 text-xs">
+                    <div key={`pump-${l.id}`} className="flex items-center gap-1.5 text-xs">
                       <span className="text-red-400">✗</span>
                       <span className="text-red-500 flex-1">{l.productName}: no pump deployed</span>
                       <button
@@ -913,10 +929,12 @@ function PlanDrawer({
                             className="w-7 h-7 rounded-md flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
                             <Pencil size={12} />
                           </button>
-                          <button onClick={() => removeLineMutation.mutate({ lineId: line.id })} disabled={removeLineMutation.isPending}
-                            className="w-7 h-7 rounded-md flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-60">
-                            <Trash2 size={12} />
-                          </button>
+                          {p.status === 'DRAFT' && (
+                            <button onClick={() => removeLineMutation.mutate({ lineId: line.id })} disabled={removeLineMutation.isPending}
+                              className="w-7 h-7 rounded-md flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-60">
+                              <Trash2 size={12} />
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>

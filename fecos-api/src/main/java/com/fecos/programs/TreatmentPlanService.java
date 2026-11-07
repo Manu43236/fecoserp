@@ -7,6 +7,7 @@ import com.fecos.pumpshop.PumpRepository;
 import com.fecos.pumpshop.PumpStatus;
 import com.fecos.tanks.TankRepository;
 import com.fecos.tanks.TankService;
+import com.fecos.tanks.TankStatus;
 import com.fecos.users.UserRepository;
 import com.fecos.wells.WellRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -73,6 +74,8 @@ public class TreatmentPlanService {
     @Transactional
     public void delete(UUID id) {
         TreatmentPlanEntity p = findForTenant(id);
+        if (p.getStatus() == TreatmentPlanStatus.ACTIVE || p.getStatus() == TreatmentPlanStatus.PAUSED)
+            throw new IllegalStateException("Cannot delete an active or paused treatment");
         p.setDeleted(true);
         planRepository.save(p);
     }
@@ -115,6 +118,8 @@ public class TreatmentPlanService {
     @Transactional
     public TreatmentPlanResponse removeLine(UUID planId, UUID lineId) {
         TreatmentPlanEntity p = findForTenant(planId);
+        if (p.getStatus() == TreatmentPlanStatus.ACTIVE || p.getStatus() == TreatmentPlanStatus.PAUSED)
+            throw new IllegalStateException("Cannot remove products from a running treatment");
         TreatmentPlanLineEntity line = lineRepository.findByIdAndProgramIdAndIsDeletedFalse(lineId, planId)
                 .orElseThrow(() -> new EntityNotFoundException("Line not found"));
         if (line.getTankId() != null) {
@@ -143,6 +148,10 @@ public class TreatmentPlanService {
                             .map(pr -> pr.getName()).orElse("Unknown product");
                     if (line.getTankId() == null)
                         throw new IllegalStateException("Tank not assigned for: " + name);
+                    var tank = tankRepository.findById(line.getTankId())
+                            .orElseThrow(() -> new IllegalStateException("Tank not found for: " + name));
+                    if (tank.getStatus() != TankStatus.INSTALLED)
+                        throw new IllegalStateException("Tank not installed at well for: " + name);
                     if (pumpRepository.findDeployedPumpForTank(line.getTankId(), PumpStatus.DEPLOYED).isEmpty())
                         throw new IllegalStateException("No pump deployed for: " + name);
                 }
