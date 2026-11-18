@@ -126,7 +126,7 @@ function ApprovalDrawer({ sample, onClose }: { sample: LabSampleRecord; onClose:
           {row('Client', sample.clientName ?? '—')}
           {row('Well', sample.wellName ?? '—')}
           {row('Lease', sample.leaseName ?? '—')}
-          {row('Received', new Date(sample.receivedAt).toLocaleString())}
+          {row('Received', sample.receivedAt ? new Date(sample.receivedAt).toLocaleString() : '—')}
           {row('Priority', <PriorityBadge priority={sample.priority} />)}
           {sample.testsRequested && row('Tests Requested', sample.testsRequested)}
 
@@ -269,7 +269,7 @@ export default function ApprovalsPage() {
                     {s.leaseName && <p className="text-xs text-gray-400">{s.leaseName}</p>}
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-500">{s.clientName ?? '—'}</td>
-                  <td className="px-4 py-3 text-xs text-gray-500">{new Date(s.receivedAt).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 text-xs text-gray-500">{s.receivedAt ? new Date(s.receivedAt).toLocaleDateString() : '—'}</td>
                   <td className="px-4 py-3"><PriorityBadge priority={s.priority} /></td>
                   <td className="px-4 py-3">
                     {flags.length > 0

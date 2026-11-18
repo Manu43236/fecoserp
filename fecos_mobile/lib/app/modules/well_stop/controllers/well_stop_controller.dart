@@ -136,6 +136,32 @@ class PlanLine {
       };
 }
 
+// ── Lab sample type ───────────────────────────────────────────────────────────
+// The three fixed lab sample types. `abbr` goes into the custody code on the
+// bottle (LS-WELL-PW-18/01); `enumName` is what the API/lab module expects.
+
+class SampleTypeOption {
+  const SampleTypeOption(this.label, this.abbr, this.enumName);
+  final String label;
+  final String abbr;
+  final String enumName;
+}
+
+const kSampleTypeOptions = <SampleTypeOption>[
+  SampleTypeOption('Produced Water', 'PW', 'PRODUCED_WATER'),
+  SampleTypeOption('Corrosion Coupon', 'COCO', 'CORROSION_COUPON'),
+  SampleTypeOption('Solid Scraping', 'SOSC', 'SOLID_SCRAPING'),
+];
+
+/// Builds the bottle custody label: LS-{WELL}-{ABBR}-{DD}/{nn}.
+/// Pure so it can be unit-tested without a DB or clock.
+String buildCustodyCode(String wellName, String abbr, DateTime date, int seq) {
+  final wellSlug = wellName.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+  final dd = date.day.toString().padLeft(2, '0');
+  final nn = seq.toString().padLeft(2, '0');
+  return 'LS-$wellSlug-$abbr-$dd/$nn';
+}
+
 // ── Controller ────────────────────────────────────────────────────────────────
 
 class WellStopController extends GetxController {
@@ -178,8 +204,12 @@ class WellStopController extends GetxController {
   final soarNote = TextEditingController();
 
   // Sample
-  final sampleType = TextEditingController();
   final sampleNotes = TextEditingController();
+
+  // Lab handoff — pick a fixed lab type and flip "Send to lab" to create a
+  // COLLECTED lab record on submit. Custody code is minted on-device at submit.
+  final selectedSampleType = Rxn<SampleTypeOption>();
+  final sendToLab = false.obs;
 
   // Signature — owned by controller so it persists across rebuilds
   late final SignatureController signatureController;
@@ -358,8 +388,18 @@ class WellStopController extends GetxController {
         return;
       }
     }
+    if (sendToLab.value && selectedSampleType.value == null) {
+      FecosSnackbar.warning('Sample Type Required', 'Select a sample type to send it to the lab.');
+      return;
+    }
 
     isSubmitting.value = true;
+
+    // Mint the bottle's custody code on-device (works offline). One per submission.
+    final sampleTypeName = selectedSampleType.value?.enumName;
+    final custodyCode = sendToLab.value
+        ? await _mintCustodyCode(selectedSampleType.value!)
+        : null;
 
     final sigBytes = await signatureController.toPngBytes();
     if (sigBytes == null) {
@@ -394,8 +434,10 @@ class WellStopController extends GetxController {
             'signedAt':             DateTime.now().toUtc().toIso8601String(),
             'soar':                 soar.value,
             'soarNote':             soar.value ? soarNote.text.trim() : null,
-            'sampleType':           sampleType.text.trim().isEmpty ? null : sampleType.text.trim(),
+            'sampleType':           sampleTypeName,
             'sampleNotes':          sampleNotes.text.trim().isEmpty ? null : sampleNotes.text.trim(),
+            'sendToLab':            sendToLab.value,
+            'sampleCustodyCode':    custodyCode,
             'notes':                notes.text.trim().isEmpty ? null : notes.text.trim(),
             'lines':                planLines.map((l) => l.toJson()).toList(),
           }),
@@ -405,7 +447,10 @@ class WellStopController extends GetxController {
 
         isSubmitting.value = false;
         Get.back(result: true);
-        FecosSnackbar.success('Saved Offline', 'Report saved — will sync when connected');
+        FecosSnackbar.success('Saved Offline',
+            custodyCode != null
+                ? 'Saved — write $custodyCode on the bottle. Will sync when connected.'
+                : 'Report saved — will sync when connected');
       } on Exception catch (e) {
         isSubmitting.value = false;
         FecosSnackbar.error('Save Failed', 'Could not save offline: ${e.toString()}');
@@ -436,12 +481,13 @@ class WellStopController extends GetxController {
         'photoCapturedAt': photoCapturedAt?.toUtc().toIso8601String(),
         'soar': soar.value,
         'soarNote': soar.value ? soarNote.text.trim() : null,
-        'sampleType':
-            sampleType.text.trim().isEmpty ? null : sampleType.text.trim(),
+        'sampleType': sampleTypeName,
         'sampleNotes': sampleNotes.text.trim().isEmpty
             ? null
             : sampleNotes.text.trim(),
         'samplePhotoUrl': samplePhotoUrl,
+        'sendToLab': sendToLab.value,
+        'sampleCustodyCode': custodyCode,
         'signatureUrl': sigUrl,
         'signerName': signerName.text.trim(),
         'signedAt': signedAt?.toUtc().toIso8601String(),
@@ -455,7 +501,10 @@ class WellStopController extends GetxController {
       );
 
       Get.back(result: true);
-      FecosSnackbar.success('Submitted', 'Well stop report saved.');
+      FecosSnackbar.success('Submitted',
+          custodyCode != null
+              ? 'Saved — write $custodyCode on the bottle.'
+              : 'Well stop report saved.');
     } on dio_pkg.DioException catch (e) {
       FecosSnackbar.error('Submit Failed',
           e.response?.data?['error'] as String? ?? e.message ?? 'Unknown error');
@@ -496,11 +545,30 @@ class WellStopController extends GetxController {
     }
   }
 
+  // ── Custody code ────────────────────────────────────────────────────────────
+  // Bottle label minted on-device so it works offline: LS-{WELL}-{ABBR}-{DD}/{nn}.
+  // Counter is per well+type+day, kept in the local KV cache (the date in the key
+  // resets it daily). ponytail: if the cache is cleared mid-day the counter restarts,
+  // which the server's duplicate-guard catches — acceptable for how rare that is.
+
+  Future<String> _mintCustodyCode(SampleTypeOption type) async {
+    final now = DateTime.now();
+    final ymd = '${now.year}'
+        '${now.month.toString().padLeft(2, '0')}'
+        '${now.day.toString().padLeft(2, '0')}';
+
+    final key = 'custodyseq-$wellId-${type.abbr}-$ymd';
+    final next =
+        (int.tryParse(await _dbService.getCachedResponse(key) ?? '') ?? 0) + 1;
+    await _dbService.cacheResponse(key, next.toString());
+
+    return buildCustodyCode(stop.wellName, type.abbr, now, next);
+  }
+
   @override
   void onClose() {
     signatureController.dispose();
     soarNote.dispose();
-    sampleType.dispose();
     sampleNotes.dispose();
     signerName.dispose();
     notes.dispose();

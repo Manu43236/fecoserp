@@ -17,6 +17,8 @@ public record TreatmentReportRequest(
         String sampleType,
         String sampleNotes,
         String samplePhotoUrl,
+        boolean sendToLab,
+        String sampleCustodyCode,
         String signatureUrl,
         String signerName,
         Instant signedAt,

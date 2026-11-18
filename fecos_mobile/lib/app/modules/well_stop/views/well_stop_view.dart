@@ -836,12 +836,36 @@ class _SampleSection extends GetView<WellStopController> {
             ],
           ),
           const SizedBox(height: 10),
-          TextField(
-            controller: controller.sampleType,
-            decoration:
-                _inputDec('Sample Type (e.g. Water, Oil, Bacteria)'),
-            style: const TextStyle(fontSize: 13),
-          ),
+          Obx(() => DropdownButtonFormField<SampleTypeOption>(
+                value: controller.selectedSampleType.value,
+                isExpanded: true,
+                decoration: _inputDec('Sample Type'),
+                style: const TextStyle(fontSize: 13, color: Colors.black87),
+                items: kSampleTypeOptions
+                    .map((o) => DropdownMenuItem(
+                          value: o,
+                          child: Text(o.label),
+                        ))
+                    .toList(),
+                onChanged: (v) => controller.selectedSampleType.value = v,
+              )),
+          const SizedBox(height: 4),
+          Obx(() => SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                value: controller.sendToLab.value,
+                activeColor: _primary,
+                onChanged: (v) => controller.sendToLab.value = v,
+                title: const Text('Send to lab',
+                    style: TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w600)),
+                subtitle: Text(
+                  controller.sendToLab.value
+                      ? 'Creates a lab sample on submit — label the bottle with the code shown after submitting.'
+                      : 'Report-only sample (not sent to the lab).',
+                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                ),
+              )),
           const SizedBox(height: 8),
           TextField(
             controller: controller.sampleNotes,

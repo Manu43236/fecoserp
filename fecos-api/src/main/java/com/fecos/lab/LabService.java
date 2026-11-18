@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
@@ -63,6 +64,54 @@ public class LabService {
     public LabSampleResponse update(UUID id, LabSampleRequest req) {
         LabSampleEntity s = findForTenant(id);
         apply(s, req);
+        return toResponse(sampleRepository.save(s), true);
+    }
+
+    /**
+     * Create a lab sample from a field well-stop submission. Lands in COLLECTED
+     * (in transit) with no receipt time; the lab advances it via markReceived.
+     * Idempotent / duplicate-guarded on the device-minted custody code.
+     */
+    @Transactional
+    public void createFromField(UUID tenantId, UUID collectedById, UUID wellId,
+                                SampleType sampleType, Instant collectedAt,
+                                String custodyCode, String notes) {
+        if (custodyCode != null && !custodyCode.isBlank()
+                && sampleRepository.findByTenantIdAndCustodyCodeAndIsDeletedFalse(tenantId, custodyCode).isPresent()) {
+            // Code already seen: either the same report re-syncing (idempotent — do nothing),
+            // or the rare two-techs/same-well/same-type/same-day-offline clash. Either way we
+            // don't create a second row — the physical bottle + the report's free-text sample
+            // fields still exist, so a Lab Tech can reconcile the rare clash by hand.
+            // ponytail: skip+warn; add a dual-flag verification UI only if this clash actually occurs.
+            log.warn("Duplicate custody code {} for tenant {} — skipping field lab-sample create", custodyCode, tenantId);
+            return;
+        }
+
+        LabSampleEntity s = new LabSampleEntity();
+        s.setTenantId(tenantId);
+        s.setCreatedBy(collectedById);
+        s.setSampleNumber(generateSampleNumber(tenantId, LocalDate.now()));
+        s.setCustodyCode(custodyCode);
+        s.setSampleType(sampleType);
+        s.setWellId(wellId);
+        s.setCollectedById(collectedById);
+        s.setCollectedAt(collectedAt == null ? null : LocalDateTime.ofInstant(collectedAt, ZoneOffset.UTC));
+        s.setReceivedAt(null);
+        s.setPriority(SamplePriority.ROUTINE);
+        s.setStatus(LabSampleStatus.COLLECTED);
+        s.setTestsRequested(notes);
+        sampleRepository.save(s);
+    }
+
+    /** Lab confirms the physical bottle arrived: COLLECTED -> RECEIVED. */
+    @Transactional
+    public LabSampleResponse markReceived(UUID id) {
+        LabSampleEntity s = findForTenant(id);
+        if (s.getStatus() != LabSampleStatus.COLLECTED) {
+            throw new IllegalStateException("Sample is not awaiting receipt");
+        }
+        s.setStatus(LabSampleStatus.RECEIVED);
+        s.setReceivedAt(LocalDateTime.now());
         return toResponse(sampleRepository.save(s), true);
     }
 
@@ -246,7 +295,7 @@ public class LabService {
         }
 
         return new LabSampleResponse(
-                s.getId(), s.getSampleNumber(), s.getSampleType(),
+                s.getId(), s.getSampleNumber(), s.getCustodyCode(), s.getSampleType(),
                 s.getWellId(), wellName, leaseName, clientName,
                 s.getCollectedById(), collectedByName,
                 s.getCollectedAt(), s.getReceivedAt(),

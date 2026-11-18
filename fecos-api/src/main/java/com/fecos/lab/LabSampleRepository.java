@@ -34,6 +34,8 @@ public interface LabSampleRepository extends JpaRepository<LabSampleEntity, UUID
 
     Optional<LabSampleEntity> findByIdAndTenantIdAndIsDeletedFalse(UUID id, UUID tenantId);
 
+    Optional<LabSampleEntity> findByTenantIdAndCustodyCodeAndIsDeletedFalse(UUID tenantId, String custodyCode);
+
     long countByTenantIdAndIsDeletedFalse(UUID tenantId);
 
     long countByTenantIdAndStatusAndIsDeletedFalse(UUID tenantId, LabSampleStatus status);

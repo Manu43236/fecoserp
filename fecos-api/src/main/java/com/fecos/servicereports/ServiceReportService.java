@@ -1,6 +1,8 @@
 package com.fecos.servicereports;
 
 import com.fecos.clients.ClientRepository;
+import com.fecos.lab.LabService;
+import com.fecos.lab.SampleType;
 import com.fecos.leases.LeaseRepository;
 import com.fecos.programs.TreatmentPlanLineRepository;
 import com.fecos.servicevisits.ServiceVisitRepository;
@@ -38,6 +40,7 @@ public class ServiceReportService {
     private final ClientRepository clientRepo;
     private final TreatmentPlanLineRepository planLineRepo;
     private final TankRepository tankRepo;
+    private final LabService labService;
 
     // ── Submit report for a stop ──────────────────────────────────────────────
 
@@ -233,7 +236,7 @@ public class ServiceReportService {
         UUID tenantId = currentTenantId();
         UUID userId   = currentUserId();
 
-        stopRepo.findByIdAndTenantIdAndIsDeletedFalse(stopId, tenantId)
+        var stop = stopRepo.findByIdAndTenantIdAndIsDeletedFalse(stopId, tenantId)
                 .orElseThrow(() -> new RuntimeException("Stop not found"));
 
         // upsert the service_reports header row
@@ -273,6 +276,15 @@ public class ServiceReportService {
         }
 
         report = reportRepo.save(report); // capture returned managed instance — ID may differ from pre-merge entity
+
+        // Field-to-lab handoff: if the tech flagged this sample for the lab, create the
+        // lab record (COLLECTED / in transit). Idempotent on the device-minted custody code,
+        // so sync retries don't spawn duplicates.
+        if (req.sendToLab() && req.sampleType() != null && !req.sampleType().isBlank()) {
+            labService.createFromField(tenantId, userId, stop.getWellId(),
+                    SampleType.valueOf(req.sampleType()), req.performedAt(),
+                    req.sampleCustodyCode(), req.sampleNotes());
+        }
 
         // replace treatment lines
         treatLineRepo.findAllByServiceReportIdAndIsDeletedFalseOrderBySortOrderAsc(report.getId())

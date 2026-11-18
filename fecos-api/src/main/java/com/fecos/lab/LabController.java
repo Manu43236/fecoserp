@@ -55,6 +55,12 @@ public class LabController {
         return ResponseEntity.ok(ApiResponse.ok("Sample updated", labService.update(id, req)));
     }
 
+    @PostMapping("/samples/{id}/receive")
+    @PreAuthorize("hasAnyRole('ADMIN','LAB_TECH')")
+    public ResponseEntity<ApiResponse<LabSampleResponse>> receive(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok("Sample received", labService.markReceived(id)));
+    }
+
     @PostMapping("/samples/{id}/results")
     @PreAuthorize("hasAnyRole('ADMIN','LAB_TECH')")
     public ResponseEntity<ApiResponse<LabSampleResponse>> enterResults(

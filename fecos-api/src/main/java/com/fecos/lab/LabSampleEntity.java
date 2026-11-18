@@ -17,6 +17,11 @@ public class LabSampleEntity extends TenantAwareEntity {
     @Column(name = "sample_number", nullable = false, length = 30)
     private String sampleNumber;
 
+    // Bottle label minted on the Service Tech's device (e.g. LS-WELX1-PW-18/01).
+    // Null for lab-created samples.
+    @Column(name = "custody_code", length = 40)
+    private String custodyCode;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "sample_type", nullable = false, length = 30)
     private SampleType sampleType;
@@ -30,7 +35,9 @@ public class LabSampleEntity extends TenantAwareEntity {
     @Column(name = "collected_at")
     private LocalDateTime collectedAt;
 
-    @Column(name = "received_at", nullable = false)
+    // Null until the physical bottle is received at the bench (field-collected
+    // samples start in COLLECTED with no receipt time).
+    @Column(name = "received_at")
     private LocalDateTime receivedAt;
 
     @Enumerated(EnumType.STRING)

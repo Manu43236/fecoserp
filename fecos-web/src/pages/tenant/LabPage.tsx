@@ -16,7 +16,7 @@ import { useNavigate } from 'react-router-dom'
 
 const PAGE_SIZE = 20
 
-type TabId = 'all' | 'RECEIVED' | 'IN_PROGRESS' | 'COMPLETED' | 'alerts' | 'pending_approval'
+type TabId = 'all' | 'COLLECTED' | 'RECEIVED' | 'IN_PROGRESS' | 'COMPLETED' | 'alerts' | 'pending_approval'
 
 
 const SAMPLE_TYPE_LABEL: Record<SampleType, string> = {
@@ -57,6 +57,7 @@ function PriorityBadge({ priority }: { priority: string }) {
 
 function StatusBadge({ status }: { status: LabSampleStatus }) {
   const map: Record<LabSampleStatus, { cls: string; dot: string; label: string }> = {
+    COLLECTED:   { cls: 'bg-violet-50 text-violet-700 ring-violet-200',    dot: 'bg-violet-500', label: 'In Transit'  },
     RECEIVED:    { cls: 'bg-blue-50 text-blue-700 ring-blue-200',          dot: 'bg-blue-500',   label: 'Received'    },
     IN_PROGRESS: { cls: 'bg-amber-50 text-amber-700 ring-amber-200',       dot: 'bg-amber-500',  label: 'In Progress' },
     COMPLETED:   { cls: 'bg-emerald-50 text-emerald-700 ring-emerald-200', dot: 'bg-emerald-500',label: 'Completed'   },
@@ -512,6 +513,18 @@ function LabReportDrawer({ sample, onClose, onEnterResults, onStartTesting }: {
       toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed'),
   })
 
+  const receiveMutation = useMutation({
+    mutationFn: () => labApi.receive(sample.id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['lab'] })
+      qc.invalidateQueries({ queryKey: ['lab-sample', sample.id] })
+      toast.success('Sample received — bottle logged at the bench.')
+      onClose()
+    },
+    onError: (e: unknown) =>
+      toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed'),
+  })
+
   function handleApprove(requiresTreatmentChange: boolean) {
     approveMutation.mutate({ requiresTreatmentChange, approvalNotes: approvalNotes || undefined })
   }
@@ -533,7 +546,7 @@ function LabReportDrawer({ sample, onClose, onEnterResults, onStartTesting }: {
       <div className="relative bg-white w-[600px] h-full shadow-2xl flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
           <div>
-            <p className="text-sm font-bold text-gray-900 font-mono">{s.sampleNumber}</p>
+            <p className="text-sm font-bold text-gray-900 font-mono">{s.custodyCode ?? s.sampleNumber}</p>
             <p className="text-xs text-gray-400 mt-0.5">
               {SAMPLE_TYPE_LABEL[s.sampleType]} · {s.wellName} · {s.leaseName}
             </p>
@@ -573,12 +586,14 @@ function LabReportDrawer({ sample, onClose, onEnterResults, onStartTesting }: {
           )}
 
           {section('Sample Info')}
+          {s.custodyCode && row('Custody Code', <span className="font-mono">{s.custodyCode}</span>)}
+          {row('Lab No.', <span className="font-mono">{s.sampleNumber}</span>)}
           {row('Client', s.clientName ?? '—')}
           {row('Lease', s.leaseName ?? '—')}
           {row('Well', s.wellName ?? '—')}
           {row('Collected By', s.collectedByName ?? '—')}
           {row('Collected At', s.collectedAt ? new Date(s.collectedAt).toLocaleString() : '—')}
-          {row('Received At', new Date(s.receivedAt).toLocaleString())}
+          {row('Received At', s.receivedAt ? new Date(s.receivedAt).toLocaleString() : '—')}
           {row('Priority', <PriorityBadge priority={s.priority} />)}
           {row('Status', s.status === 'COMPLETED' && s.approvalStatus === 'PENDING_REVIEW'
             ? <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ring-1 bg-amber-50 text-amber-700 ring-amber-200"><span className="w-1.5 h-1.5 rounded-full bg-amber-400" />Pending Approval</span>
@@ -701,6 +716,14 @@ function LabReportDrawer({ sample, onClose, onEnterResults, onStartTesting }: {
 
           {/* Status-driven actions */}
           <div className="flex gap-2">
+            {canEdit && s.status === 'COLLECTED' && (
+              <button onClick={() => receiveMutation.mutate()}
+                disabled={receiveMutation.isPending}
+                className="flex-1 h-9 text-xs font-semibold rounded-lg text-white transition disabled:opacity-50"
+                style={{ backgroundColor: 'var(--color-primary)' }}>
+                {receiveMutation.isPending ? 'Receiving…' : 'Mark Received'}
+              </button>
+            )}
             {canEdit && s.status === 'RECEIVED' && (
               <button onClick={onStartTesting}
                 className="flex-1 h-9 text-xs font-semibold rounded-lg text-white transition"
@@ -731,6 +754,7 @@ function LabReportDrawer({ sample, onClose, onEnterResults, onStartTesting }: {
 // ── Main LabPage ──────────────────────────────────────────────────────────────
 
 const FILTER_OPTIONS: DropdownOption[] = [
+  { value: 'COLLECTED',        label: 'In Transit'       },
   { value: 'RECEIVED',         label: 'Received'         },
   { value: 'IN_PROGRESS',      label: 'In Progress'      },
   { value: 'COMPLETED',        label: 'Completed'        },
@@ -788,7 +812,7 @@ export default function LabPage() {
       wellId:         s.wellId,
       collectedById:  s.collectedById ?? undefined,
       collectedAt:    s.collectedAt   ?? undefined,
-      receivedAt:     s.receivedAt,
+      receivedAt:     s.receivedAt!, // only reachable for RECEIVED samples
       priority:       s.priority,
       testsRequested: s.testsRequested ?? undefined,
       status:         'IN_PROGRESS',
@@ -861,13 +885,22 @@ export default function LabPage() {
                 <tr key={s.id}
                   onClick={() => setSelected(s)}
                   className="cursor-pointer hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 font-mono text-xs font-semibold text-gray-700">{s.sampleNumber}</td>
+                  <td className="px-4 py-3">
+                    {s.custodyCode ? (
+                      <>
+                        <p className="font-mono text-xs font-semibold text-gray-800">{s.custodyCode}</p>
+                        <p className="font-mono text-[11px] text-gray-400">{s.sampleNumber}</p>
+                      </>
+                    ) : (
+                      <span className="font-mono text-xs font-semibold text-gray-700">{s.sampleNumber}</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-xs text-gray-500">{SAMPLE_TYPE_LABEL[s.sampleType]}</td>
                   <td className="px-4 py-3">
                     <p className="font-medium text-gray-900 text-xs">{s.wellName ?? '—'}</p>
                     {s.leaseName && <p className="text-xs text-gray-400">{s.leaseName}</p>}
                   </td>
-                  <td className="px-4 py-3 text-xs text-gray-500">{new Date(s.receivedAt).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 text-xs text-gray-500">{(s.receivedAt ?? s.collectedAt) ? new Date((s.receivedAt ?? s.collectedAt)!).toLocaleDateString() : '—'}</td>
                   <td className="px-4 py-3"><PriorityBadge priority={s.priority} /></td>
                   <td className="px-4 py-3">
                     {s.status === 'COMPLETED' && s.approvalStatus === 'PENDING_REVIEW'

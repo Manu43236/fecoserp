@@ -3,7 +3,7 @@ import type { ApiResponse, PageResponse } from '@/types'
 
 export type SampleType     = 'PRODUCED_WATER' | 'SOLID_SCRAPING' | 'CORROSION_COUPON'
 export type SamplePriority = 'ROUTINE' | 'RUSH'
-export type LabSampleStatus = 'RECEIVED' | 'IN_PROGRESS' | 'COMPLETED'
+export type LabSampleStatus = 'COLLECTED' | 'RECEIVED' | 'IN_PROGRESS' | 'COMPLETED'
 export type ScaleSeverity  = 'LIGHT' | 'MODERATE' | 'SEVERE'
 export type ApprovalStatus = 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED'
 
@@ -62,6 +62,7 @@ export interface LabResultRecord {
 export interface LabSampleRecord {
   id: string
   sampleNumber: string
+  custodyCode: string | null
   sampleType: SampleType
   wellId: string
   wellName: string | null
@@ -70,7 +71,7 @@ export interface LabSampleRecord {
   collectedById: string | null
   collectedByName: string | null
   collectedAt: string | null
-  receivedAt: string
+  receivedAt: string | null
   priority: SamplePriority
   testsRequested: string | null
   status: LabSampleStatus
@@ -131,6 +132,7 @@ export const labApi = {
   get:          (id: string)      => api.get<ApiResponse<LabSampleRecord>>(`/api/v1/lab/samples/${id}`),
   create:       (data: LabSamplePayload) => api.post<ApiResponse<LabSampleRecord>>('/api/v1/lab/samples', data),
   update:       (id: string, data: LabSamplePayload) => api.put<ApiResponse<LabSampleRecord>>(`/api/v1/lab/samples/${id}`, data),
+  receive:      (id: string)      => api.post<ApiResponse<LabSampleRecord>>(`/api/v1/lab/samples/${id}/receive`),
   enterResults: (id: string, data: LabResultPayload) => api.post<ApiResponse<LabSampleRecord>>(`/api/v1/lab/samples/${id}/results`, data),
   updateResults:(id: string, data: LabResultPayload) => api.put<ApiResponse<LabSampleRecord>>(`/api/v1/lab/samples/${id}/results`, data),
   approve:          (id: string, data: LabApprovePayload) => api.post<ApiResponse<LabSampleRecord>>(`/api/v1/lab/samples/${id}/approve`, data),

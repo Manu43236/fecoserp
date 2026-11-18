@@ -7,6 +7,7 @@ import java.util.UUID;
 public record LabSampleResponse(
         UUID id,
         String sampleNumber,
+        String custodyCode,
         SampleType sampleType,
         UUID wellId,
         String wellName,
