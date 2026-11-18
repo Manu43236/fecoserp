@@ -4,6 +4,7 @@ import 'package:fecos_mobile/app/data/services/db_service.dart';
 import 'package:fecos_mobile/app/data/services/dio_service.dart';
 import 'package:fecos_mobile/app/data/services/storage_service.dart';
 import 'package:fecos_mobile/app/data/services/sync_service.dart';
+import 'package:fecos_mobile/app/data/services/sync_reminder_service.dart';
 import 'package:fecos_mobile/app/modules/auth/controllers/auth_controller.dart';
 
 class InitialBinding extends Bindings {
@@ -14,6 +15,7 @@ class InitialBinding extends Bindings {
     Get.put(DioService(), permanent: true);
     Get.put(ConnectivityService(), permanent: true);
     Get.put(SyncService(), permanent: true);
+    Get.put(SyncReminderService(), permanent: true);
     Get.put(AuthController(), permanent: true);
   }
 }

@@ -38,6 +38,9 @@ dependencies:
   # Permissions
   permission_handler: ^11.3.1
 
+  # Local notifications (offline-sync reminder)
+  flutter_local_notifications: ^17.2.3
+
   # Path provider (DB file path)
   path_provider: ^2.1.4
 

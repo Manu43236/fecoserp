@@ -44,6 +44,10 @@ class SyncService extends GetxService {
     syncingVisitIds
       ..clear()
       ..addAll(ids);
+
+    // Keep the badge/reminder honest even offline — _trySyncAll bails before
+    // setting this when there's no connection, so reconcile from the queue here.
+    pendingCount.value = rows.length;
   }
 
   @override
