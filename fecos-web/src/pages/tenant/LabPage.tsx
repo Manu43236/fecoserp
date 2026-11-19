@@ -886,14 +886,8 @@ export default function LabPage() {
                   onClick={() => setSelected(s)}
                   className="cursor-pointer hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3">
-                    {s.custodyCode ? (
-                      <>
-                        <p className="font-mono text-xs font-semibold text-gray-800">{s.custodyCode}</p>
-                        <p className="font-mono text-[11px] text-gray-400">{s.sampleNumber}</p>
-                      </>
-                    ) : (
-                      <span className="font-mono text-xs font-semibold text-gray-700">{s.sampleNumber}</span>
-                    )}
+                    <p className="font-mono text-xs font-semibold text-gray-800">{s.sampleNumber}</p>
+                    {s.custodyCode && <p className="font-mono text-[11px] text-gray-400">{s.custodyCode}</p>}
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-500">{SAMPLE_TYPE_LABEL[s.sampleType]}</td>
                   <td className="px-4 py-3">
