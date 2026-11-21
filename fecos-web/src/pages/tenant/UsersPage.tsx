@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { usersApi, type UserRecord, type CreateUserPayload, type UpdateUserPayload } from '@/api/users'
 import { yardsApi } from '@/api/yards'
-import { RoleFilterDropdown, ROLES, roleMap, RoleBadge, RoleBadges, sortRoles, isFieldRole, isMobileRole } from '@/components/ui/RoleFilterDropdown'
+import { RoleFilterDropdown, ROLES, roleMap, RoleBadges, sortRoles, isFieldRole, isMobileRole } from '@/components/ui/RoleFilterDropdown'
 import { RoleMultiSelect } from '@/components/ui/RoleMultiSelect'
 import { YardMultiSelect } from '@/components/ui/YardMultiSelect'
 
@@ -658,8 +658,16 @@ export function UsersPage() {
             </div>
 
             {/* Roles */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              {u.roles.length ? sortRoles(u.roles).map(role => <RoleBadge key={role} role={role} />) : <span className="text-xs text-gray-400">—</span>}
+            <div className="flex flex-col gap-1">
+              {u.roles.length ? sortRoles(u.roles).map(role => {
+                const r = roleMap[role]
+                return (
+                  <span key={role} className="inline-flex items-center gap-1.5 text-[11px] text-gray-600">
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${r?.dot ?? 'bg-gray-300'}`} />
+                    {r?.label ?? role}
+                  </span>
+                )
+              }) : <span className="text-xs text-gray-400">—</span>}
             </div>
 
             {/* Yards */}
