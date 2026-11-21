@@ -458,7 +458,12 @@ export function SAUsersPage() {
     queryFn: () => saUsersApi.list().then(r => r.data.data),
   })
 
-  const users = data ?? []
+  const users = (data ?? []).map(u => ({
+    ...u,
+    roles:     u.roles     ?? (u.role ? [u.role] : []),
+    yardIds:   u.yardIds   ?? [],
+    yardNames: u.yardNames ?? [],
+  }))
 
   const tenants = Array.from(
     new Map(users.filter(u => u.tenantId).map(u => [u.tenantId!, u.tenantName])).entries()

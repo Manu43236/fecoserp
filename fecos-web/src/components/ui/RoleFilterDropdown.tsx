@@ -33,7 +33,7 @@ export function RoleBadge({ role }: { role: string }) {
 
 /** Renders every held role. In `compact` mode (table rows) shows the first badge + "+N". */
 export function RoleBadges({ roles, compact = false }: { roles: string[]; compact?: boolean }) {
-  const sorted = sortRoles(roles)
+  const sorted = sortRoles(roles ?? [])
   if (sorted.length === 0) return <span className="text-xs text-gray-400">—</span>
   if (compact) {
     return (

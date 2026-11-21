@@ -531,7 +531,12 @@ export function UsersPage() {
       toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed'),
   })
 
-  const users = data ?? []
+  const users = (data ?? []).map(u => ({
+    ...u,
+    roles:     u.roles     ?? (u.role ? [u.role] : []),
+    yardIds:   u.yardIds   ?? [],
+    yardNames: u.yardNames ?? [],
+  }))
   const filtered = users.filter(u => {
     const matchesRole = !roleFilter || u.roles.includes(roleFilter)
     const q = search.toLowerCase()

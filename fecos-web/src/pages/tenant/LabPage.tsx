@@ -117,7 +117,7 @@ function LogSamplePanel({ open, onClose, wells, users }: {
   }))
 
   const userOptions: DropdownOption[] = users
-    .filter(u => u.roles.includes('SERVICE_TECH') || u.roles.includes('ACCOUNT_REP'))
+    .filter(u => (u.roles ?? []).includes('SERVICE_TECH') || (u.roles ?? []).includes('ACCOUNT_REP'))
     .map(u => ({ value: u.id, label: `${u.fullName} (${u.role.replace('_', ' ')})` }))
 
   const mutation = useMutation({
