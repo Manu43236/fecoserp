@@ -6,13 +6,15 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import toast from 'react-hot-toast'
 import {
   Plus, Search, Pencil, Trash2, KeyRound, Power,
-  Monitor, Smartphone, ChevronRight, ChevronLeft, X, Mail, Phone, Lock, Eye, EyeOff, Users, MapPin,
+  Monitor, Smartphone, ChevronRight, ChevronLeft, X, Mail, Phone, Lock, Eye, EyeOff, Users, MapPin, Building2,
 } from 'lucide-react'
 import { usersApi, type UserRecord, type CreateUserPayload, type UpdateUserPayload } from '@/api/users'
 import { yardsApi } from '@/api/yards'
+import { coverageApi, type CoverageSelection } from '@/api/coverage'
 import { RoleFilterDropdown, ROLES, roleMap, RoleBadges, sortRoles, isFieldRole, isMobileRole } from '@/components/ui/RoleFilterDropdown'
 import { RoleMultiSelect } from '@/components/ui/RoleMultiSelect'
 import { YardMultiSelect } from '@/components/ui/YardMultiSelect'
+import { CoverageEditor } from '@/components/users/CoverageEditor'
 
 const formatPhone = (n: string) =>
   n.length === 10 ? `(${n.slice(0, 3)}) ${n.slice(3, 6)}-${n.slice(6)}` : n
@@ -100,13 +102,24 @@ function UserFormPanel({ open, onClose, user }: { open: boolean; onClose: () => 
   const selectedRoles = form.watch('roles')
   const selectedYards  = form.watch('yardIds')
   const yardsRequired  = selectedRoles.some(isFieldRole)
+  const isAccountRep   = selectedRoles.includes('ACCOUNT_REP')
+
+  const [coverage, setCoverage] = useState<CoverageSelection>({ clientIds: [], leaseIds: [], wellIds: [] })
+  useEffect(() => { if (open) setCoverage({ clientIds: [], leaseIds: [], wellIds: [] }) }, [open, user?.id])
 
   const mutation = useMutation({
-    mutationFn: (data: CreateForm | EditForm) => {
+    mutationFn: async (data: CreateForm | EditForm) => {
       // Only submit yards that are real, selectable active yards — drops any stale
       // id still stored on the user (e.g. a yard later deleted) that the server would reject.
       const payload = { ...data, yardIds: data.yardIds.filter(id => yards.some(y => y.id === id)) }
-      return isEdit ? usersApi.update(user!.id, payload as UpdateUserPayload) : usersApi.create(payload as CreateUserPayload)
+      const res = isEdit
+        ? await usersApi.update(user!.id, payload as UpdateUserPayload)
+        : await usersApi.create(payload as CreateUserPayload)
+      // Account Rep coverage is stored as account_rep_id on clients/leases/wells.
+      if (data.roles.includes('ACCOUNT_REP')) {
+        await coverageApi.set(isEdit ? user!.id : res.data.data.id, coverage)
+      }
+      return res
     },
     onSuccess: () => {
       toast.success(isEdit ? 'User updated' : 'User created')
@@ -233,6 +246,20 @@ function UserFormPanel({ open, onClose, user }: { open: boolean; onClose: () => 
               <YardMultiSelect value={selectedYards} onChange={v => form.setValue('yardIds', v, { shouldValidate: true })} yards={yards} />
               {form.formState.errors.yardIds && <p className="text-red-500 text-xs">{form.formState.errors.yardIds.message}</p>}
             </div>
+
+            {/* Account Rep coverage */}
+            {isAccountRep && (
+              <>
+                <div className="border-t border-gray-100" />
+                <div className="space-y-2">
+                  <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    <Building2 size={11} /> Coverage
+                  </label>
+                  <p className="text-[11px] text-gray-400 -mt-1">Clients, leases, and wells this rep is responsible for.</p>
+                  <CoverageEditor repId={isEdit ? user!.id : undefined} selection={coverage} onChange={setCoverage} />
+                </div>
+              </>
+            )}
           </div>
 
           {/* Footer */}

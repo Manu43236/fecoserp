@@ -3,13 +3,27 @@ package com.fecos.clients;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 public interface ClientRepository extends JpaRepository<ClientEntity, UUID> {
+
+    // ── Account Rep coverage ───────────────────────────────────────────────────
+    List<ClientEntity> findAllByTenantIdAndAccountRepIdAndIsDeletedFalse(UUID tenantId, UUID accountRepId);
+
+    @Modifying
+    @Query("UPDATE ClientEntity c SET c.accountRepId = NULL WHERE c.tenantId = :tenantId AND c.accountRepId = :repId")
+    void clearAccountRep(@Param("tenantId") UUID tenantId, @Param("repId") UUID repId);
+
+    @Modifying
+    @Query("UPDATE ClientEntity c SET c.accountRepId = :repId WHERE c.tenantId = :tenantId AND c.id IN :ids AND c.isDeleted = false")
+    void assignAccountRep(@Param("tenantId") UUID tenantId, @Param("repId") UUID repId, @Param("ids") Collection<UUID> ids);
 
     @Query("""
         SELECT c FROM ClientEntity c

@@ -16,6 +16,10 @@ public class WellEntity extends TenantAwareEntity {
     @Column(name = "lease_id", nullable = false)
     private UUID leaseId;
 
+    /** Account Rep covering this specific well (null = inherit from lease/client). */
+    @Column(name = "account_rep_id")
+    private UUID accountRepId;
+
     @Column(name = "well_name", nullable = false, length = 100)
     private String wellName;
 

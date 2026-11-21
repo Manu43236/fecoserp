@@ -3,14 +3,27 @@ package com.fecos.wells;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 public interface WellRepository extends JpaRepository<WellEntity, UUID> {
+
+    // ── Account Rep coverage ───────────────────────────────────────────────────
+    List<WellEntity> findAllByTenantIdAndAccountRepIdAndIsDeletedFalse(UUID tenantId, UUID accountRepId);
+
+    @Modifying
+    @Query("UPDATE WellEntity w SET w.accountRepId = NULL WHERE w.tenantId = :tenantId AND w.accountRepId = :repId")
+    void clearAccountRep(@Param("tenantId") UUID tenantId, @Param("repId") UUID repId);
+
+    @Modifying
+    @Query("UPDATE WellEntity w SET w.accountRepId = :repId WHERE w.tenantId = :tenantId AND w.id IN :ids AND w.isDeleted = false")
+    void assignAccountRep(@Param("tenantId") UUID tenantId, @Param("repId") UUID repId, @Param("ids") Collection<UUID> ids);
 
     @Query("""
         SELECT w FROM WellEntity w

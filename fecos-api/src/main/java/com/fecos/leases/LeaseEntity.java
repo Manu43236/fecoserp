@@ -17,6 +17,10 @@ public class LeaseEntity extends TenantAwareEntity {
     @Column(name = "client_id", nullable = false)
     private UUID clientId;
 
+    /** Account Rep covering this whole lease (null = inherit from client). */
+    @Column(name = "account_rep_id")
+    private UUID accountRepId;
+
     @Column(name = "lease_name", nullable = false, length = 100)
     private String leaseName;
 

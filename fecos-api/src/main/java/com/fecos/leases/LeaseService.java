@@ -146,19 +146,20 @@ public class LeaseService {
 
     private LeaseResponse toResponse(LeaseEntity l) {
         String clientName = null;
-        UUID accountRepId = null;
+        // Effective AR: the lease's own assignment wins, else inherit from its client.
+        UUID accountRepId = l.getAccountRepId();
         String accountRepName = null;
         if (l.getClientId() != null) {
             var clientOpt = clientRepository.findById(l.getClientId());
             if (clientOpt.isPresent()) {
                 var client = clientOpt.get();
                 clientName = client.getCompanyName();
-                accountRepId = client.getAccountRepId();
-                if (accountRepId != null) {
-                    accountRepName = userRepository.findById(accountRepId)
-                            .map(u -> u.getFullName()).orElse(null);
-                }
+                if (accountRepId == null) accountRepId = client.getAccountRepId();
             }
+        }
+        if (accountRepId != null) {
+            accountRepName = userRepository.findById(accountRepId)
+                    .map(u -> u.getFullName()).orElse(null);
         }
         return LeaseResponse.from(l, clientName, accountRepId, accountRepName);
     }
