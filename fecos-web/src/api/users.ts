@@ -6,7 +6,10 @@ export interface UserRecord {
   fullName: string
   mobileNumber: string
   email: string | null
-  role: string
+  role: string          // primary (highest-precedence) role — kept for avatars/sorting
+  roles: string[]
+  yardIds: string[]
+  yardNames: string[]
   isActive: boolean
   createdAt: string
   pin: string | null
@@ -17,13 +20,15 @@ export interface CreateUserPayload {
   mobileNumber: string
   pin: string
   email?: string
-  role: string
+  roles: string[]
+  yardIds: string[]
 }
 
 export interface UpdateUserPayload {
   fullName: string
   email?: string
-  role: string
+  roles: string[]
+  yardIds: string[]
 }
 
 export interface SAUserRecord extends UserRecord {
@@ -38,7 +43,8 @@ export interface SACreateUserPayload {
   mobileNumber: string
   pin: string
   email?: string
-  role: string
+  roles: string[]
+  yardIds: string[]
 }
 
 export const saUsersApi = {

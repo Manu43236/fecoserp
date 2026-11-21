@@ -12,6 +12,8 @@ public record SAUserResponse(
         String email,
         String role,            // primary role — kept for backward compatibility
         List<String> roles,
+        List<String> yardIds,
+        List<String> yardNames,
         boolean isActive,
         Instant createdAt,
         String tenantId,
@@ -30,6 +32,8 @@ public record SAUserResponse(
                 u.getEmail(),
                 primary != null ? primary.name() : null,
                 u.getRoles().stream().map(Role::name).toList(),
+                u.getYardIds().stream().map(UUID::toString).toList(),
+                List.of(),   // yard names not shown in the SA cross-tenant view
                 u.isActive(),
                 u.getCreatedAt(),
                 tid,

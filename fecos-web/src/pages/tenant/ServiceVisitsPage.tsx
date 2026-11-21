@@ -833,7 +833,7 @@ export default function ServiceVisitsPage() {
     queryFn:  () => usersApi.list().then(r => r.data?.data as UserRecord[] ?? []),
   })
   const allUsers: UserRecord[] = usersData ?? []
-  const stUsers  = allUsers.filter(u => u.role === 'SERVICE_TECH')
+  const stUsers  = allUsers.filter(u => u.roles.includes('SERVICE_TECH'))
   const techOpts = stUsers.map(u => ({ value: u.id, label: u.fullName }))
 
   const { data: wellsData } = useQuery({

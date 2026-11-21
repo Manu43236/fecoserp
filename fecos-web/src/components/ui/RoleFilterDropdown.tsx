@@ -11,6 +11,47 @@ export const ROLES = [
 
 export const roleMap = Object.fromEntries(ROLES.map(r => [r.value, r]))
 
+/** Roles that require the user to belong to at least one yard (mirrors UserService.YARD_REQUIRED). */
+export const FIELD_ROLES = ['SERVICE_TECH', 'TRUCK_DRIVER', 'ACCOUNT_REP'] as const
+export const isFieldRole  = (role: string) => (FIELD_ROLES as readonly string[]).includes(role)
+export const isMobileRole = (role: string) => !!roleMap[role]?.access.includes('Mobile')
+
+/** Sort a set of role values into the canonical ROLES display order. */
+export const sortRoles = (roles: string[]) =>
+  [...roles].sort((a, b) => ROLES.findIndex(r => r.value === a) - ROLES.findIndex(r => r.value === b))
+
+export function RoleBadge({ role }: { role: string }) {
+  const r = roleMap[role]
+  if (!r) return <span className="text-xs text-gray-400">{role}</span>
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ring-1 ${r.color}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${r.dot}`} />
+      {r.label}
+    </span>
+  )
+}
+
+/** Renders every held role. In `compact` mode (table rows) shows the first badge + "+N". */
+export function RoleBadges({ roles, compact = false }: { roles: string[]; compact?: boolean }) {
+  const sorted = sortRoles(roles)
+  if (sorted.length === 0) return <span className="text-xs text-gray-400">—</span>
+  if (compact) {
+    return (
+      <div className="flex items-center gap-1.5 min-w-0">
+        <RoleBadge role={sorted[0]} />
+        {sorted.length > 1 && (
+          <span className="text-[11px] font-medium text-gray-400 shrink-0">+{sorted.length - 1}</span>
+        )}
+      </div>
+    )
+  }
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap justify-center">
+      {sorted.map(role => <RoleBadge key={role} role={role} />)}
+    </div>
+  )
+}
+
 interface Props {
   value: string | null
   onChange: (v: string | null) => void

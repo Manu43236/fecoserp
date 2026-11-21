@@ -7,7 +7,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import toast from 'react-hot-toast'
 import { saUsersApi, type SAUserRecord, type SACreateUserPayload } from '@/api/users'
 import type { UpdateUserPayload } from '@/api/users'
-import { RoleFilterDropdown, ROLES, roleMap } from '@/components/ui/RoleFilterDropdown'
+import { RoleFilterDropdown, ROLES, roleMap, RoleBadges } from '@/components/ui/RoleFilterDropdown'
+import { RoleMultiSelect } from '@/components/ui/RoleMultiSelect'
 import { SearchableDropdown } from '@/components/ui/SearchableDropdown'
 
 const PAGE_SIZE = 10
@@ -20,17 +21,6 @@ function formatPhoneInput(raw: string): string {
   if (d.length <= 3) return d
   if (d.length <= 6) return `(${d.slice(0, 3)}) ${d.slice(3)}`
   return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`
-}
-
-function RoleBadge({ role }: { role: string }) {
-  const r = roleMap[role]
-  if (!r) return <span className="text-xs text-gray-400">{role}</span>
-  return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ring-1 ${r.color}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${r.dot}`} />
-      {r.label}
-    </span>
-  )
 }
 
 function Avatar({ name, role, lg }: { name: string; role: string; lg?: boolean }) {
@@ -49,37 +39,6 @@ function Avatar({ name, role, lg }: { name: string; role: string; lg?: boolean }
   )
 }
 
-// ── Shared role picker ────────────────────────────────────────────────────────
-function RolePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  return (
-    <div className="grid grid-cols-2 gap-2">
-      {ROLES.map(r => {
-        const isSelected = value === r.value
-        return (
-          <button
-            key={r.value}
-            type="button"
-            onClick={() => onChange(r.value)}
-            className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg border text-left transition-all ${
-              isSelected ? `${r.color} ring-1 border-transparent` : 'border-gray-200 hover:border-gray-300 bg-white'
-            }`}
-          >
-            <span className={`w-2 h-2 rounded-full shrink-0 ${isSelected ? r.dot : 'bg-gray-300'}`} />
-            <div className="min-w-0">
-              <p className={`text-xs font-semibold truncate ${isSelected ? '' : 'text-gray-700'}`}>{r.label}</p>
-              <div className="flex items-center gap-1 mt-0.5">
-                {r.access.includes('Web')    && <Monitor size={9} className="text-gray-400" />}
-                {r.access.includes('Mobile') && <Smartphone size={9} className="text-gray-400" />}
-                <span className="text-[10px] text-gray-400">{r.access}</span>
-              </div>
-            </div>
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
 // ── Create Dialog ─────────────────────────────────────────────────────────────
 const createSchema = z.object({
   tenantId:     z.string().min(1, 'Select a tenant'),
@@ -87,7 +46,7 @@ const createSchema = z.object({
   mobileNumber: z.string().regex(/^[2-9]\d{9}$/, 'Enter a valid US 10-digit number'),
   pin:          z.string().regex(/^\d{4}$/, 'PIN must be exactly 4 digits'),
   email:        z.string().email('Invalid email').optional().or(z.literal('')),
-  role:         z.string().min(1, 'Select a role'),
+  roles:        z.array(z.string()).min(1, 'Select at least one role'),
 })
 type CreateForm = z.infer<typeof createSchema>
 
@@ -97,15 +56,15 @@ function CreateDialog({
   const qc = useQueryClient()
   const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<CreateForm>({
     resolver: zodResolver(createSchema),
-    defaultValues: { tenantId: '', fullName: '', mobileNumber: '', pin: '', email: '', role: '' },
+    defaultValues: { tenantId: '', fullName: '', mobileNumber: '', pin: '', email: '', roles: [] },
   })
 
   useEffect(() => {
-    if (open) reset({ tenantId: '', fullName: '', mobileNumber: '', pin: '', email: '', role: '' })
+    if (open) reset({ tenantId: '', fullName: '', mobileNumber: '', pin: '', email: '', roles: [] })
   }, [open])
 
   const mutation = useMutation({
-    mutationFn: (data: CreateForm) => saUsersApi.create(data as SACreateUserPayload),
+    mutationFn: (data: CreateForm) => saUsersApi.create({ ...data, yardIds: [] } as SACreateUserPayload),
     onSuccess: () => { toast.success('User created'); qc.invalidateQueries({ queryKey: ['sa-users'] }); onClose() },
     onError: (e: unknown) =>
       toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed'),
@@ -180,11 +139,11 @@ function CreateDialog({
               className="w-full h-10 px-3.5 text-sm border border-gray-200 rounded-lg outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-50" />
           </div>
 
-          {/* Role */}
+          {/* Roles */}
           <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-2">Role *</label>
-            <RolePicker value={watch('role')} onChange={v => setValue('role', v, { shouldValidate: true })} />
-            {errors.role && <p className="text-red-500 text-xs mt-1">{errors.role.message}</p>}
+            <label className="block text-xs font-semibold text-gray-700 mb-2">Roles *</label>
+            <RoleMultiSelect value={watch('roles')} onChange={v => setValue('roles', v, { shouldValidate: true })} />
+            {errors.roles && <p className="text-red-500 text-xs mt-1">{errors.roles.message}</p>}
           </div>
 
           <div className="flex justify-end gap-3 pt-1">
@@ -208,7 +167,7 @@ function CreateDialog({
 const editSchema = z.object({
   fullName: z.string().min(1, 'Required'),
   email:    z.string().email('Invalid email').optional().or(z.literal('')),
-  role:     z.string().min(1, 'Select a role'),
+  roles:    z.array(z.string()).min(1, 'Select at least one role'),
 })
 type EditForm = z.infer<typeof editSchema>
 
@@ -219,11 +178,11 @@ function EditDialog({ open, onClose, user }: { open: boolean; onClose: () => voi
   })
 
   useEffect(() => {
-    if (open && user) reset({ fullName: user.fullName, email: user.email ?? '', role: user.role })
+    if (open && user) reset({ fullName: user.fullName, email: user.email ?? '', roles: user.roles })
   }, [open, user?.id])
 
   const mutation = useMutation({
-    mutationFn: (data: EditForm) => saUsersApi.update(user!.id, data as UpdateUserPayload),
+    mutationFn: (data: EditForm) => saUsersApi.update(user!.id, { ...data, yardIds: user!.yardIds } as UpdateUserPayload),
     onSuccess: () => { toast.success('User updated'); qc.invalidateQueries({ queryKey: ['sa-users'] }); onClose() },
     onError: (e: unknown) =>
       toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed'),
@@ -259,9 +218,9 @@ function EditDialog({ open, onClose, user }: { open: boolean; onClose: () => voi
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-2">Role *</label>
-            <RolePicker value={watch('role')} onChange={v => setValue('role', v, { shouldValidate: true })} />
-            {errors.role && <p className="text-red-500 text-xs mt-1">{errors.role.message}</p>}
+            <label className="block text-xs font-semibold text-gray-700 mb-2">Roles *</label>
+            <RoleMultiSelect value={watch('roles')} onChange={v => setValue('roles', v, { shouldValidate: true })} />
+            {errors.roles && <p className="text-red-500 text-xs mt-1">{errors.roles.message}</p>}
           </div>
 
           <div className="flex justify-end gap-3 pt-1">
@@ -376,7 +335,7 @@ function UserDrawer({
               <div>
                 <p className="text-base font-bold text-gray-900">{user.fullName}</p>
                 <div className="flex items-center justify-center gap-2 mt-1.5 flex-wrap">
-                  <RoleBadge role={user.role} />
+                  <RoleBadges roles={user.roles} />
                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ring-1 ${
                     user.isActive ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-red-50 text-red-600 ring-red-200'
                   }`}>
@@ -507,7 +466,7 @@ export function SAUsersPage() {
 
   const filtered = users.filter(u => {
     const matchesTenant = !tenantFilter || u.tenantId === tenantFilter
-    const matchesRole   = !roleFilter   || u.role === roleFilter
+    const matchesRole   = !roleFilter   || u.roles.includes(roleFilter)
     const q = search.toLowerCase()
     const matchesSearch = !q
       || u.fullName.toLowerCase().includes(q)
@@ -584,7 +543,7 @@ export function SAUsersPage() {
         <RoleFilterDropdown
           value={roleFilter}
           onChange={setRoleFilter}
-          counts={Object.fromEntries(ROLES.map(r => [r.value, users.filter(u => u.role === r.value && (!tenantFilter || u.tenantId === tenantFilter)).length]))}
+          counts={Object.fromEntries(ROLES.map(r => [r.value, users.filter(u => u.roles.includes(r.value) && (!tenantFilter || u.tenantId === tenantFilter)).length]))}
         />
       </div>
 
@@ -625,7 +584,7 @@ export function SAUsersPage() {
               <div className="min-w-0">
                 <p className="text-sm text-gray-700 font-medium truncate">{u.tenantName}</p>
               </div>
-              <div><RoleBadge role={u.role} /></div>
+              <div><RoleBadges roles={u.roles} compact /></div>
               <div>
                 <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ring-1 ${
                   u.isActive ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-red-50 text-red-600 ring-red-200'

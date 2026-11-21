@@ -455,7 +455,7 @@ export function ClientsPage() {
     queryFn:  () => usersApi.list().then(r => r.data.data),
   })
 
-  const accountReps = allUsers.filter(u => u.role === 'ACCOUNT_REP')
+  const accountReps = allUsers.filter(u => u.roles.includes('ACCOUNT_REP'))
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => clientsApi.delete(id),

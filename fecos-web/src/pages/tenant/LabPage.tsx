@@ -11,7 +11,7 @@ import {
 import { wellsApi, type WellRecord } from '@/api/wells'
 import { usersApi, type UserRecord } from '@/api/users'
 import { SearchableDropdown, type DropdownOption } from '@/components/ui/SearchableDropdown'
-import { useAuthStore } from '@/store/authStore'
+import { useAuthStore, hasAnyRole } from '@/store/authStore'
 import { useNavigate } from 'react-router-dom'
 
 const PAGE_SIZE = 20
@@ -117,7 +117,7 @@ function LogSamplePanel({ open, onClose, wells, users }: {
   }))
 
   const userOptions: DropdownOption[] = users
-    .filter(u => u.role === 'SERVICE_TECH' || u.role === 'ACCOUNT_REP')
+    .filter(u => u.roles.includes('SERVICE_TECH') || u.roles.includes('ACCOUNT_REP'))
     .map(u => ({ value: u.id, label: `${u.fullName} (${u.role.replace('_', ' ')})` }))
 
   const mutation = useMutation({
@@ -480,8 +480,8 @@ function LabReportDrawer({ sample, onClose, onEnterResults, onStartTesting }: {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const { user } = useAuthStore()
-  const canApprove = user?.role === 'ACCOUNT_REP' || user?.role === 'ADMIN'
-  const canEdit    = user?.role === 'LAB_TECH'    || user?.role === 'ADMIN'
+  const canApprove = hasAnyRole(user, 'ACCOUNT_REP', 'ADMIN')
+  const canEdit    = hasAnyRole(user, 'LAB_TECH', 'ADMIN')
   const [approvalNotes, setApprovalNotes] = useState('')
   const [pdfLoading, setPdfLoading] = useState(false)
 
@@ -765,8 +765,8 @@ const FILTER_OPTIONS: DropdownOption[] = [
 export default function LabPage() {
   const qc = useQueryClient()
   const { user } = useAuthStore()
-  const canEdit    = user?.role === 'LAB_TECH'    || user?.role === 'ADMIN'
-  const canApprove = user?.role === 'ACCOUNT_REP' || user?.role === 'ADMIN'
+  const canEdit    = hasAnyRole(user, 'LAB_TECH', 'ADMIN')
+  const canApprove = hasAnyRole(user, 'ACCOUNT_REP', 'ADMIN')
 
   const [activeTab, setActiveTab]       = useState<TabId>('all')
   const [page, setPage]                 = useState(0)
