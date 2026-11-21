@@ -102,8 +102,12 @@ function UserFormPanel({ open, onClose, user }: { open: boolean; onClose: () => 
   const yardsRequired  = selectedRoles.some(isFieldRole)
 
   const mutation = useMutation({
-    mutationFn: (data: CreateForm | EditForm) =>
-      isEdit ? usersApi.update(user!.id, data as UpdateUserPayload) : usersApi.create(data as CreateUserPayload),
+    mutationFn: (data: CreateForm | EditForm) => {
+      // Only submit yards that are real, selectable active yards — drops any stale
+      // id still stored on the user (e.g. a yard later deleted) that the server would reject.
+      const payload = { ...data, yardIds: data.yardIds.filter(id => yards.some(y => y.id === id)) }
+      return isEdit ? usersApi.update(user!.id, payload as UpdateUserPayload) : usersApi.create(payload as CreateUserPayload)
+    },
     onSuccess: () => {
       toast.success(isEdit ? 'User updated' : 'User created')
       qc.invalidateQueries({ queryKey: ['users'] })
