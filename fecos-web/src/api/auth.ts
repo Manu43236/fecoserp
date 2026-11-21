@@ -12,6 +12,7 @@ export interface LoginResponse {
   fullName: string
   email: string | null
   role: string
+  roles: string[]
   tenantId: string | null
   tenantName: string | null
   primaryColor: string | null

@@ -25,7 +25,9 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         return new User(
                 user.getId().toString(),
                 user.getPinHash(),
-                List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
+                user.getRoles().stream()
+                        .map(r -> new SimpleGrantedAuthority("ROLE_" + r.name()))
+                        .toList()
         );
     }
 }

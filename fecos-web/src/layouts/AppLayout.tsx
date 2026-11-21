@@ -5,7 +5,7 @@ import {
   Building2, Wrench, BarChart3,
   FlaskConical, ClipboardList, TestTube, CheckCircle2,
   Briefcase, LogOut, Drill, Settings2, Cylinder, Car, Menu,
-  ChevronDown,
+  ChevronDown, Warehouse,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
@@ -48,6 +48,7 @@ const groupedNavByRole: Partial<Record<string, NavEntry[]>> = {
       { label: 'Pumps',     path: '/pump-shop', icon: Wrench       },
     ]},
     { kind: 'group', label: 'Sites', icon: MapPin, children: [
+      { label: 'Yards',  path: '/yards',  icon: Warehouse },
       { label: 'Leases', path: '/leases', icon: MapPin   },
       { label: 'Wells',  path: '/wells',  icon: Drill    },
       { label: 'Tanks',  path: '/tanks',  icon: Cylinder },
@@ -77,6 +78,7 @@ const groupedNavByRole: Partial<Record<string, NavEntry[]>> = {
       { label: 'Pumps',    path: '/pump-shop', icon: Wrench       },
     ]},
     { kind: 'group', label: 'Sites', icon: MapPin, children: [
+      { label: 'Yards',  path: '/yards',  icon: Warehouse },
       { label: 'Leases', path: '/leases', icon: MapPin   },
       { label: 'Wells',  path: '/wells',  icon: Drill    },
       { label: 'Tanks',  path: '/tanks',  icon: Cylinder },

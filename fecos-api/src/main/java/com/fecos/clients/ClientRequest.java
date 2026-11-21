@@ -28,5 +28,7 @@ public class ClientRequest {
 
     private UUID accountRepId;
 
+    private UUID yardId;
+
     private boolean isActive = true;
 }

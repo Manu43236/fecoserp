@@ -19,4 +19,13 @@ public interface PumpRepository extends JpaRepository<PumpEntity, UUID> {
 
     @Query("SELECT p FROM PumpEntity p WHERE p.tankId = :tankId AND p.status = :status AND p.isDeleted = false")
     Optional<PumpEntity> findDeployedPumpForTank(@Param("tankId") UUID tankId, @Param("status") PumpStatus status);
+
+    @Query("SELECT p FROM PumpEntity p WHERE p.tenantId = :tenantId AND p.isDeleted = false "
+            + "AND (:status IS NULL OR p.status = :status) "
+            + "AND (:owner IS NULL OR p.owner = :owner) "
+            + "ORDER BY p.createdAt DESC")
+    Page<PumpEntity> search(@Param("tenantId") UUID tenantId,
+                            @Param("status") PumpStatus status,
+                            @Param("owner") PumpOwner owner,
+                            Pageable pageable);
 }

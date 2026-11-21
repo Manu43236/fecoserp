@@ -21,6 +21,9 @@ export interface PumpRecord {
   model: string | null
   pumpType: string | null
   owner: PumpOwner
+  ownerClientId: string | null
+  ownerClientName: string | null
+  thirdPartyName: string | null
   status: PumpStatus
   tankId: string | null
   tankSerial: string | null
@@ -40,6 +43,8 @@ export interface PumpPayload {
   model?: string
   pumpType?: string
   owner: PumpOwner
+  clientId?: string | null
+  thirdPartyName?: string | null
   notes?: string
 }
 

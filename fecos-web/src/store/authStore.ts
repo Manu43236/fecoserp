@@ -7,7 +7,8 @@ interface AuthUser {
   fullName: string
   mobileNumber: string
   email?: string | null
-  role: Role
+  role: Role            // primary role (highest precedence) — for nav/home/display
+  roles?: Role[]        // all held roles — for permission checks
   tenantId?: string | null
   tenantName?: string | null
   primaryColor?: string | null
@@ -37,6 +38,16 @@ interface AuthState {
 const DEFAULT_PRIMARY = '#1E3A5F'
 const DEFAULT_DARK    = '#0F2137'
 const DEFAULT_ACCENT  = '#CBD5E1'
+
+/** True if the user holds any of the given roles. Falls back to the single primary role. */
+export function hasAnyRole(
+  user: { roles?: Role[]; role?: Role } | null | undefined,
+  ...roles: Role[]
+): boolean {
+  if (!user) return false
+  const held = user.roles?.length ? user.roles : (user.role ? [user.role] : [])
+  return roles.some(r => held.includes(r))
+}
 
 export function applyTenantTheme(user: AuthUser | null) {
   const root = document.documentElement

@@ -10,6 +10,8 @@ export interface ClientRecord {
   billingAddress: string | null
   accountRepId: string | null
   accountRepName: string | null
+  yardId: string | null
+  yardName: string | null
   isActive: boolean
   createdAt: string
 }
@@ -21,6 +23,7 @@ export interface ClientPayload {
   contactEmail?: string
   billingAddress?: string
   accountRepId?: string | null
+  yardId?: string | null
   isActive?: boolean
 }
 

@@ -32,13 +32,11 @@ public class PumpService {
     private final ClientRepository clientRepository;
     private final UserRepository userRepository;
 
-    public Page<PumpResponse> list(PumpStatus status, int page, int size) {
+    public Page<PumpResponse> list(PumpStatus status, PumpOwner owner, int page, int size) {
         UUID tenantId = currentTenantId();
         var pageable = PageRequest.of(page, size);
-        Page<PumpEntity> entities = status != null
-                ? pumpRepository.findAllByTenantIdAndStatusAndIsDeletedFalseOrderByCreatedAtDesc(tenantId, status, pageable)
-                : pumpRepository.findAllByTenantIdAndIsDeletedFalseOrderByCreatedAtDesc(tenantId, pageable);
-        return entities.map(p -> toResponse(p, false));
+        return pumpRepository.search(tenantId, status, owner, pageable)
+                .map(p -> toResponse(p, false));
     }
 
     public PumpResponse findById(UUID id) {
@@ -144,7 +142,23 @@ public class PumpService {
         p.setMake(req.getMake());
         p.setModel(req.getModel());
         p.setPumpType(req.getPumpType());
-        if (req.getOwner() != null) p.setOwner(req.getOwner());
+
+        PumpOwner owner = req.getOwner() != null ? req.getOwner() : PumpOwner.OWN;
+        p.setOwner(owner);
+        if (owner == PumpOwner.THIRD_PARTY) {
+            boolean hasClient = req.getClientId() != null;
+            boolean hasName = req.getThirdPartyName() != null && !req.getThirdPartyName().isBlank();
+            if (hasClient == hasName) {
+                throw new IllegalArgumentException(
+                        "A third-party pump must belong to either a client or an \"Others\" name — not both or neither");
+            }
+            p.setClientId(req.getClientId());
+            p.setThirdPartyName(hasName ? req.getThirdPartyName().trim() : null);
+        } else {
+            p.setClientId(null);
+            p.setThirdPartyName(null);
+        }
+
         p.setNotes(req.getNotes());
     }
 
@@ -196,9 +210,14 @@ public class PumpService {
         boolean onActiveTreatment = p.getStatus() == PumpStatus.DEPLOYED && p.getTankId() != null
                 && planLineRepository.existsActivePlanForTank(p.getTankId(), TreatmentPlanStatus.ACTIVE);
 
+        String ownerClientName = p.getClientId() != null
+                ? clientRepository.findById(p.getClientId()).map(c -> c.getCompanyName()).orElse(null)
+                : null;
+
         return new PumpResponse(
                 p.getId(), p.getSerialNumber(), p.getMake(), p.getModel(),
-                p.getPumpType(), p.getOwner(), p.getStatus(),
+                p.getPumpType(), p.getOwner(), p.getClientId(), ownerClientName, p.getThirdPartyName(),
+                p.getStatus(),
                 p.getTankId(), tankSerial, wellId, wellName, leaseName, clientName,
                 p.getNotes(), onActiveTreatment, logs, p.getCreatedAt());
     }

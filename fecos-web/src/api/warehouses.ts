@@ -5,6 +5,8 @@ export interface WarehouseRecord {
   id: string
   name: string
   location: string | null
+  yardId: string | null
+  yardName: string | null
   isActive: boolean
   createdAt: string
 }
@@ -12,6 +14,7 @@ export interface WarehouseRecord {
 export interface WarehousePayload {
   name: string
   location?: string
+  yardId: string
   isActive: boolean
 }
 

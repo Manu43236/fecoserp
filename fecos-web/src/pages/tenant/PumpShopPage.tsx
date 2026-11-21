@@ -38,13 +38,25 @@ function StatusBadge({ status }: { status: PumpStatus }) {
 
 // ── Schemas ───────────────────────────────────────────────────────────────────
 
+const OTHERS = '__OTHERS__'
+
 const pumpSchema = z.object({
-  serialNumber: z.string().min(1, 'Serial number is required'),
-  make:         z.string().optional(),
-  model:        z.string().optional(),
-  pumpType:     z.string().optional(),
-  owner:        z.enum(['OWN', 'THIRD_PARTY']),
-  notes:        z.string().optional(),
+  serialNumber:   z.string().min(1, 'Serial number is required'),
+  make:           z.string().optional(),
+  model:          z.string().optional(),
+  pumpType:       z.string().optional(),
+  owner:          z.enum(['OWN', 'THIRD_PARTY']),
+  clientSel:      z.string().optional(),
+  thirdPartyName: z.string().optional(),
+  notes:          z.string().optional(),
+}).superRefine((d, ctx) => {
+  if (d.owner === 'THIRD_PARTY') {
+    if (!d.clientSel) {
+      ctx.addIssue({ code: 'custom', path: ['clientSel'], message: 'Select a client or "Others"' })
+    } else if (d.clientSel === OTHERS && !d.thirdPartyName?.trim()) {
+      ctx.addIssue({ code: 'custom', path: ['thirdPartyName'], message: 'Enter the third-party name' })
+    }
+  }
 })
 const maintenanceSchema = z.object({
   maintenanceType: z.enum(['SERVICE', 'REPAIR', 'INSPECTION']),
@@ -63,8 +75,8 @@ const PUMP_TYPE_OPTIONS: DropdownOption[] = [
   { value: 'Peristaltic Pump',        label: 'Peristaltic Pump'        },
 ]
 const OWNER_OPTIONS: DropdownOption[] = [
-  { value: 'OWN',         label: 'Endura (OWN)' },
-  { value: 'THIRD_PARTY', label: 'Third Party'   },
+  { value: 'OWN',         label: 'Own'       },
+  { value: 'THIRD_PARTY', label: '3rd Party' },
 ]
 const MAINTENANCE_OPTIONS: DropdownOption[] = [
   { value: 'SERVICE',    label: 'Service'    },
@@ -86,6 +98,16 @@ function PumpFormPanel({ open, pump, onClose }: { open: boolean; pump?: PumpReco
   const qc     = useQueryClient()
   const isEdit = !!pump
 
+  const { data: clients = [] } = useQuery({
+    queryKey: ['clients-all'],
+    queryFn:  () => clientsApi.list({ size: 500 }).then(r => r.data.data?.content ?? []),
+    enabled:  open,
+  })
+  const clientOptions: DropdownOption[] = [
+    ...clients.map(c => ({ value: c.id, label: c.companyName })),
+    { value: OTHERS, label: 'Others (not a client)' },
+  ]
+
   const { watch, setValue, handleSubmit, reset, formState: { errors } } = useForm<PumpForm>({
     resolver: zodResolver(pumpSchema),
     defaultValues: { owner: 'OWN' },
@@ -94,25 +116,42 @@ function PumpFormPanel({ open, pump, onClose }: { open: boolean; pump?: PumpReco
   useEffect(() => {
     if (open) {
       reset({
-        serialNumber: pump?.serialNumber ?? '',
-        make:         pump?.make         ?? '',
-        model:        pump?.model        ?? '',
-        pumpType:     pump?.pumpType     ?? '',
-        owner:        pump?.owner        ?? 'OWN',
-        notes:        pump?.notes        ?? '',
+        serialNumber:   pump?.serialNumber ?? '',
+        make:           pump?.make         ?? '',
+        model:          pump?.model        ?? '',
+        pumpType:       pump?.pumpType     ?? '',
+        owner:          pump?.owner        ?? 'OWN',
+        clientSel:      pump?.ownerClientId ?? (pump?.thirdPartyName ? OTHERS : ''),
+        thirdPartyName: pump?.thirdPartyName ?? '',
+        notes:          pump?.notes         ?? '',
       })
     }
   }, [open, pump])
 
+  const owner     = watch('owner')
+  const clientSel = watch('clientSel')
+
   const mutation = useMutation({
-    mutationFn: (data: PumpForm) =>
-      isEdit ? pumpsApi.update(pump!.id, data) : pumpsApi.create(data),
+    mutationFn: (data: PumpForm) => {
+      const isThird = data.owner === 'THIRD_PARTY'
+      const payload = {
+        serialNumber:   data.serialNumber,
+        make:           data.make,
+        model:          data.model,
+        pumpType:       data.pumpType,
+        owner:          data.owner,
+        clientId:       isThird && data.clientSel !== OTHERS ? data.clientSel : null,
+        thirdPartyName: isThird && data.clientSel === OTHERS ? data.thirdPartyName!.trim() : null,
+        notes:          data.notes,
+      }
+      return isEdit ? pumpsApi.update(pump!.id, payload) : pumpsApi.create(payload)
+    },
     onSuccess: () => {
       toast.success(isEdit ? 'Pump updated' : 'Pump registered')
       qc.invalidateQueries({ queryKey: ['pumps'] })
       onClose()
     },
-    onError: () => toast.error('Failed to save pump'),
+    onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Failed to save pump'),
   })
 
   if (!open) return null
@@ -186,11 +225,42 @@ function PumpFormPanel({ open, pump, onClose }: { open: boolean; pump?: PumpReco
               <SearchableDropdown
                 options={OWNER_OPTIONS}
                 value={watch('owner')}
-                onChange={v => setValue('owner', (v ?? 'OWN') as PumpOwner)}
+                onChange={v => setValue('owner', (v ?? 'OWN') as PumpOwner, { shouldValidate: true })}
                 placeholder="Select owner"
                 showClear={false}
               />
             </div>
+
+            {owner === 'THIRD_PARTY' && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  Belongs to <span className="text-red-500">*</span>
+                </label>
+                <SearchableDropdown
+                  options={clientOptions}
+                  value={clientSel ?? ''}
+                  onChange={v => setValue('clientSel', v ?? '', { shouldValidate: true })}
+                  placeholder="Select client…"
+                  showClear={false}
+                />
+                {errors.clientSel && <p className="text-red-500 text-xs">{errors.clientSel.message}</p>}
+              </div>
+            )}
+
+            {owner === 'THIRD_PARTY' && clientSel === OTHERS && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  Third-party name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  value={watch('thirdPartyName') ?? ''}
+                  onChange={e => setValue('thirdPartyName', e.target.value, { shouldValidate: true })}
+                  placeholder="e.g. North Battery"
+                  className="w-full h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2"
+                />
+                {errors.thirdPartyName && <p className="text-red-500 text-xs">{errors.thirdPartyName.message}</p>}
+              </div>
+            )}
 
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Notes</label>
@@ -611,7 +681,7 @@ function PumpDrawer({ pump, onClose, onEdit, canEdit }: {
               </div>
               <div>
                 <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Owner</p>
-                <p className="text-sm text-gray-800 mt-0.5">{p.owner === 'OWN' ? 'Endura' : 'Third Party'}</p>
+                <p className="text-sm text-gray-800 mt-0.5">{p.owner === 'OWN' ? 'Own' : (p.ownerClientName ?? p.thirdPartyName ?? '3rd Party')}</p>
               </div>
               {p.pumpType && (
                 <div className="col-span-2">
@@ -699,14 +769,18 @@ export default function PumpShopPage() {
 
   const [page,         setPage]         = useState(0)
   const [statusFilter, setStatusFilter] = useState('')
+  const [ownerFilter,  setOwnerFilter]  = useState('')
   const [formOpen,     setFormOpen]     = useState(false)
   const [editing,      setEditing]      = useState<PumpRecord | undefined>()
   const [selected,     setSelected]     = useState<PumpRecord | undefined>()
 
   const { data, isLoading } = useQuery({
-    queryKey: ['pumps', page, statusFilter],
-    queryFn:  () => pumpsApi.list({ page, size: PAGE_SIZE, ...(statusFilter ? { status: statusFilter } : {}) })
-      .then(r => r.data.data!),
+    queryKey: ['pumps', page, statusFilter, ownerFilter],
+    queryFn:  () => pumpsApi.list({
+      page, size: PAGE_SIZE,
+      ...(statusFilter ? { status: statusFilter } : {}),
+      ...(ownerFilter ? { owner: ownerFilter } : {}),
+    }).then(r => r.data.data!),
   })
 
   const pumps      = data?.content       ?? []
@@ -724,6 +798,15 @@ export default function PumpShopPage() {
           <p className="text-sm text-gray-500 mt-0.5">{total} pump{total !== 1 ? 's' : ''} in registry</p>
         </div>
         <div className="flex items-center gap-3">
+          <div className="w-36">
+            <SearchableDropdown
+              options={OWNER_OPTIONS}
+              value={ownerFilter}
+              onChange={v => { setOwnerFilter(v); setPage(0) }}
+              placeholder="All Owners"
+              showClear
+            />
+          </div>
           <div className="w-44">
             <SearchableDropdown
               options={STATUS_FILTER_OPTIONS}
@@ -774,7 +857,11 @@ export default function PumpShopPage() {
                 <td className="px-4 py-3 font-mono text-xs font-semibold text-gray-700">{p.serialNumber}</td>
                 <td className="px-4 py-3 text-gray-600 text-xs">{[p.make, p.model].filter(Boolean).join(' ') || '—'}</td>
                 <td className="px-4 py-3 text-gray-600 text-xs">{p.pumpType ?? '—'}</td>
-                <td className="px-4 py-3 text-gray-600 text-xs">{p.owner === 'OWN' ? 'Endura' : 'Third Party'}</td>
+                <td className="px-4 py-3 text-xs">
+                  {p.owner === 'OWN'
+                    ? <span className="text-gray-500">Own</span>
+                    : <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200 font-medium">{p.ownerClientName ?? p.thirdPartyName ?? '3rd Party'}</span>}
+                </td>
                 <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
                 <td className="px-4 py-3 text-xs text-gray-500">
                   {p.status === 'DEPLOYED' ? p.wellName ?? p.tankSerial ?? '—' : 'Midland, TX'}

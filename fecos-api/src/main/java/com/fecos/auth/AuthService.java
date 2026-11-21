@@ -60,7 +60,8 @@ public class AuthService {
         if (!tenantRepository.findByIdAndIsDeletedFalse(tenantId).isPresent())
             throw new BadCredentialsException("Tenant not found");
 
-        UserEntity admin = userRepository.findFirstByTenantIdAndRoleAndIsDeletedFalse(tenantId, Role.ADMIN)
+        UserEntity admin = userRepository.findByTenantIdAndRoleOrderByCreatedAt(tenantId, Role.ADMIN)
+                .stream().findFirst()
                 .orElseThrow(() -> new IllegalStateException("No ADMIN user found for tenant"));
 
         return buildResponse(admin, generateToken(admin));
@@ -68,7 +69,10 @@ public class AuthService {
 
     private String generateToken(UserEntity user) {
         Map<String, Object> claims = new HashMap<>();
-        claims.put("role", user.getRole().name());
+        var roleNames = user.getRoles().stream().map(Role::name).toList();
+        claims.put("roles", roleNames);
+        Role primary = user.getPrimaryRole();
+        if (primary != null) claims.put("role", primary.name()); // backward compat
         if (user.getMobileNumber() != null) claims.put("mobileNumber", user.getMobileNumber());
         if (user.getTenantId() != null) claims.put("tenantId", user.getTenantId().toString());
         return jwtService.generate(user.getId().toString(), claims);
@@ -91,7 +95,8 @@ public class AuthService {
                 .id(user.getId().toString())
                 .fullName(user.getFullName())
                 .email(user.getEmail())
-                .role(user.getRole())
+                .role(user.getPrimaryRole())
+                .roles(user.getRoles().stream().map(Role::name).toList())
                 .tenantId(user.getTenantId() != null ? user.getTenantId().toString() : null)
                 .tenantName(tenantName)
                 .primaryColor(primaryColor)

@@ -1,8 +1,11 @@
 package com.fecos.users;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.Getter;
+
+import java.util.Set;
+import java.util.UUID;
 
 @Getter
 public class UpdateUserRequest {
@@ -12,6 +15,8 @@ public class UpdateUserRequest {
 
     private String email;
 
-    @NotNull
-    private Role role;
+    @NotEmpty(message = "At least one role is required")
+    private Set<Role> roles;
+
+    private Set<UUID> yardIds;
 }

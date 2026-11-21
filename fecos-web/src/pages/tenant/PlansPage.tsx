@@ -15,7 +15,7 @@ import { leasesApi, type LeaseRecord } from '@/api/leases'
 import { productsApi } from '@/api/products'
 import { tanksApi, type TankRecord, type TankStatus, type TankEventPayload } from '@/api/tanks'
 import { SearchableDropdown, type DropdownOption } from '@/components/ui/SearchableDropdown'
-import { useAuthStore } from '@/store/authStore'
+import { useAuthStore, hasAnyRole } from '@/store/authStore'
 import api from '@/lib/axios'
 import type { ApiResponse } from '@/types'
 
@@ -1473,9 +1473,8 @@ function PlanDrawer({
 export default function PlansPage() {
   const { user } = useAuthStore()
   const location = useLocation()
-  const role = user?.role
-  const canEdit   = role === 'ADMIN' || role === 'MANAGER' || role === 'ACCOUNT_REP'
-  const canDelete = role === 'ADMIN' || role === 'MANAGER'
+  const canEdit   = hasAnyRole(user, 'ADMIN', 'MANAGER', 'ACCOUNT_REP')
+  const canDelete = hasAnyRole(user, 'ADMIN', 'MANAGER')
 
   const triggerState = location.state as { wellId?: string; triggeredByLabSampleId?: string; sampleNumber?: string } | null
 

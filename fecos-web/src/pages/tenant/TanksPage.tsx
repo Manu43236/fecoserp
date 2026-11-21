@@ -5,11 +5,23 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import toast from 'react-hot-toast'
 import { Plus, X, Cylinder, ChevronRight, Pencil, Trash2 } from 'lucide-react'
-import { tanksApi, type TankRecord, type TankPayload, type TankStatus } from '@/api/tanks'
+import { tanksApi, type TankRecord, type TankPayload, type TankStatus, type TankOwner } from '@/api/tanks'
+import { clientsApi } from '@/api/clients'
 import { SearchableDropdown, type DropdownOption } from '@/components/ui/SearchableDropdown'
-import { useAuthStore } from '@/store/authStore'
+import { useAuthStore, hasAnyRole } from '@/store/authStore'
 
 const PAGE_SIZE = 20
+const OTHERS = '__OTHERS__'
+
+const OWNER_FILTER_OPTIONS: DropdownOption[] = [
+  { value: 'OWN',         label: 'Own'       },
+  { value: 'THIRD_PARTY', label: '3rd Party' },
+]
+
+function ownerLabel(t: TankRecord): string {
+  if (t.owner === 'OWN') return 'Own'
+  return t.ownerClientName ?? t.thirdPartyName ?? '3rd Party'
+}
 
 const STATUS_LABEL: Record<TankStatus, string> = {
   AVAILABLE: 'Available',
@@ -46,6 +58,17 @@ function StatusBadge({ status }: { status: TankStatus }) {
 const tankSchema = z.object({
   serialNumber:    z.string().optional().or(z.literal('')),
   capacityGallons: z.string().refine(v => !isNaN(Number(v)) && Number(v) > 0, 'Must be a positive number'),
+  owner:           z.enum(['OWN', 'THIRD_PARTY']),
+  clientSel:       z.string().optional().or(z.literal('')),
+  thirdPartyName:  z.string().optional().or(z.literal('')),
+}).superRefine((d, ctx) => {
+  if (d.owner === 'THIRD_PARTY') {
+    if (!d.clientSel) {
+      ctx.addIssue({ code: 'custom', path: ['clientSel'], message: 'Select a client or "Others"' })
+    } else if (d.clientSel === OTHERS && !d.thirdPartyName?.trim()) {
+      ctx.addIssue({ code: 'custom', path: ['thirdPartyName'], message: 'Enter the third-party name' })
+    }
+  }
 })
 type TankFormData = z.infer<typeof tankSchema>
 
@@ -55,13 +78,29 @@ function TankFormPanel({ open, onClose, tank }: {
   const qc = useQueryClient()
   const isEdit = !!tank
 
+  const { data: clients = [] } = useQuery({
+    queryKey: ['clients-all'],
+    queryFn:  () => clientsApi.list({ size: 500 }).then(r => r.data.data?.content ?? []),
+    enabled:  open,
+  })
+  const clientOptions: DropdownOption[] = [
+    ...clients.map(c => ({ value: c.id, label: c.companyName })),
+    { value: OTHERS, label: 'Others (not a client)' },
+  ]
+
   const { watch, setValue, handleSubmit, reset, formState: { errors } } = useForm<TankFormData>({
     resolver: zodResolver(tankSchema),
     defaultValues: {
       serialNumber:    tank?.serialNumber ?? '',
       capacityGallons: tank?.capacityGallons?.toString() ?? '',
+      owner:           tank?.owner ?? 'OWN',
+      clientSel:       tank?.ownerClientId ?? (tank?.thirdPartyName ? OTHERS : ''),
+      thirdPartyName:  tank?.thirdPartyName ?? '',
     },
   })
+
+  const owner     = watch('owner')
+  const clientSel = watch('clientSel')
 
   const mutation = useMutation({
     mutationFn: (data: TankPayload) =>
@@ -71,13 +110,17 @@ function TankFormPanel({ open, onClose, tank }: {
       qc.invalidateQueries({ queryKey: ['tanks'] })
       onClose(); reset()
     },
-    onError: () => toast.error('Failed to save tank'),
+    onError: (err: any) => toast.error(err?.response?.data?.message ?? 'Failed to save tank'),
   })
 
   function onSubmit(data: TankFormData) {
+    const isThird = data.owner === 'THIRD_PARTY'
     mutation.mutate({
       serialNumber:    data.serialNumber || undefined,
       capacityGallons: parseFloat(data.capacityGallons),
+      owner:           data.owner,
+      clientId:        isThird && data.clientSel !== OTHERS ? data.clientSel : null,
+      thirdPartyName:  isThird && data.clientSel === OTHERS ? data.thirdPartyName!.trim() : null,
     })
   }
 
@@ -125,6 +168,56 @@ function TankFormPanel({ open, onClose, tank }: {
               />
               {errors.capacityGallons && <p className="text-red-500 text-xs">{errors.capacityGallons.message}</p>}
             </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Owner <span className="text-red-500">*</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {(['OWN', 'THIRD_PARTY'] as TankOwner[]).map(o => (
+                  <button
+                    key={o} type="button"
+                    onClick={() => setValue('owner', o, { shouldValidate: true })}
+                    className={`h-9 text-sm font-medium rounded-lg border transition-colors ${
+                      owner === o ? 'text-white border-transparent' : 'text-gray-600 border-gray-200 hover:bg-gray-50'
+                    }`}
+                    style={owner === o ? { backgroundColor: 'var(--color-primary)' } : undefined}>
+                    {o === 'OWN' ? 'Own' : '3rd Party'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {owner === 'THIRD_PARTY' && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  Belongs to <span className="text-red-500">*</span>
+                </label>
+                <SearchableDropdown
+                  options={clientOptions}
+                  value={clientSel ?? ''}
+                  onChange={v => setValue('clientSel', v ?? '', { shouldValidate: true })}
+                  placeholder="Select client…"
+                  showClear={false}
+                />
+                {errors.clientSel && <p className="text-red-500 text-xs">{errors.clientSel.message}</p>}
+              </div>
+            )}
+
+            {owner === 'THIRD_PARTY' && clientSel === OTHERS && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  Third-party name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  value={watch('thirdPartyName') ?? ''}
+                  onChange={e => setValue('thirdPartyName', e.target.value, { shouldValidate: true })}
+                  placeholder="e.g. North Battery"
+                  className="w-full h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2"
+                />
+                {errors.thirdPartyName && <p className="text-red-500 text-xs">{errors.thirdPartyName.message}</p>}
+              </div>
+            )}
 
             <p className="text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-2.5">
               Tank assignment and level tracking happen at the program level, per line item.
@@ -225,6 +318,10 @@ function TankDrawer({ tank, onClose, onEdit, canDelete }: {
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Status</p>
               <div className="mt-0.5"><StatusBadge status={t.status} /></div>
             </div>
+            <div>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Owner</p>
+              <p className="text-sm text-gray-800 mt-0.5">{t.owner === 'OWN' ? 'Own' : ownerLabel(t)}</p>
+            </div>
             {t.installedAt && (
               <div>
                 <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Installed</p>
@@ -250,19 +347,23 @@ function TankDrawer({ tank, onClose, onEdit, canDelete }: {
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function TanksPage() {
   const { user } = useAuthStore()
-  const role = user?.role
-  const canEdit   = role === 'ADMIN' || role === 'MANAGER' || role === 'ACCOUNT_REP'
-  const canDelete = role === 'ADMIN' || role === 'MANAGER'
+  const canEdit   = hasAnyRole(user, 'ADMIN', 'MANAGER', 'ACCOUNT_REP')
+  const canDelete = hasAnyRole(user, 'ADMIN', 'MANAGER')
 
   const [page, setPage]               = useState(0)
   const [statusFilter, setStatusFilter] = useState<string>('')
+  const [ownerFilter, setOwnerFilter]   = useState<string>('')
   const [formOpen, setFormOpen]       = useState(false)
   const [editing, setEditing]         = useState<TankRecord | undefined>()
   const [selected, setSelected]       = useState<TankRecord | undefined>()
 
   const { data, isLoading } = useQuery({
-    queryKey: ['tanks', page, statusFilter],
-    queryFn: () => tanksApi.list({ page, size: PAGE_SIZE, ...(statusFilter ? { status: statusFilter } : {}) }),
+    queryKey: ['tanks', page, statusFilter, ownerFilter],
+    queryFn: () => tanksApi.list({
+      page, size: PAGE_SIZE,
+      ...(statusFilter ? { status: statusFilter } : {}),
+      ...(ownerFilter ? { owner: ownerFilter } : {}),
+    }),
   })
 
   const tanks      = data?.data?.data?.content       ?? []
@@ -280,6 +381,15 @@ export default function TanksPage() {
           <p className="text-sm text-gray-500 mt-0.5">{total} tank{total !== 1 ? 's' : ''} in registry</p>
         </div>
         <div className="flex items-center gap-3">
+          <div className="w-36">
+            <SearchableDropdown
+              options={OWNER_FILTER_OPTIONS}
+              value={ownerFilter}
+              onChange={v => { setOwnerFilter(v); setPage(0) }}
+              placeholder="All Owners"
+              showClear
+            />
+          </div>
           <div className="w-40">
             <SearchableDropdown
               options={STATUS_FILTER_OPTIONS}
@@ -303,7 +413,7 @@ export default function TanksPage() {
         <div className="overflow-x-auto"><table className="w-full text-sm">
           <thead>
             <tr style={{ backgroundColor: 'var(--color-primary)' }}>
-              {['Serial No', 'Capacity', 'Well', 'Level', 'Status', ''].map(h => (
+              {['Serial No', 'Capacity', 'Owner', 'Well', 'Level', 'Status', ''].map(h => (
                 <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-white/90 uppercase tracking-wide">{h}</th>
               ))}
             </tr>
@@ -311,13 +421,13 @@ export default function TanksPage() {
           <tbody className="divide-y divide-gray-100">
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i}>{Array.from({ length: 6 }).map((_, j) => (
+                <tr key={i}>{Array.from({ length: 7 }).map((_, j) => (
                   <td key={j} className="px-4 py-3"><div className="h-4 bg-gray-100 rounded animate-pulse w-3/4" /></td>
                 ))}</tr>
               ))
             ) : tanks.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-14 text-center">
+                <td colSpan={7} className="px-4 py-14 text-center">
                   <Cylinder size={32} className="mx-auto text-gray-300 mb-3" />
                   <p className="text-sm text-gray-500 font-medium">No tanks registered</p>
                   <p className="text-xs text-gray-400 mt-1">Register Endura-owned tanks to assign them to programs</p>
@@ -329,6 +439,11 @@ export default function TanksPage() {
                 className="hover:bg-gray-50 cursor-pointer transition-colors">
                 <td className="px-4 py-3 font-mono text-xs font-semibold text-gray-700">{t.serialNumber ?? '—'}</td>
                 <td className="px-4 py-3 text-gray-600">{t.capacityGallons.toLocaleString()} gal</td>
+                <td className="px-4 py-3 text-xs">
+                  {t.owner === 'OWN'
+                    ? <span className="text-gray-500">Own</span>
+                    : <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200 font-medium">{ownerLabel(t)}</span>}
+                </td>
                 <td className="px-4 py-3 text-gray-600 text-xs">{t.wellName ?? '—'}</td>
                 <td className="px-4 py-3 text-xs">
                   {t.status === 'INSTALLED'

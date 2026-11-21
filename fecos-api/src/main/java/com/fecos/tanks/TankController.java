@@ -23,8 +23,9 @@ public class TankController {
     public ResponseEntity<ApiResponse<Page<TankResponse>>> list(
             @RequestParam(defaultValue = "0")  int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) TankStatus status) {
-        return ResponseEntity.ok(ApiResponse.ok("Tanks retrieved", tankService.list(status, page, size)));
+            @RequestParam(required = false) TankStatus status,
+            @RequestParam(required = false) TankOwner owner) {
+        return ResponseEntity.ok(ApiResponse.ok("Tanks retrieved", tankService.list(status, owner, page, size)));
     }
 
     @GetMapping("/{id}")

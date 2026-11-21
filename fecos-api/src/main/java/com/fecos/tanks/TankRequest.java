@@ -19,6 +19,12 @@ public class TankRequest {
     @Positive(message = "Capacity must be positive")
     private BigDecimal capacityGallons;
 
+    private TankOwner owner;
+
+    private UUID clientId;
+
+    private String thirdPartyName;
+
     private UUID wellId;
 
     private TankStatus status;

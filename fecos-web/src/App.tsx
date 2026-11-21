@@ -28,6 +28,7 @@ import LabPage from '@/pages/tenant/LabPage'
 import ApprovalsPage from '@/pages/tenant/ApprovalsPage'
 import PortfolioPage from '@/pages/tenant/PortfolioPage'
 import TanksPage from '@/pages/tenant/TanksPage'
+import YardsPage from '@/pages/tenant/YardsPage'
 import QCPage from '@/pages/tenant/QCPage'
 import PumpShopPage from '@/pages/tenant/PumpShopPage'
 import VehiclesPage from '@/pages/tenant/VehiclesPage'
@@ -124,6 +125,7 @@ function ImpersonatePage() {
         mobileNumber: '',
         email: d.email,
         role: d.role as Role,
+        roles: (d.roles ?? []) as Role[],
         tenantId: d.tenantId,
         tenantName: d.tenantName,
         primaryColor: d.primaryColor,
@@ -171,6 +173,7 @@ function TenantRoutes() {
             <Route path="/inventory"        element={<InventoryPage />} />
             <Route path="/plans"            element={<PlansPage />} />
             <Route path="/tanks"            element={<TanksPage />} />
+            <Route path="/yards"            element={<YardsPage />} />
             <Route path="/vehicles"         element={<VehiclesPage />} />
             <Route path="/users"            element={<UsersPage />} />
             <Route path="/masters"          element={<MastersPage />} />

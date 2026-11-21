@@ -29,6 +29,14 @@ public class PumpEntity extends TenantAwareEntity {
     @Column(name = "owner", nullable = false, length = 20)
     private PumpOwner owner = PumpOwner.OWN;
 
+    /** Owning client when owner = THIRD_PARTY and the pump belongs to a known client. */
+    @Column(name = "client_id")
+    private UUID clientId;
+
+    /** Free-text owner name when owner = THIRD_PARTY and it is not a known client ("Others"). */
+    @Column(name = "third_party_name", length = 150)
+    private String thirdPartyName;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private PumpStatus status = PumpStatus.IN_SHOP;

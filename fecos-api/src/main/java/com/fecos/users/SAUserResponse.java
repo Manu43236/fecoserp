@@ -1,6 +1,7 @@
 package com.fecos.users;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -9,7 +10,8 @@ public record SAUserResponse(
         String fullName,
         String mobileNumber,
         String email,
-        String role,
+        String role,            // primary role — kept for backward compatibility
+        List<String> roles,
         boolean isActive,
         Instant createdAt,
         String tenantId,
@@ -20,12 +22,14 @@ public record SAUserResponse(
     public static SAUserResponse from(UserEntity u, Map<UUID, String> tenantNames, Map<UUID, Instant> lastSignIns) {
         String tid = u.getTenantId() != null ? u.getTenantId().toString() : null;
         String tname = u.getTenantId() != null ? tenantNames.getOrDefault(u.getTenantId(), "—") : "—";
+        Role primary = u.getPrimaryRole();
         return new SAUserResponse(
                 u.getId().toString(),
                 u.getFullName(),
                 u.getMobileNumber(),
                 u.getEmail(),
-                u.getRole().name(),
+                primary != null ? primary.name() : null,
+                u.getRoles().stream().map(Role::name).toList(),
                 u.isActive(),
                 u.getCreatedAt(),
                 tid,

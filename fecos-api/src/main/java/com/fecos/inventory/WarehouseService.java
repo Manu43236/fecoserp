@@ -1,6 +1,7 @@
 package com.fecos.inventory;
 
 import com.fecos.users.UserRepository;
+import com.fecos.yards.YardRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -17,22 +18,23 @@ import java.util.UUID;
 public class WarehouseService {
 
     private final WarehouseRepository warehouseRepository;
+    private final YardRepository yardRepository;
     private final UserRepository userRepository;
 
     public Page<WarehouseResponse> list(String search, int page, int size) {
         return warehouseRepository
                 .search(currentTenantId(), search, PageRequest.of(page, size))
-                .map(WarehouseResponse::from);
+                .map(this::toResponse);
     }
 
     public List<WarehouseResponse> listActive() {
         return warehouseRepository
                 .findByTenantIdAndIsDeletedFalseAndIsActiveTrue(currentTenantId())
-                .stream().map(WarehouseResponse::from).toList();
+                .stream().map(this::toResponse).toList();
     }
 
     public WarehouseResponse findById(UUID id) {
-        return WarehouseResponse.from(findForTenant(id));
+        return toResponse(findForTenant(id));
     }
 
     @Transactional
@@ -45,14 +47,14 @@ public class WarehouseService {
         w.setTenantId(tenantId);
         w.setCreatedBy(currentUserId());
         apply(w, req);
-        return WarehouseResponse.from(warehouseRepository.save(w));
+        return toResponse(warehouseRepository.save(w));
     }
 
     @Transactional
     public WarehouseResponse update(UUID id, WarehouseRequest req) {
         WarehouseEntity w = findForTenant(id);
         apply(w, req);
-        return WarehouseResponse.from(warehouseRepository.save(w));
+        return toResponse(warehouseRepository.save(w));
     }
 
     @Transactional
@@ -63,9 +65,19 @@ public class WarehouseService {
     }
 
     private void apply(WarehouseEntity w, WarehouseRequest req) {
+        // Yard is required and must belong to this tenant
+        yardRepository.findByIdAndTenantIdAndIsDeletedFalse(req.getYardId(), currentTenantId())
+                .orElseThrow(() -> new IllegalArgumentException("Selected yard was not found"));
         w.setName(req.getName());
         w.setLocation(req.getLocation());
+        w.setYardId(req.getYardId());
         w.setActive(req.isActive());
+    }
+
+    private WarehouseResponse toResponse(WarehouseEntity w) {
+        String yardName = w.getYardId() == null ? null
+                : yardRepository.findById(w.getYardId()).map(y -> y.getName()).orElse(null);
+        return WarehouseResponse.from(w, yardName);
     }
 
     private WarehouseEntity findForTenant(UUID id) {

@@ -51,7 +51,7 @@ public class DashboardService {
         var  caller = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("Current user not found"));
         UUID tenantId = caller.getTenantId();
-        Role role     = caller.getRole();
+        Role role     = caller.getPrimaryRole();
         LocalDate today = LocalDate.now();
 
         return switch (role) {

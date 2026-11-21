@@ -31,6 +31,10 @@ public class ClientEntity extends TenantAwareEntity {
     @Column(name = "account_rep_id")
     private UUID accountRepId;
 
+    /** Optional yard this client is associated with. */
+    @Column(name = "yard_id")
+    private UUID yardId;
+
     @Column(name = "is_active", nullable = false)
     private boolean isActive = true;
 }

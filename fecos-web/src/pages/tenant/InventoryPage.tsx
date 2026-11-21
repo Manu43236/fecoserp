@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import type React from 'react'
 import { warehousesApi, type WarehouseRecord, type WarehousePayload } from '@/api/warehouses'
+import { yardsApi } from '@/api/yards'
 import { inventoryApi, type StockRecord, type TransactionRecord, type TransactionPayload, type TransactionType } from '@/api/inventory'
 import { productsApi, type ProductRecord, type ProductPayload } from '@/api/products'
 import { productCategoriesApi, type ProductCategoryRecord } from '@/api/productCategories'
@@ -413,6 +414,7 @@ function ProductsSection({ canEdit }: { canEdit: boolean }) {
 const warehouseSchema = z.object({
   name:     z.string().min(1, 'Required').max(150),
   location: z.string().max(255).optional().or(z.literal('')),
+  yardId:   z.string().min(1, 'Yard is required'),
   isActive: z.boolean(),
 })
 type WarehouseFormData = z.infer<typeof warehouseSchema>
@@ -423,11 +425,19 @@ function WarehouseFormPanel({ open, onClose, warehouse }: {
   const qc = useQueryClient()
   const isEdit = !!warehouse
 
+  const { data: yards = [] } = useQuery({
+    queryKey: ['yards-active'],
+    queryFn:  () => yardsApi.listActive().then(r => r.data.data ?? []),
+    enabled:  open,
+  })
+  const yardOptions: DropdownOption[] = yards.map(y => ({ value: y.id, label: y.name }))
+
   const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<WarehouseFormData>({
     resolver: zodResolver(warehouseSchema),
     defaultValues: {
       name:     warehouse?.name     ?? '',
       location: warehouse?.location ?? '',
+      yardId:   warehouse?.yardId   ?? '',
       isActive: warehouse?.isActive ?? true,
     },
   })
@@ -437,6 +447,7 @@ function WarehouseFormPanel({ open, onClose, warehouse }: {
       reset({
         name:     warehouse?.name     ?? '',
         location: warehouse?.location ?? '',
+        yardId:   warehouse?.yardId   ?? '',
         isActive: warehouse?.isActive ?? true,
       })
     }
@@ -473,16 +484,28 @@ function WarehouseFormPanel({ open, onClose, warehouse }: {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit(d => mutation.mutate({ name: d.name, location: d.location || undefined, isActive: d.isActive }))} className="flex flex-col flex-1 min-h-0">
+        <form onSubmit={handleSubmit(d => mutation.mutate({ name: d.name, location: d.location || undefined, yardId: d.yardId, isActive: d.isActive }))} className="flex flex-col flex-1 min-h-0">
           <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Warehouse Name *</label>
               <input
                 {...register('name')}
-                placeholder="e.g. Main Yard – Midland"
+                placeholder="e.g. Main Warehouse"
                 className="w-full h-10 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 focus:ring-red-100"
               />
               {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Yard *</label>
+              <SearchableDropdown
+                options={yardOptions}
+                value={watch('yardId') ?? ''}
+                onChange={v => setValue('yardId', v ?? '', { shouldValidate: true })}
+                placeholder="Select yard"
+                showClear={false}
+              />
+              {errors.yardId && <p className="text-xs text-red-500">{errors.yardId.message}</p>}
             </div>
 
             <div className="space-y-1.5">

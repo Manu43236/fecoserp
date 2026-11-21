@@ -22,8 +22,9 @@ public class PumpController {
     public ResponseEntity<ApiResponse<Page<PumpResponse>>> list(
             @RequestParam(defaultValue = "0")  int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) PumpStatus status) {
-        return ResponseEntity.ok(ApiResponse.ok("Pumps retrieved", pumpService.list(status, page, size)));
+            @RequestParam(required = false) PumpStatus status,
+            @RequestParam(required = false) PumpOwner owner) {
+        return ResponseEntity.ok(ApiResponse.ok("Pumps retrieved", pumpService.list(status, owner, page, size)));
     }
 
     @GetMapping("/{id}")

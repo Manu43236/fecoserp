@@ -13,7 +13,7 @@ import { productUnitsApi } from '@/api/productUnits'
 import { vehiclesApi, type Vehicle } from '@/api/vehicles'
 import { warehousesApi, type WarehouseRecord } from '@/api/warehouses'
 import { SearchableDropdown, type DropdownOption } from '@/components/ui/SearchableDropdown'
-import { useAuthStore } from '@/store/authStore'
+import { useAuthStore, hasAnyRole } from '@/store/authStore'
 import api from '@/lib/axios'
 import type { ApiResponse, PageResponse } from '@/types'
 
@@ -922,8 +922,7 @@ function BoardView({ boardDate, onDateChange, canEdit, onSelectRoute, driverOpti
 // ── Main page ──────────────────────────────────────────────────────────────────
 export default function RoutesPage() {
   const { user } = useAuthStore()
-  const role    = user?.role
-  const canEdit = role === 'ADMIN' || role === 'MANAGER'
+  const canEdit = hasAnyRole(user, 'ADMIN', 'MANAGER')
 
   const [view, setView]                 = useState<'list' | 'board'>('list')
   const [boardDate, setBoardDate]       = useState(toDateStr(new Date()))

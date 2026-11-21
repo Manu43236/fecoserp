@@ -3,6 +3,8 @@ package com.fecos.tanks;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -13,6 +15,15 @@ public interface TankRepository extends JpaRepository<TankEntity, UUID> {
     Page<TankEntity> findAllByTenantIdAndIsDeletedFalseOrderByCreatedAtDesc(UUID tenantId, Pageable pageable);
 
     Page<TankEntity> findAllByTenantIdAndStatusAndIsDeletedFalseOrderByCreatedAtDesc(UUID tenantId, TankStatus status, Pageable pageable);
+
+    @Query("SELECT t FROM TankEntity t WHERE t.tenantId = :tenantId AND t.isDeleted = false "
+            + "AND (:status IS NULL OR t.status = :status) "
+            + "AND (:owner IS NULL OR t.owner = :owner) "
+            + "ORDER BY t.createdAt DESC")
+    Page<TankEntity> search(@Param("tenantId") UUID tenantId,
+                            @Param("status") TankStatus status,
+                            @Param("owner") TankOwner owner,
+                            Pageable pageable);
 
     List<TankEntity> findAllByTenantIdAndWellIdAndIsDeletedFalse(UUID tenantId, UUID wellId);
 

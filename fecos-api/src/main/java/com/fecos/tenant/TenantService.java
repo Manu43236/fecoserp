@@ -61,7 +61,7 @@ public class TenantService {
         admin.setFullName(req.getAdminFullName());
         admin.setMobileNumber(req.getAdminMobileNumber());
         admin.setPinHash(passwordEncoder.encode(req.getAdminPin()));
-        admin.setRole(Role.ADMIN);
+        admin.setRoles(new java.util.HashSet<>(java.util.Set.of(Role.ADMIN)));
         admin.setActive(true);
         userRepository.save(admin);
 

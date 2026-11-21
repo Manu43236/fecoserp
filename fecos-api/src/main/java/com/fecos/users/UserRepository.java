@@ -1,6 +1,8 @@
 package com.fecos.users;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -15,13 +17,19 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
 
     Optional<UserEntity> findByMobileNumberAndTenantIdAndIsDeletedFalse(String mobileNumber, UUID tenantId);
 
-    Optional<UserEntity> findFirstByTenantIdAndRoleAndIsDeletedFalse(UUID tenantId, Role role);
-
     boolean existsByMobileNumberAndTenantIdAndIsDeletedFalse(String mobileNumber, UUID tenantId);
 
     List<UserEntity> findAllByTenantIdAndIsDeletedFalseOrderByCreatedAtDesc(UUID tenantId);
 
     List<UserEntity> findAllByIsDeletedFalseOrderByCreatedAtDesc();
 
-    List<UserEntity> findAllByTenantIdAndRoleAndIsDeletedFalseOrderByFullNameAsc(UUID tenantId, Role role);
+    /** Users in a tenant who hold the given role (matches any of their roles), by name. */
+    @Query("SELECT u FROM UserEntity u WHERE u.tenantId = :tenantId AND u.isDeleted = false "
+            + "AND :role MEMBER OF u.roles ORDER BY u.fullName ASC")
+    List<UserEntity> findAllByTenantIdAndRole(@Param("tenantId") UUID tenantId, @Param("role") Role role);
+
+    /** Users in a tenant who hold the given role, oldest first (for picking a default admin). */
+    @Query("SELECT u FROM UserEntity u WHERE u.tenantId = :tenantId AND u.isDeleted = false "
+            + "AND :role MEMBER OF u.roles ORDER BY u.createdAt ASC")
+    List<UserEntity> findByTenantIdAndRoleOrderByCreatedAt(@Param("tenantId") UUID tenantId, @Param("role") Role role);
 }

@@ -31,13 +31,11 @@ public class TankService {
     private final ClientRepository clientRepository;
     private final UserRepository userRepository;
 
-    public Page<TankResponse> list(TankStatus status, int page, int size) {
+    public Page<TankResponse> list(TankStatus status, TankOwner owner, int page, int size) {
         UUID tenantId = currentTenantId();
         Pageable pageable = PageRequest.of(page, size);
-        Page<TankEntity> entities = status != null
-                ? tankRepository.findAllByTenantIdAndStatusAndIsDeletedFalseOrderByCreatedAtDesc(tenantId, status, pageable)
-                : tankRepository.findAllByTenantIdAndIsDeletedFalseOrderByCreatedAtDesc(tenantId, pageable);
-        return entities.map(t -> toResponse(t, false));
+        return tankRepository.search(tenantId, status, owner, pageable)
+                .map(t -> toResponse(t, false));
     }
 
     public TankResponse findById(UUID id) {
@@ -266,6 +264,24 @@ public class TankService {
     private void apply(TankEntity t, TankRequest req) {
         t.setSerialNumber(req.getSerialNumber());
         t.setCapacityGallons(req.getCapacityGallons());
+
+        TankOwner owner = req.getOwner() != null ? req.getOwner() : TankOwner.OWN;
+        t.setOwner(owner);
+        if (owner == TankOwner.THIRD_PARTY) {
+            boolean hasClient = req.getClientId() != null;
+            boolean hasName = req.getThirdPartyName() != null && !req.getThirdPartyName().isBlank();
+            if (hasClient == hasName) {
+                throw new IllegalArgumentException(
+                        "A third-party tank must belong to either a client or an \"Others\" name — not both or neither");
+            }
+            t.setClientId(req.getClientId());
+            t.setThirdPartyName(hasName ? req.getThirdPartyName().trim() : null);
+        } else {
+            // Own tank — ignore ownership fields
+            t.setClientId(null);
+            t.setThirdPartyName(null);
+        }
+
         t.setWellId(req.getWellId());
         if (req.getStatus() != null) t.setStatus(req.getStatus());
         if (req.getInstalledAt() != null) t.setInstalledAt(req.getInstalledAt());
@@ -301,6 +317,10 @@ public class TankService {
                 .map(TankEventEntity::getEventAt)
                 .orElse(null);
 
+        String ownerClientName = t.getClientId() != null
+                ? clientRepository.findById(t.getClientId()).map(c -> c.getCompanyName()).orElse(null)
+                : null;
+
         List<TankResponse.TankEventResponse> events = List.of();
         if (includeEvents) {
             events = eventRepository.findAllByTankIdOrderByEventAtDesc(t.getId())
@@ -319,6 +339,7 @@ public class TankService {
 
         return new TankResponse(
                 t.getId(), t.getSerialNumber(), t.getCapacityGallons(),
+                t.getOwner(), t.getClientId(), ownerClientName, t.getThirdPartyName(),
                 t.getWellId(), wellName, leaseName, clientName,
                 t.getStatus(), t.getInstalledAt(), t.getRemovedAt(),
                 levelPct, levelGallons, lastRefilledAt, events, t.getCreatedAt());

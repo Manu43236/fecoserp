@@ -2,6 +2,7 @@ import api from '@/lib/axios'
 import type { ApiResponse, PageResponse } from '@/types'
 
 export type TankStatus = 'AVAILABLE' | 'ASSIGNED' | 'INSTALLED' | 'CLEANING'
+export type TankOwner = 'OWN' | 'THIRD_PARTY'
 export type TankEventType = 'INSTALLED' | 'FILLED' | 'RATE_CHANGED' | 'REFILLED' | 'REMOVED' | 'EMPTIED' | 'PAUSED' | 'RESUMED'
 
 export interface TankEventRecord {
@@ -19,6 +20,10 @@ export interface TankRecord {
   id: string
   serialNumber: string | null
   capacityGallons: number
+  owner: TankOwner
+  ownerClientId: string | null
+  ownerClientName: string | null
+  thirdPartyName: string | null
   wellId: string | null
   wellName: string | null
   leaseName: string | null
@@ -36,6 +41,9 @@ export interface TankRecord {
 export interface TankPayload {
   serialNumber?: string
   capacityGallons: number
+  owner: TankOwner
+  clientId?: string | null
+  thirdPartyName?: string | null
   wellId?: string | null
   status?: TankStatus
   installedAt?: string | null

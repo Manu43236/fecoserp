@@ -2,6 +2,7 @@ package com.fecos.clients;
 
 import com.fecos.common.BulkResult;
 import com.fecos.users.UserRepository;
+import com.fecos.yards.YardRepository;
 import com.opencsv.CSVReader;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -23,17 +24,17 @@ public class ClientService {
 
     private final ClientRepository clientRepository;
     private final UserRepository userRepository;
+    private final YardRepository yardRepository;
 
     public Page<ClientResponse> list(String search, UUID accountRepId, Boolean isActive, int page, int size) {
         UUID tenantId = currentTenantId();
         return clientRepository
                 .search(tenantId, search, accountRepId, isActive, PageRequest.of(page, size))
-                .map(c -> ClientResponse.from(c, resolveRepName(c.getAccountRepId())));
+                .map(this::toResponse);
     }
 
     public ClientResponse findById(UUID id) {
-        ClientEntity c = findForTenant(id);
-        return ClientResponse.from(c, resolveRepName(c.getAccountRepId()));
+        return toResponse(findForTenant(id));
     }
 
     @Transactional
@@ -46,14 +47,14 @@ public class ClientService {
         c.setTenantId(tenantId);
         c.setCreatedBy(currentUserId());
         applyRequest(c, req);
-        return ClientResponse.from(clientRepository.save(c), resolveRepName(c.getAccountRepId()));
+        return toResponse(clientRepository.save(c));
     }
 
     @Transactional
     public ClientResponse update(UUID id, ClientRequest req) {
         ClientEntity c = findForTenant(id);
         applyRequest(c, req);
-        return ClientResponse.from(clientRepository.save(c), resolveRepName(c.getAccountRepId()));
+        return toResponse(clientRepository.save(c));
     }
 
     @Transactional
@@ -118,7 +119,18 @@ public class ClientService {
         c.setContactEmail(req.getContactEmail());
         c.setBillingAddress(req.getBillingAddress());
         c.setAccountRepId(req.getAccountRepId());
+        if (req.getYardId() != null) {
+            yardRepository.findByIdAndTenantIdAndIsDeletedFalse(req.getYardId(), currentTenantId())
+                    .orElseThrow(() -> new IllegalArgumentException("Selected yard was not found"));
+        }
+        c.setYardId(req.getYardId());
         c.setActive(req.isActive());
+    }
+
+    private ClientResponse toResponse(ClientEntity c) {
+        String yardName = c.getYardId() == null ? null
+                : yardRepository.findById(c.getYardId()).map(y -> y.getName()).orElse(null);
+        return ClientResponse.from(c, resolveRepName(c.getAccountRepId()), yardName);
     }
 
     private ClientEntity findForTenant(UUID id) {

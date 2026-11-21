@@ -4,6 +4,8 @@ import com.fecos.users.Role;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.util.List;
+
 @Getter
 @Builder
 public class AuthResponse {
@@ -11,7 +13,8 @@ public class AuthResponse {
     private String id;
     private String fullName;
     private String email;
-    private Role role;
+    private Role role;            // primary role — kept for backward compatibility
+    private List<String> roles;
     private String tenantId;
     private String tenantName;
     private String primaryColor;

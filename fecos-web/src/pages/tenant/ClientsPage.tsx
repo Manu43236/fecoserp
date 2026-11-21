@@ -9,6 +9,7 @@ import {
   MapPin, User, ChevronRight,
 } from 'lucide-react'
 import { clientsApi, type ClientRecord, type ClientPayload } from '@/api/clients'
+import { yardsApi } from '@/api/yards'
 import { BulkUploadButton } from '@/components/ui/BulkUploadButton'
 import { usersApi, type UserRecord } from '@/api/users'
 import { SearchableDropdown, type DropdownOption } from '@/components/ui/SearchableDropdown'
@@ -67,6 +68,7 @@ const schema = z.object({
   contactEmail:   z.string().email('Invalid email').optional().or(z.literal('')),
   billingAddress: z.string().optional().or(z.literal('')),
   accountRepId:   z.string().optional().or(z.literal('')),
+  yardId:         z.string().optional().or(z.literal('')),
   isActive:       z.boolean(),
 })
 type FormData = z.infer<typeof schema>
@@ -94,9 +96,17 @@ function ClientFormPanel({
       contactEmail:   client?.contactEmail   ?? '',
       billingAddress: client?.billingAddress ?? '',
       accountRepId:   client?.accountRepId   ?? '',
+      yardId:         client?.yardId         ?? '',
       isActive:       client?.isActive       ?? true,
     },
   })
+
+  const { data: yards = [] } = useQuery({
+    queryKey: ['yards-active'],
+    queryFn:  () => yardsApi.listActive().then(r => r.data.data ?? []),
+    enabled:  open,
+  })
+  const yardOptions: DropdownOption[] = yards.map(y => ({ value: y.id, label: y.name }))
 
   const mutation = useMutation({
     mutationFn: (data: ClientPayload) =>
@@ -119,6 +129,7 @@ function ClientFormPanel({
       contactEmail:   data.contactEmail   || undefined,
       billingAddress: data.billingAddress || undefined,
       accountRepId:   data.accountRepId   || null,
+      yardId:         data.yardId         || null,
       isActive:       data.isActive,
     })
   }
@@ -230,6 +241,21 @@ function ClientFormPanel({
                 placeholder="Select account rep"
                 searchPlaceholder="Search reps…"
                 showClear={false}
+              />
+            </div>
+
+            {/* Yard (optional) */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Yard <span className="text-gray-400 font-normal normal-case">(optional)</span>
+              </label>
+              <SearchableDropdown
+                value={watch('yardId') || null}
+                onChange={v => setValue('yardId', v ?? '')}
+                options={yardOptions}
+                placeholder="Select yard"
+                searchPlaceholder="Search yards…"
+                showClear
               />
             </div>
 

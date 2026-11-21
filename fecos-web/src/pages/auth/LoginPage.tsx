@@ -213,6 +213,7 @@ export function LoginPage() {
           mobileNumber: data.mobileNumber,
           email: payload.email,
           role,
+          roles: (payload.roles ?? []) as Role[],
           tenantId: payload.tenantId,
           tenantName: payload.tenantName,
           primaryColor: payload.primaryColor,
