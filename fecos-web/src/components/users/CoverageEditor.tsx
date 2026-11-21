@@ -30,11 +30,14 @@ export function CoverageEditor({ repId, selection, onChange }: Props) {
   const [addClientId, setAddClientId] = useState<string | null>(null)
   const [expanded, setExpanded]   = useState<Set<string>>(new Set())
   const [loadedRep, setLoadedRep] = useState<string | undefined>()
+  const [loading, setLoading]     = useState(false)
+  const [loadError, setLoadError] = useState(false)
 
-  // Load this AR's existing coverage once.
+  // Load this AR's existing coverage once (clients/leases/wells already pointing at this rep).
   useEffect(() => {
     if (!repId) { setLoadedRep(undefined); return }
     if (loadedRep === repId) return
+    setLoading(true); setLoadError(false)
     coverageApi.get(repId)
       .then(r => {
         const d = r.data.data
@@ -44,9 +47,10 @@ export function CoverageEditor({ repId, selection, onChange }: Props) {
         d.wells.forEach(w => { nm[w.id] = { name: w.name, leaseName: w.leaseName, clientName: w.clientName } })
         setNames(prev => ({ ...prev, ...nm }))
         onChange({ clientIds: d.clients.map(c => c.id), leaseIds: d.leases.map(l => l.id), wellIds: d.wells.map(w => w.id) })
+        setLoadedRep(repId)
       })
-      .catch(() => {})
-      .finally(() => setLoadedRep(repId))
+      .catch(() => setLoadError(true))   // don't mark loaded — surface the failure, allow retry
+      .finally(() => setLoading(false))
   }, [repId])  // eslint-disable-line react-hooks/exhaustive-deps
 
   const { data: clients = [] } = useQuery({
@@ -103,9 +107,15 @@ export function CoverageEditor({ repId, selection, onChange }: Props) {
   return (
     <div className="space-y-3">
       {/* Covering summary */}
-      {totalCount === 0 ? (
+      {loading ? (
+        <p className="text-xs text-gray-400 px-3 py-2">Loading coverage…</p>
+      ) : loadError ? (
+        <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+          Couldn’t load this rep’s coverage. The coverage service may be unavailable — refresh to retry.
+        </p>
+      ) : totalCount === 0 ? (
         <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-          No coverage yet — this rep won’t be tied to any clients. You can assign later.
+          No coverage yet — this rep isn’t tied to any clients. Assign a rep on a Client/Lease/Well, or add coverage below.
         </p>
       ) : (
         <div className="space-y-1.5">
