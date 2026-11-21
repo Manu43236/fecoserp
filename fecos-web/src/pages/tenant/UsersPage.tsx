@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { usersApi, type UserRecord, type CreateUserPayload, type UpdateUserPayload } from '@/api/users'
 import { yardsApi } from '@/api/yards'
-import { RoleFilterDropdown, ROLES, roleMap, RoleBadges, isFieldRole, isMobileRole } from '@/components/ui/RoleFilterDropdown'
+import { RoleFilterDropdown, ROLES, roleMap, RoleBadge, RoleBadges, sortRoles, isFieldRole, isMobileRole } from '@/components/ui/RoleFilterDropdown'
 import { RoleMultiSelect } from '@/components/ui/RoleMultiSelect'
 import { YardMultiSelect } from '@/components/ui/YardMultiSelect'
 
@@ -624,11 +624,12 @@ export function UsersPage() {
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
         {/* Table head */}
         <div
-          className="grid grid-cols-[2fr_1fr_1fr_auto] gap-4 px-4 py-3"
+          className="grid grid-cols-[1.7fr_1.5fr_1.3fr_0.8fr_auto] gap-4 px-4 py-3"
           style={{ backgroundColor: 'var(--color-primary)' }}
         >
           <span className="text-xs font-semibold text-white uppercase tracking-wider">Member</span>
-          <span className="text-xs font-semibold text-white uppercase tracking-wider">Role</span>
+          <span className="text-xs font-semibold text-white uppercase tracking-wider">Roles</span>
+          <span className="text-xs font-semibold text-white uppercase tracking-wider">Yards</span>
           <span className="text-xs font-semibold text-white uppercase tracking-wider">Status</span>
           <span className="sr-only">Open</span>
         </div>
@@ -643,7 +644,7 @@ export function UsersPage() {
         ) : paginated.map(u => (
           <div
             key={u.id}
-            className="grid grid-cols-[2fr_1fr_1fr_auto] gap-4 px-4 py-3 items-center hover:bg-gray-50/60 cursor-pointer transition-colors"
+            className="grid grid-cols-[1.7fr_1.5fr_1.3fr_0.8fr_auto] gap-4 px-4 py-3 items-center hover:bg-gray-50/60 cursor-pointer transition-colors"
             onClick={() => setSelectedUser(u)}
           >
             {/* Member */}
@@ -652,12 +653,24 @@ export function UsersPage() {
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-gray-900 truncate">{u.fullName}</p>
                 <p className="text-xs text-gray-500 mt-0.5">+1 {formatPhone(u.mobileNumber)}</p>
-                {u.email && <p className="text-xs text-gray-400 truncate">{u.email}</p>}
+                <p className="text-xs text-gray-400 truncate">{u.email || '—'}</p>
               </div>
             </div>
 
-            {/* Role */}
-            <div><RoleBadges roles={u.roles} compact /></div>
+            {/* Roles */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {u.roles.length ? sortRoles(u.roles).map(role => <RoleBadge key={role} role={role} />) : <span className="text-xs text-gray-400">—</span>}
+            </div>
+
+            {/* Yards */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {u.yardNames.length ? u.yardNames.map(name => (
+                <span key={name} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gray-50 border border-gray-100 text-xs font-medium text-gray-600">
+                  <MapPin size={10} className="text-gray-400" />
+                  {name}
+                </span>
+              )) : <span className="text-xs text-gray-400">—</span>}
+            </div>
 
             {/* Status */}
             <div>
