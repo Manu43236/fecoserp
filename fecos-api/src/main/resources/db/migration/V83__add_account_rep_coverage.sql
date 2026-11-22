@@ -10,6 +10,6 @@ ALTER TABLE leases
 ALTER TABLE wells
     ADD COLUMN account_rep_id CHAR(36) NULL,
     ADD CONSTRAINT fk_wells_acct_rep FOREIGN KEY (account_rep_id) REFERENCES users(id);
-
+@
 CREATE INDEX idx_leases_account_rep ON leases (account_rep_id);
 CREATE INDEX idx_wells_account_rep  ON wells  (account_rep_id);

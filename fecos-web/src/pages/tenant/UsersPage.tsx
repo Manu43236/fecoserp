@@ -15,6 +15,7 @@ import { RoleFilterDropdown, ROLES, roleMap, RoleBadges, sortRoles, isFieldRole,
 import { RoleMultiSelect } from '@/components/ui/RoleMultiSelect'
 import { YardMultiSelect } from '@/components/ui/YardMultiSelect'
 import { CoverageEditor } from '@/components/users/CoverageEditor'
+import { CoverageView } from '@/components/users/CoverageView'
 
 const formatPhone = (n: string) =>
   n.length === 10 ? `(${n.slice(0, 3)}) ${n.slice(3, 6)}-${n.slice(6)}` : n
@@ -256,7 +257,7 @@ function UserFormPanel({ open, onClose, user }: { open: boolean; onClose: () => 
                     <Building2 size={11} /> Coverage
                   </label>
                   <p className="text-[11px] text-gray-400 -mt-1">Clients, leases, and wells this rep is responsible for.</p>
-                  <CoverageEditor repId={isEdit ? user!.id : undefined} selection={coverage} onChange={setCoverage} />
+                  <CoverageEditor repId={isEdit ? user!.id : undefined} onChange={setCoverage} />
                 </div>
               </>
             )}
@@ -470,6 +471,14 @@ function UserDrawer({
                     </span>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Clients (Account Rep coverage) */}
+            {roles.includes('ACCOUNT_REP') && (
+              <div className="px-5 py-4 border-b border-gray-100 space-y-2">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Clients</p>
+                <CoverageView repId={user.id} />
               </div>
             )}
 
