@@ -323,13 +323,15 @@ function UserDrawer({
       >
         {user && (
           <>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
               <span className="text-sm font-semibold text-gray-700">User Detail</span>
               <button onClick={onClose} className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors">
                 <X size={14} className="text-gray-500" />
               </button>
             </div>
 
+            {/* Scrollable body */}
+            <div className="flex-1 overflow-y-auto min-h-0">
             <div className="px-5 py-6 border-b border-gray-100 flex flex-col items-center text-center gap-3">
               <Avatar name={user.fullName} role={user.role} lg />
               <div>
@@ -419,7 +421,11 @@ function UserDrawer({
               </div>
             </div>
 
-            <div className="px-5 py-4 mt-auto border-t border-gray-100 space-y-2">
+            </div>
+            {/* End scrollable body */}
+
+            {/* Actions (sticky bottom) */}
+            <div className="px-5 py-4 shrink-0 bg-white border-t border-gray-100 space-y-2">
               <button
                 onClick={() => onEdit(user)}
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors text-left"

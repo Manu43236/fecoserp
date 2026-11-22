@@ -188,7 +188,7 @@ function YardDrawer({ yard, onClose, onEdit, canDelete }: {
           </div>
         </div>
 
-        <div className="px-5 py-5 space-y-4">
+        <div className="flex-1 overflow-y-auto min-h-0 px-5 py-5 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Location</p>
