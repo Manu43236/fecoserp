@@ -385,8 +385,8 @@ function UserDrawer({
       >
         {user && (
           <>
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+            {/* Header (sticky top) */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
               <span className="text-sm font-semibold text-gray-700">Member Detail</span>
               <button onClick={onClose}
                 className="w-7 h-7 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors">
@@ -394,6 +394,8 @@ function UserDrawer({
               </button>
             </div>
 
+            {/* Scrollable body */}
+            <div className="flex-1 overflow-y-auto min-h-0">
             {/* Profile */}
             <div className="px-5 py-6 border-b border-gray-100 flex flex-col items-center text-center gap-3">
               <Avatar name={user.fullName} role={user.role} size="lg" />
@@ -482,8 +484,12 @@ function UserDrawer({
               </div>
             )}
 
-            {/* Actions */}
-            <div className="px-5 py-4 space-y-2 flex-1">
+            </div>
+            {/* End scrollable body */}
+
+            {/* Actions (sticky bottom) */}
+            <div className="shrink-0 border-t border-gray-100 bg-white">
+            <div className="px-5 py-4 space-y-2">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Actions</p>
 
               <button
@@ -529,6 +535,8 @@ function UserDrawer({
                 <span className="text-sm font-medium text-red-600">Remove User</span>
               </button>
             </div>
+            </div>
+            {/* End sticky actions */}
           </>
         )}
       </div>
