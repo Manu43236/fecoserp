@@ -1,4 +1,4 @@
-import { useState, Fragment } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -97,33 +97,45 @@ function StatusStepper({ value, onAdvance, canDispatch }: {
 }
 
 // ── Truck combobox — dropdown of fleet trucks, but free text allowed (3rd-party) ──
+const TRUCK_MIN_CHARS = 3
+
 function TruckCombobox({ value, onChange, vehicles }: {
   value: string
   onChange: (v: string) => void
   vehicles: Vehicle[]
 }) {
-  const [open, setOpen] = useState(false)
-  const query = value.trim().toLowerCase()
-  const filtered = query
+  const [focused, setFocused] = useState(false)
+  const [picked, setPicked] = useState(false)   // suppress list right after choosing
+  const [debounced, setDebounced] = useState(value)
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), 250)
+    return () => clearTimeout(t)
+  }, [value])
+
+  const query = debounced.trim().toLowerCase()
+  // Only suggest once ≥3 chars are typed and they actually match a fleet truck.
+  const matches = query.length >= TRUCK_MIN_CHARS
     ? vehicles.filter(v => `${v.licensePlate} ${v.make} ${v.model}`.toLowerCase().includes(query))
-    : vehicles
+    : []
+  const showList = focused && !picked && matches.length > 0
 
   return (
     <div className="relative">
       <input
         value={value}
-        onChange={e => { onChange(e.target.value); setOpen(true) }}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onChange={e => { onChange(e.target.value); setPicked(false) }}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setTimeout(() => setFocused(false), 150)}
         placeholder="Enter or select a truck number"
         className="w-full h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2"
       />
-      {open && filtered.length > 0 && (
+      {showList && (
         <div className="absolute z-20 mt-1 w-full max-h-48 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg">
-          {filtered.map(v => (
+          {matches.map(v => (
             <button key={v.id} type="button"
               onMouseDown={e => e.preventDefault()}
-              onClick={() => { onChange(v.licensePlate); setOpen(false) }}
+              onClick={() => { onChange(v.licensePlate); setPicked(true); setDebounced(v.licensePlate) }}
               className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center justify-between gap-2">
               <span className="font-medium text-gray-900">{v.licensePlate}</span>
               <span className="text-xs text-gray-400 truncate">{v.make} {v.model} {v.year}</span>
@@ -492,11 +504,12 @@ function RouteFormPanel({ open, onClose, route, driverOptions }: {
 }
 
 // ── Route drawer ───────────────────────────────────────────────────────────────
-function RouteDrawer({ route, onClose, onEdit, canEdit }: {
+function RouteDrawer({ route, onClose, onEdit, canEdit, driverOptions }: {
   route: RouteRecord
   onClose: () => void
   onEdit: () => void
   canEdit: boolean
+  driverOptions: DropdownOption[]
 }) {
   const qc = useQueryClient()
   const [showStopForm, setShowStopForm] = useState(false)
@@ -629,6 +642,25 @@ function RouteDrawer({ route, onClose, onEdit, canEdit }: {
       toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to update status'),
   })
 
+  const assignDriverMutation = useMutation({
+    mutationFn: (driverId: string) => routesApi.update(route.id, {
+      driverId:    driverId || undefined,
+      vehicleId:   r.vehicleId   ?? undefined,
+      truckNumber: r.truckNumber ?? undefined,
+      warehouseId: r.warehouseId ?? undefined,
+      routeDate:   r.routeDate,
+      status:      r.status,
+      notes:       r.notes ?? undefined,
+    }),
+    onSuccess: () => {
+      toast.success('Driver assigned')
+      qc.invalidateQueries({ queryKey: ['route', route.id] })
+      qc.invalidateQueries({ queryKey: ['routes'] })
+      qc.invalidateQueries({ queryKey: ['routes-board'] })
+    },
+    onError: () => toast.error('Failed to assign driver'),
+  })
+
   function resetStopForm() {
     setShowStopForm(false)
     setSelectedLeaseId(null)
@@ -701,6 +733,24 @@ function RouteDrawer({ route, onClose, onEdit, canEdit }: {
         {canEdit && r.status !== 'CANCELLED' && (
           <div className="px-5 py-3 border-b border-gray-100 shrink-0 space-y-3">
             <StatusStepper value={r.status} canDispatch={!!r.driverId} />
+
+            {/* Assign/change the driver inline (while Planned) — required to dispatch */}
+            {r.status === 'PLANNED' && (
+              <div className="space-y-1">
+                <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                  Driver {!r.driverId && <span className="text-red-500 normal-case font-medium">— assign to dispatch</span>}
+                </label>
+                <SearchableDropdown
+                  value={r.driverId || null}
+                  onChange={v => assignDriverMutation.mutate(v ?? '')}
+                  options={driverOptions}
+                  placeholder="Assign driver"
+                  searchPlaceholder="Search drivers…"
+                  showClear={true}
+                />
+              </div>
+            )}
+
             {(() => {
               const next = NEXT_STATUSES[r.status]
               if (!next) return null
@@ -1409,6 +1459,7 @@ export default function RoutesPage() {
           onClose={() => setSelected(undefined)}
           onEdit={() => openEdit(selected)}
           canEdit={canEdit}
+          driverOptions={driverOptions}
         />
       )}
     </div>
