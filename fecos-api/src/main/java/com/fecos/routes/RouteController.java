@@ -56,6 +56,13 @@ public class RouteController {
         return ResponseEntity.ok(ApiResponse.ok("Route claimed", routeService.claim(id)));
     }
 
+    /** Skipped stops for the office to review and follow up on. */
+    @GetMapping("/skipped-stops")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP')")
+    public ResponseEntity<ApiResponse<List<SkippedStopResponse>>> skippedStops() {
+        return ResponseEntity.ok(ApiResponse.ok("Skipped stops retrieved", routeService.skippedStops()));
+    }
+
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<ApiResponse<RouteResponse>> create(@Valid @RequestBody RouteRequest req) {

@@ -75,6 +75,17 @@ export interface RouteStopItemPayload {
   notes?: string
 }
 
+export interface SkippedStopRecord {
+  stopId: string
+  routeId: string
+  routeDate: string | null
+  wellName: string | null
+  leaseName: string | null
+  clientName: string | null
+  skipReason: string | null
+  driverName: string | null
+}
+
 export interface LoadItemPayload { itemId: string; loadedQty: number }
 export interface DeliverItemPayload { itemId: string; actualQty: number }
 export interface DeliverStopPayload { items?: DeliverItemPayload[]; notes?: string }
@@ -92,6 +103,7 @@ export const routesApi = {
   updateStatus:   (id: string, status: RouteStatus) => api.patch<ApiResponse<RouteRecord>>(`/api/v1/routes/${id}/status`, null, { params: { status } }),
   updateStopStatus: (id: string, stopId: string, status: RouteStopStatus) => api.patch<ApiResponse<RouteRecord>>(`/api/v1/routes/${id}/stops/${stopId}/status`, null, { params: { status } }),
   confirmLoad: (id: string, items: LoadItemPayload[]) => api.post<ApiResponse<RouteRecord>>(`/api/v1/routes/${id}/load-confirmation`, { items }),
+  skippedStops: () => api.get<ApiResponse<SkippedStopRecord[]>>('/api/v1/routes/skipped-stops'),
   deliverStop: (id: string, stopId: string, data: DeliverStopPayload) => api.patch<ApiResponse<RouteRecord>>(`/api/v1/routes/${id}/stops/${stopId}/deliver`, data),
   getPdf: (id: string) => api.get(`/api/v1/routes/${id}/pdf`, { responseType: 'blob' }),
 }

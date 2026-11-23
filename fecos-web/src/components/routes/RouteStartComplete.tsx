@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { Package } from 'lucide-react'
 import { routesApi, type RouteRecord } from '@/api/routes'
+import { inventoryApi } from '@/api/inventory'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { useDialogs } from '@/components/ui/DialogProvider'
@@ -15,20 +16,29 @@ function seedQuantities(route: RouteRecord): Record<string, string> {
 
 const stopLabel = (s: RouteRecord['stops'][number]) => s.wellName ?? s.leaseName ?? 'Stop'
 
-function QtyRow({ name, unit, value, onChange }: {
+function QtyRow({ name, unit, value, onChange, available, planned }: {
   name: string; unit: string; value: string; onChange: (v: string) => void
+  available?: number; planned?: number
 }) {
+  const short = available !== undefined && planned !== undefined && available < planned
   return (
-    <div className="flex items-center gap-2">
-      <Package size={12} className="text-gray-400 shrink-0" />
-      <span className="flex-1 text-sm text-gray-700 truncate">{name}</span>
+    <div className="flex items-start gap-2">
+      <Package size={12} className="text-gray-400 shrink-0 mt-2" />
+      <div className="flex-1 min-w-0">
+        <span className="text-sm text-gray-700 truncate block">{name}</span>
+        {available !== undefined && (
+          <span className={`text-[11px] ${short ? 'text-red-600 font-semibold' : 'text-gray-400'}`}>
+            Available: {available} {unit}
+          </span>
+        )}
+      </div>
       <input
         type="number" step="0.01" min="0"
         value={value}
         onChange={e => onChange(e.target.value)}
         className="w-24 h-8 px-2 text-sm rounded-lg border border-gray-200 outline-none focus:ring-2 text-right"
       />
-      <span className="w-14 text-xs text-gray-400">{unit}</span>
+      <span className="w-14 text-xs text-gray-400 mt-2">{unit}</span>
     </div>
   )
 }
@@ -40,6 +50,14 @@ export function RouteLoadDialog({ route, onClose, onDone }: {
   const dialogs = useDialogs()
   const [qty, setQty] = useState<Record<string, string>>(() => seedQuantities(route))
   const items = route.stops.flatMap(s => s.items.map(i => ({ ...i, stop: stopLabel(s) })))
+
+  // Current stock at the pickup warehouse, so the dispatcher sees shortfalls (backend still gates).
+  const { data: stock } = useQuery({
+    queryKey: ['stock', route.warehouseId],
+    queryFn: () => inventoryApi.stock({ warehouseId: route.warehouseId }).then(r => r.data.data ?? []),
+    enabled: !!route.warehouseId,
+  })
+  const availableByProduct = new Map((stock ?? []).map(s => [s.productId, s.currentQty]))
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -68,7 +86,8 @@ export function RouteLoadDialog({ route, onClose, onDone }: {
               <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">{stopLabel(s)}</p>
               {s.items.map(i => (
                 <QtyRow key={i.id} name={i.productName ?? '—'} unit={i.unit}
-                  value={qty[i.id] ?? ''} onChange={v => setQty(q => ({ ...q, [i.id]: v }))} />
+                  value={qty[i.id] ?? ''} onChange={v => setQty(q => ({ ...q, [i.id]: v }))}
+                  available={availableByProduct.get(i.productId)} planned={i.quantity} />
               ))}
             </div>
           ))}

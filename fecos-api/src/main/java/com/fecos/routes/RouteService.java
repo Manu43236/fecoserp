@@ -76,6 +76,17 @@ public class RouteService {
         return toResponse(saved, hasStops);
     }
 
+    /** Skipped stops across all routes, for the office to review and follow up on. */
+    public List<SkippedStopResponse> skippedStops() {
+        UUID tenantId = currentTenantId();
+        return stopRepository.skippedStops(tenantId).stream()
+                .map(row -> new SkippedStopResponse(
+                        (UUID) row[0], (UUID) row[1],
+                        row[2] != null ? row[2].toString() : null,
+                        (String) row[3], (String) row[4], (String) row[5], (String) row[6], (String) row[7]))
+                .toList();
+    }
+
     /** Unassigned pool a driver can claim: PLANNED, no driver, today or overdue; optional client/lease filter. */
     public List<RouteResponse> availableForClaim(UUID clientId, UUID leaseId) {
         UUID tenantId = currentTenantId();

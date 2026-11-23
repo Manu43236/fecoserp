@@ -15,6 +15,7 @@ import { warehousesApi, type WarehouseRecord } from '@/api/warehouses'
 import { SearchableDropdown, type DropdownOption } from '@/components/ui/SearchableDropdown'
 import { useDialogs } from '@/components/ui/DialogProvider'
 import { RouteLoadDialog, RouteDeliveryDialog } from '@/components/routes/RouteStartComplete'
+import { SkippedStopsView } from '@/components/routes/SkippedStopsView'
 import { useAuthStore, hasAnyRole } from '@/store/authStore'
 import api from '@/lib/axios'
 import type { ApiResponse, PageResponse } from '@/types'
@@ -1294,7 +1295,7 @@ export default function RoutesPage() {
   const { user } = useAuthStore()
   const canEdit = hasAnyRole(user, 'ADMIN', 'MANAGER')
 
-  const [view, setView]                 = useState<'list' | 'board'>('list')
+  const [view, setView]                 = useState<'list' | 'board' | 'skipped'>('list')
   const [boardDate, setBoardDate]       = useState(toDateStr(new Date()))
   const [search, setSearch]             = useState('')
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
@@ -1361,6 +1362,13 @@ export default function RoutesPage() {
               }`}>
               <LayoutList size={13} /> List
             </button>
+            <button
+              onClick={() => setView('skipped')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                view === 'skipped' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              }`}>
+              <MapPin size={13} /> Skipped
+            </button>
           </div>
           {/* New Route (list view only — board has its own) */}
           {canEdit && view === 'list' && (
@@ -1372,6 +1380,9 @@ export default function RoutesPage() {
           )}
         </div>
       </div>
+
+      {/* Skipped stops view */}
+      {view === 'skipped' && <SkippedStopsView />}
 
       {/* Board view */}
       {view === 'board' && (
