@@ -29,9 +29,10 @@ public class RouteController {
             @RequestParam(required = false) UUID driverId,
             @RequestParam(required = false) LocalDate routeDate,
             @RequestParam(defaultValue = "0")  int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "false") boolean withStops) {
         return ResponseEntity.ok(ApiResponse.ok("Routes retrieved",
-                routeService.list(status, driverId, routeDate, page, size)));
+                routeService.list(status, driverId, routeDate, page, size, withStops)));
     }
 
     @GetMapping("/{id}")

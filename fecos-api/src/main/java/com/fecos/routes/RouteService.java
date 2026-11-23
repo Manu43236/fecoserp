@@ -45,10 +45,11 @@ public class RouteService {
     private final TankService tankService;
     private final com.fecos.clients.ClientRepository clientRepository;
 
-    public Page<RouteResponse> list(RouteStatus status, UUID driverId, LocalDate routeDate, int page, int size) {
+    public Page<RouteResponse> list(RouteStatus status, UUID driverId, LocalDate routeDate,
+                                    int page, int size, boolean withStops) {
         UUID tenantId = currentTenantId();
         return routeRepository.search(tenantId, status, driverId, routeDate, PageRequest.of(page, size))
-                .map(r -> toResponse(r, false));
+                .map(r -> toResponse(r, withStops));
     }
 
     public RouteResponse findById(UUID id) {
