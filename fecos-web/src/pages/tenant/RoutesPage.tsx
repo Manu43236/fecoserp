@@ -13,6 +13,8 @@ import { productUnitsApi } from '@/api/productUnits'
 import { vehiclesApi, type Vehicle } from '@/api/vehicles'
 import { warehousesApi, type WarehouseRecord } from '@/api/warehouses'
 import { SearchableDropdown, type DropdownOption } from '@/components/ui/SearchableDropdown'
+import { useDialogs } from '@/components/ui/DialogProvider'
+import { RouteLoadDialog, RouteDeliveryDialog } from '@/components/routes/RouteStartComplete'
 import { useAuthStore, hasAnyRole } from '@/store/authStore'
 import api from '@/lib/axios'
 import type { ApiResponse, PageResponse } from '@/types'
@@ -514,6 +516,7 @@ function RouteDrawer({ route, onClose, onEdit, canEdit, driverOptions }: {
   driverOptions: DropdownOption[]
 }) {
   const qc = useQueryClient()
+  const dialogs = useDialogs()
   const [showStopForm, setShowStopForm] = useState(false)
   const [selectedLeaseId, setSelectedLeaseId] = useState<string | null>(null)
   const [stopWellId, setStopWellId] = useState<string | null>(null)
@@ -521,6 +524,8 @@ function RouteDrawer({ route, onClose, onEdit, canEdit, driverOptions }: {
   const [itemRows, setItemRows] = useState<ItemRow[]>([{ productId: '', quantity: '', unit: '' }])
   const [addItemStopId, setAddItemStopId] = useState<string | null>(null)
   const [addItemRow, setAddItemRow] = useState<ItemRow>({ productId: '', quantity: '', unit: '' })
+  const [loadOpen, setLoadOpen] = useState(false)       // Start → confirm load
+  const [deliverOpen, setDeliverOpen] = useState(false) // Complete → record delivery
 
   const { data: fullData, isLoading } = useQuery({
     queryKey: ['route', route.id],
@@ -663,12 +668,27 @@ function RouteDrawer({ route, onClose, onEdit, canEdit, driverOptions }: {
     onError: () => toast.error('Failed to assign driver'),
   })
 
-  function handleStatusSelect(target: RouteStatus) {
+  async function handleStatusSelect(target: RouteStatus) {
     if (target === 'CANCELLED') {
-      if (confirm('Cancel this route?')) cancelMutation.mutate()
+      const ok = await dialogs.confirm({
+        title: 'Cancel route?',
+        message: 'This route will be cancelled. Any dispatched inventory is returned to the warehouse.',
+        danger: true, confirmLabel: 'Cancel route', cancelLabel: 'Keep route',
+      })
+      if (ok) cancelMutation.mutate()
+    } else if (target === 'IN_PROGRESS') {
+      setLoadOpen(true)       // Start: confirm the load first
+    } else if (target === 'COMPLETED') {
+      setDeliverOpen(true)    // Complete: record what was delivered
     } else {
-      advanceMutation.mutate(target)
+      advanceMutation.mutate(target)  // Dispatch
     }
+  }
+
+  const invalidateRoute = () => {
+    qc.invalidateQueries({ queryKey: ['route', route.id] })
+    qc.invalidateQueries({ queryKey: ['routes'] })
+    qc.invalidateQueries({ queryKey: ['routes-board'] })
   }
 
   function resetStopForm() {
@@ -722,7 +742,13 @@ function RouteDrawer({ route, onClose, onEdit, canEdit, driverOptions }: {
             )}
             {canEdit && r.status === 'CANCELLED' && (
               <button
-                onClick={() => { if (confirm('Permanently delete this route? This cannot be undone.')) deleteMutation.mutate() }}
+                onClick={async () => {
+                  const ok = await dialogs.confirm({
+                    title: 'Delete route?', message: 'This route will be permanently deleted. This cannot be undone.',
+                    danger: true, confirmLabel: 'Delete', cancelLabel: 'Keep',
+                  })
+                  if (ok) deleteMutation.mutate()
+                }}
                 disabled={deleteMutation.isPending}
                 className="h-8 px-3 text-xs font-medium rounded-lg border border-red-100 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-60">
                 {deleteMutation.isPending ? 'Deleting…' : 'Delete Route'}
@@ -1042,6 +1068,13 @@ function RouteDrawer({ route, onClose, onEdit, canEdit, driverOptions }: {
           )}
         </div>
       </div>
+
+      {loadOpen && (
+        <RouteLoadDialog route={r} onClose={() => setLoadOpen(false)} onDone={invalidateRoute} />
+      )}
+      {deliverOpen && (
+        <RouteDeliveryDialog route={r} onClose={() => setDeliverOpen(false)} onDone={invalidateRoute} />
+      )}
     </div>
   )
 }
@@ -1080,6 +1113,7 @@ function BoardView({ boardDate, onDateChange, canEdit, onSelectRoute, driverOpti
   driverOptions: DropdownOption[]
 }) {
   const qc = useQueryClient()
+  const dialogs = useDialogs()
   const [formOpen, setFormOpen] = useState(false)
 
   const { data, isLoading } = useQuery({
@@ -1213,7 +1247,11 @@ function BoardView({ boardDate, onDateChange, canEdit, onSelectRoute, driverOpti
                   <div className="px-4 pb-3 flex gap-2">
                     {next && (
                       <button
-                        onClick={() => advanceMutation.mutate({ route, next })}
+                        onClick={() => {
+                          // Start/Complete need load/delivery entry — open the route to capture it.
+                          if (next === 'IN_PROGRESS' || next === 'COMPLETED') onSelectRoute(route)
+                          else advanceMutation.mutate({ route, next })
+                        }}
                         disabled={advanceMutation.isPending || blockedNoDriver}
                         title={blockedNoDriver ? 'Assign a driver before dispatching' : undefined}
                         className="flex-1 h-8 text-xs font-semibold text-white rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition"
@@ -1222,7 +1260,13 @@ function BoardView({ boardDate, onDateChange, canEdit, onSelectRoute, driverOpti
                       </button>
                     )}
                     <button
-                      onClick={() => { if (confirm('Cancel this route?')) advanceMutation.mutate({ route, next: 'CANCELLED' }) }}
+                      onClick={async () => {
+                        const ok = await dialogs.confirm({
+                          title: 'Cancel route?', message: 'This route will be cancelled.',
+                          danger: true, confirmLabel: 'Cancel route', cancelLabel: 'Keep route',
+                        })
+                        if (ok) advanceMutation.mutate({ route, next: 'CANCELLED' })
+                      }}
                       className="h-8 px-3 text-xs font-medium rounded-lg border border-red-100 text-red-500 hover:bg-red-50 transition-colors">
                       Cancel
                     </button>

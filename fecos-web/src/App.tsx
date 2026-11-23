@@ -7,6 +7,7 @@ import { useTenantStore } from '@/store/tenantStore'
 import { useAuthStore } from '@/store/authStore'
 import type { Role } from '@/types'
 
+import { DialogProvider } from '@/components/ui/DialogProvider'
 import { AuthGuard, SuperAdminGuard, GuestGuard } from '@/layouts/AuthGuard'
 import { PrivacyPolicyPage } from '@/pages/public/PrivacyPolicyPage'
 import { AppLayout } from '@/layouts/AppLayout'
@@ -190,10 +191,12 @@ function TenantRoutes() {
 export default function App() {
   return (
     <QueryClientProvider client={qc}>
-      <BrowserRouter>
-        {getPortal() === 'console' ? <ConsoleRoutes /> : <TenantRoutes />}
-      </BrowserRouter>
-      <Toaster position="top-right" />
+      <DialogProvider>
+        <BrowserRouter>
+          {getPortal() === 'console' ? <ConsoleRoutes /> : <TenantRoutes />}
+        </BrowserRouter>
+        <Toaster position="top-right" />
+      </DialogProvider>
     </QueryClientProvider>
   )
 }

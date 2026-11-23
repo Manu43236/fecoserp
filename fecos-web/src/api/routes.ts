@@ -75,6 +75,10 @@ export interface RouteStopItemPayload {
   notes?: string
 }
 
+export interface LoadItemPayload { itemId: string; loadedQty: number }
+export interface DeliverItemPayload { itemId: string; actualQty: number }
+export interface DeliverStopPayload { items?: DeliverItemPayload[]; notes?: string }
+
 export const routesApi = {
   list:       (params?: object) => api.get<ApiResponse<PageResponse<RouteRecord>>>('/api/v1/routes', { params }),
   get:        (id: string) => api.get<ApiResponse<RouteRecord>>(`/api/v1/routes/${id}`),
@@ -87,5 +91,7 @@ export const routesApi = {
   removeItem:     (id: string, stopId: string, itemId: string) => api.delete<ApiResponse<RouteRecord>>(`/api/v1/routes/${id}/stops/${stopId}/items/${itemId}`),
   updateStatus:   (id: string, status: RouteStatus) => api.patch<ApiResponse<RouteRecord>>(`/api/v1/routes/${id}/status`, null, { params: { status } }),
   updateStopStatus: (id: string, stopId: string, status: RouteStopStatus) => api.patch<ApiResponse<RouteRecord>>(`/api/v1/routes/${id}/stops/${stopId}/status`, null, { params: { status } }),
+  confirmLoad: (id: string, items: LoadItemPayload[]) => api.post<ApiResponse<RouteRecord>>(`/api/v1/routes/${id}/load-confirmation`, { items }),
+  deliverStop: (id: string, stopId: string, data: DeliverStopPayload) => api.patch<ApiResponse<RouteRecord>>(`/api/v1/routes/${id}/stops/${stopId}/deliver`, data),
   getPdf: (id: string) => api.get(`/api/v1/routes/${id}/pdf`, { responseType: 'blob' }),
 }
