@@ -797,7 +797,9 @@ function TransactionFormPanel({ open, onClose }: { open: boolean; onClose: () =>
   })
 
   const { data: products = [] } = useQuery({
-    queryKey: ['products', '', null, null, 0],
+    // Distinct key — must not collide with the Products tab query (same prefix,
+    // different shape: that one returns the paginated object, this one an array).
+    queryKey: ['products-all-for-tx'],
     queryFn: () => productsApi.list({ size: 5000 }).then(r => r.data.data?.content ?? []),
   })
 
