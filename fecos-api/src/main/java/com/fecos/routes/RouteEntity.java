@@ -14,7 +14,7 @@ import java.util.UUID;
 @Table(name = "routes")
 public class RouteEntity extends TenantAwareEntity {
 
-    @Column(name = "driver_id", nullable = false)
+    @Column(name = "driver_id")
     private UUID driverId;
 
     @Column(name = "vehicle_id")

@@ -43,7 +43,7 @@ const STATUS_OPTIONS: DropdownOption[] = Object.entries(STATUS_COLOR).map(([v, s
 
 // ── Route form schema ──────────────────────────────────────────────────────────
 const routeSchema = z.object({
-  driverId:    z.string().min(1, 'Driver is required'),
+  driverId:    z.string().optional().or(z.literal('')),
   vehicleId:   z.string().optional().or(z.literal('')),
   warehouseId: z.string().optional().or(z.literal('')),
   routeDate:   z.string().min(1, 'Date is required'),
@@ -51,6 +51,15 @@ const routeSchema = z.object({
   notes:       z.string().optional().or(z.literal('')),
 })
 type RouteFormData = z.infer<typeof routeSchema>
+
+// ── Stop item row (inline add) ─────────────────────────────────────────────────
+interface ItemRow { productId: string; quantity: string; unit: string }
+
+// A stop being built inside the create form (before the route exists).
+interface StopDraft { leaseId: string; wellId: string; notes: string; items: ItemRow[] }
+
+const emptyItem = (): ItemRow => ({ productId: '', quantity: '', unit: '' })
+const emptyStop = (): StopDraft => ({ leaseId: '', wellId: '', notes: '', items: [emptyItem()] })
 
 // ── Route form panel ───────────────────────────────────────────────────────────
 function RouteFormPanel({ open, onClose, route, driverOptions }: {
@@ -74,6 +83,10 @@ function RouteFormPanel({ open, onClose, route, driverOptions }: {
     },
   })
 
+  // Stops are built inline only when creating a brand-new route. Editing keeps
+  // header-only; stops on an existing route are managed from the route drawer.
+  const [stops, setStops] = useState<StopDraft[]>([])
+
   const { data: vehiclesData } = useQuery({
     queryKey: ['vehicles-available'],
     queryFn: () => vehiclesApi.list({ size: 200 }).then(r => (r.data as ApiResponse<PageResponse<Vehicle>>).data?.content ?? []),
@@ -92,6 +105,47 @@ function RouteFormPanel({ open, onClose, route, driverOptions }: {
     label: w.name + (w.location ? ` (${w.location})` : ''),
   }))
 
+  // Reference data for the inline stops builder (cached/deduped by react-query).
+  const { data: leasesData } = useQuery({
+    queryKey: ['leases-active'],
+    queryFn: () => leasesApi.list({ isActive: true, size: 5000 }).then(r => r.data.data?.content ?? []),
+    enabled: !isEdit,
+  })
+  const { data: wellsData } = useQuery({
+    queryKey: ['wells-active'],
+    queryFn: () => wellsApi.list({ isActive: true, size: 5000 }).then(r => r.data.data?.content ?? []),
+    enabled: !isEdit,
+  })
+  const { data: productsData } = useQuery({
+    queryKey: ['products-active'],
+    queryFn: () => productsApi.list({ isActive: true, size: 5000 }).then(r => r.data.data?.content ?? []),
+    enabled: !isEdit,
+  })
+  const { data: unitsData } = useQuery({
+    queryKey: ['product-units'],
+    queryFn: () => productUnitsApi.list().then(r => r.data.data ?? []),
+    enabled: !isEdit,
+  })
+
+  const leases: LeaseRecord[] = leasesData ?? []
+  const wells: WellRecord[]   = wellsData  ?? []
+  const leaseOptions: DropdownOption[]   = leases.map(l => ({ value: l.id, label: l.leaseName }))
+  const productOptions: DropdownOption[] = (productsData ?? []).map(p => ({ value: p.id, label: p.name }))
+  const unitOptions: DropdownOption[]    = (unitsData ?? []).map(u => ({ value: u.name, label: u.name }))
+  const wellOptionsFor = (leaseId: string): DropdownOption[] =>
+    leaseId ? wells.filter(w => w.leaseId === leaseId).map(w => ({ value: w.id, label: w.wellName })) : []
+
+  // ── Stop draft mutators (immutable) ──
+  const updateStop = (i: number, patch: Partial<StopDraft>) =>
+    setStops(s => s.map((st, j) => j === i ? { ...st, ...patch } : st))
+  const updateItem = (si: number, ii: number, patch: Partial<ItemRow>) =>
+    setStops(s => s.map((st, j) => j === si
+      ? { ...st, items: st.items.map((it, k) => k === ii ? { ...it, ...patch } : it) } : st))
+  const addItemRow = (si: number) =>
+    setStops(s => s.map((st, j) => j === si ? { ...st, items: [...st.items, emptyItem()] } : st))
+  const removeItemRow = (si: number, ii: number) =>
+    setStops(s => s.map((st, j) => j === si ? { ...st, items: st.items.filter((_, k) => k !== ii) } : st))
+
   const mutation = useMutation({
     mutationFn: (data: RoutePayload) =>
       isEdit ? routesApi.update(route!.id, data) : routesApi.create(data),
@@ -99,20 +153,32 @@ function RouteFormPanel({ open, onClose, route, driverOptions }: {
       toast.success(isEdit ? 'Route updated' : 'Route created')
       qc.invalidateQueries({ queryKey: ['routes'] })
       qc.invalidateQueries({ queryKey: ['routes-board'] })
-      onClose(); reset()
+      onClose(); reset(); setStops([])
     },
     onError: (e: unknown) =>
       toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed'),
   })
 
   function onSubmit(data: RouteFormData) {
+    let stopPayload: RouteStopPayload[] | undefined
+    if (!isEdit && stops.length > 0) {
+      const built = stops.filter(s => s.leaseId && s.wellId)
+      if (built.length !== stops.length) { toast.error('Each stop needs a lease and a well'); return }
+      stopPayload = built.map(s => {
+        const items = s.items
+          .filter(it => it.productId && it.quantity && it.unit)
+          .map(it => ({ productId: it.productId, quantity: parseFloat(it.quantity), unit: it.unit }))
+        return { leaseId: s.leaseId, wellId: s.wellId, notes: s.notes || undefined, items: items.length ? items : undefined }
+      })
+    }
     mutation.mutate({
-      driverId:    data.driverId,
+      driverId:    data.driverId    || undefined,
       vehicleId:   data.vehicleId   || undefined,
       warehouseId: data.warehouseId || undefined,
       routeDate:   data.routeDate,
       status:      data.status,
       notes:       data.notes || undefined,
+      stops:       stopPayload,
     })
   }
 
@@ -122,7 +188,7 @@ function RouteFormPanel({ open, onClose, route, driverOptions }: {
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/30" />
-      <div className="relative bg-white w-full md:w-[440px] h-full shadow-2xl flex flex-col">
+      <div className="relative bg-white w-full md:w-[520px] h-full shadow-2xl flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--color-primary)' }}>
@@ -152,16 +218,18 @@ function RouteFormPanel({ open, onClose, route, driverOptions }: {
 
             {/* Driver */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Driver <span className="text-red-500">*</span></label>
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Driver
+                <span className="ml-1 text-gray-400 font-normal normal-case">(optional — required to dispatch)</span>
+              </label>
               <SearchableDropdown
                 value={watch('driverId') || null}
                 onChange={v => setValue('driverId', v ?? '', { shouldValidate: true })}
                 options={driverOptions}
                 placeholder="Select driver"
                 searchPlaceholder="Search drivers…"
-                showClear={false}
+                showClear={true}
               />
-              {errors.driverId && <p className="text-red-500 text-xs">{errors.driverId.message}</p>}
             </div>
 
             {/* Vehicle */}
@@ -221,6 +289,104 @@ function RouteFormPanel({ open, onClose, route, driverOptions }: {
                 className="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 resize-none"
               />
             </div>
+
+            {/* Stops (create only) — build the whole route in one go */}
+            {!isEdit && (
+              <div className="space-y-3 pt-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Stops</label>
+                  <span className="text-xs text-gray-400">{stops.length} stop{stops.length !== 1 ? 's' : ''}</span>
+                </div>
+
+                {stops.map((stop, si) => (
+                  <div key={si} className="border border-gray-200 rounded-xl p-4 space-y-3 bg-gray-50">
+                    <div className="flex items-center justify-between">
+                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-bold text-white"
+                        style={{ backgroundColor: 'var(--color-primary)' }}>{si + 1}</span>
+                      <button type="button" onClick={() => setStops(s => s.filter((_, j) => j !== si))}
+                        className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors">
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+
+                    {/* Lease → Well */}
+                    <SearchableDropdown
+                      value={stop.leaseId || null}
+                      onChange={v => updateStop(si, { leaseId: v ?? '', wellId: '' })}
+                      options={leaseOptions}
+                      placeholder="Select lease"
+                      searchPlaceholder="Search leases…"
+                      showClear={false}
+                    />
+                    <SearchableDropdown
+                      value={stop.wellId || null}
+                      onChange={v => updateStop(si, { wellId: v ?? '' })}
+                      options={wellOptionsFor(stop.leaseId)}
+                      placeholder={stop.leaseId ? 'Select well' : 'Select a lease first'}
+                      searchPlaceholder="Search wells…"
+                      showClear={false}
+                    />
+
+                    {/* Products */}
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Products (optional)</p>
+                      {stop.items.map((item, ii) => (
+                        <div key={ii} className="flex gap-2 items-center">
+                          <div className="flex-1">
+                            <SearchableDropdown
+                              value={item.productId || null}
+                              onChange={v => updateItem(si, ii, { productId: v ?? '' })}
+                              options={productOptions}
+                              placeholder="Product"
+                              showClear={false}
+                            />
+                          </div>
+                          <input
+                            type="number" step="0.01" min="0"
+                            value={item.quantity}
+                            onChange={e => updateItem(si, ii, { quantity: e.target.value })}
+                            placeholder="Qty"
+                            className="w-20 h-9 px-2 text-sm rounded-lg border border-gray-200 outline-none focus:ring-2 bg-white"
+                          />
+                          <div className="w-28">
+                            <SearchableDropdown
+                              value={item.unit || null}
+                              onChange={v => updateItem(si, ii, { unit: v ?? '' })}
+                              options={unitOptions}
+                              placeholder="Unit"
+                              showClear={false}
+                            />
+                          </div>
+                          {stop.items.length > 1 && (
+                            <button type="button" onClick={() => removeItemRow(si, ii)}
+                              className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-red-500 shrink-0">
+                              <X size={12} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      <button type="button" onClick={() => addItemRow(si)}
+                        className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1">
+                        <Plus size={11} /> Add another product
+                      </button>
+                    </div>
+
+                    {/* Stop notes */}
+                    <input
+                      value={stop.notes}
+                      onChange={e => updateStop(si, { notes: e.target.value })}
+                      placeholder="Stop notes (optional)"
+                      className="w-full h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none focus:ring-2 bg-white"
+                    />
+                  </div>
+                ))}
+
+                <button type="button" onClick={() => setStops(s => [...s, emptyStop()])}
+                  className="w-full h-9 flex items-center justify-center gap-2 text-xs font-medium rounded-lg border border-dashed border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors">
+                  <Plus size={13} /> Add Stop
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="px-5 py-4 flex gap-3 shrink-0" style={{ borderTop: '1px solid rgba(0,0,0,0.07)' }}>
@@ -239,9 +405,6 @@ function RouteFormPanel({ open, onClose, route, driverOptions }: {
     </div>
   )
 }
-
-// ── Stop item row (inline add) ─────────────────────────────────────────────────
-interface ItemRow { productId: string; quantity: string; unit: string }
 
 // ── Route drawer ───────────────────────────────────────────────────────────────
 function RouteDrawer({ route, onClose, onEdit, canEdit }: {
@@ -341,7 +504,7 @@ function RouteDrawer({ route, onClose, onEdit, canEdit }: {
 
   const cancelMutation = useMutation({
     mutationFn: () => routesApi.update(route.id, {
-      driverId:    r.driverId,
+      driverId:    r.driverId ?? undefined,
       vehicleId:   r.vehicleId   ?? undefined,
       warehouseId: r.warehouseId ?? undefined,
       routeDate:   r.routeDate,
@@ -779,7 +942,7 @@ function BoardView({ boardDate, onDateChange, canEdit, onSelectRoute, driverOpti
   const advanceMutation = useMutation({
     mutationFn: ({ route, next }: { route: RouteRecord; next: RouteStatus }) =>
       routesApi.update(route.id, {
-        driverId:    route.driverId,
+        driverId:    route.driverId ?? undefined,
         vehicleId:   route.vehicleId   ?? undefined,
         warehouseId: route.warehouseId ?? undefined,
         routeDate:   route.routeDate,
@@ -866,6 +1029,8 @@ function BoardView({ boardDate, onDateChange, canEdit, onSelectRoute, driverOpti
           {routes.map(route => {
             const s   = STATUS_COLOR[route.status]
             const next = NEXT_STATUSES[route.status]
+            // A route can't be dispatched until a driver is assigned.
+            const blockedNoDriver = route.status === 'PLANNED' && !route.driverId
             return (
               <div key={route.id}
                 className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-sm transition-shadow">
@@ -889,10 +1054,11 @@ function BoardView({ boardDate, onDateChange, canEdit, onSelectRoute, driverOpti
                     {next && (
                       <button
                         onClick={() => advanceMutation.mutate({ route, next })}
-                        disabled={advanceMutation.isPending}
-                        className="flex-1 h-8 text-xs font-semibold text-white rounded-lg disabled:opacity-60 transition"
+                        disabled={advanceMutation.isPending || blockedNoDriver}
+                        title={blockedNoDriver ? 'Assign a driver before dispatching' : undefined}
+                        className="flex-1 h-8 text-xs font-semibold text-white rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition"
                         style={{ backgroundColor: 'var(--color-primary)' }}>
-                        {NEXT_LABEL[route.status]}
+                        {blockedNoDriver ? 'Assign driver first' : NEXT_LABEL[route.status]}
                       </button>
                     )}
                     <button

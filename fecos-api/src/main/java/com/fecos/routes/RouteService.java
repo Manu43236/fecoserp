@@ -61,7 +61,19 @@ public class RouteService {
         r.setTenantId(tenantId);
         r.setCreatedBy(currentUserId());
         apply(r, req);
-        return toResponse(routeRepository.save(r), false);
+        requireDriverForDispatch(r);
+        RouteEntity saved = routeRepository.save(r);
+
+        // Single-step creation: persist the whole route (stops + items) at once.
+        if (req.getStops() != null) {
+            int order = 1;
+            for (RouteStopRequest stopReq : req.getStops()) {
+                persistStop(saved.getId(), tenantId, stopReq, order++);
+            }
+        }
+
+        boolean hasStops = req.getStops() != null && !req.getStops().isEmpty();
+        return toResponse(saved, hasStops);
     }
 
     @Transactional
@@ -69,6 +81,7 @@ public class RouteService {
         RouteEntity r = findForTenant(id);
         RouteStatus prevStatus = r.getStatus();
         apply(r, req);
+        requireDriverForDispatch(r);
         RouteEntity saved = routeRepository.save(r);
 
         if (prevStatus != RouteStatus.DISPATCHED && saved.getStatus() == RouteStatus.DISPATCHED
@@ -95,16 +108,20 @@ public class RouteService {
     public RouteResponse addStop(UUID routeId, RouteStopRequest req) {
         UUID tenantId = currentTenantId();
         RouteEntity r = findForTenant(routeId);
-
         int nextOrder = stopRepository.countByRouteIdAndIsDeletedFalse(routeId) + 1;
+        persistStop(routeId, tenantId, req, nextOrder);
+        return toResponse(r, true);
+    }
 
+    /** Create one stop and its delivery items. Caller owns ordering + the transaction. */
+    private void persistStop(UUID routeId, UUID tenantId, RouteStopRequest req, int order) {
         RouteStopEntity stop = new RouteStopEntity();
         stop.setTenantId(tenantId);
         stop.setCreatedBy(currentUserId());
         stop.setRouteId(routeId);
         stop.setLeaseId(req.getLeaseId());
         stop.setWellId(req.getWellId());
-        stop.setSequenceOrder(nextOrder);
+        stop.setSequenceOrder(order);
         stop.setNotes(req.getNotes());
         RouteStopEntity saved = stopRepository.save(stop);
 
@@ -121,8 +138,15 @@ public class RouteService {
                 itemRepository.save(item);
             }
         }
+    }
 
-        return toResponse(r, true);
+    /** A driver must be assigned before a route can be dispatched or started. */
+    private void requireDriverForDispatch(RouteEntity r) {
+        boolean operational = r.getStatus() == RouteStatus.DISPATCHED
+                || r.getStatus() == RouteStatus.IN_PROGRESS;
+        if (operational && r.getDriverId() == null) {
+            throw new IllegalArgumentException("A driver must be assigned before dispatching the route");
+        }
     }
 
     @Transactional
@@ -172,6 +196,7 @@ public class RouteService {
         RouteEntity r = findForTenant(routeId);
         RouteStatus prevStatus = r.getStatus();
         r.setStatus(status);
+        requireDriverForDispatch(r);
         RouteEntity saved = routeRepository.save(r);
 
         if (prevStatus != RouteStatus.DISPATCHED && status == RouteStatus.DISPATCHED
@@ -339,8 +364,9 @@ public class RouteService {
     }
 
     private RouteResponse toResponse(RouteEntity r, boolean includeStops) {
-        String driverName = userRepository.findById(r.getDriverId())
-                .map(u -> u.getFullName()).orElse(null);
+        String driverName = r.getDriverId() != null
+                ? userRepository.findById(r.getDriverId()).map(u -> u.getFullName()).orElse(null)
+                : null;
 
         String warehouseName = r.getWarehouseId() != null
                 ? warehouseRepository.findByIdAndTenantIdAndIsDeletedFalse(r.getWarehouseId(), r.getTenantId())
