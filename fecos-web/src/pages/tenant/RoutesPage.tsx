@@ -1,10 +1,10 @@
-import { useState, useEffect, Fragment } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import toast from 'react-hot-toast'
-import { Plus, X, Search, ChevronRight, Truck, MapPin, Trash2, Package, LayoutList, LayoutGrid, ChevronLeft, Check } from 'lucide-react'
+import { Plus, X, Search, ChevronRight, ChevronDown, Truck, MapPin, Trash2, Package, LayoutList, LayoutGrid, ChevronLeft, Check } from 'lucide-react'
 import { routesApi, type RouteRecord, type RoutePayload, type RouteStopPayload, type RouteStopItemPayload, type RouteStatus } from '@/api/routes'
 import { leasesApi, type LeaseRecord } from '@/api/leases'
 import { wellsApi, type WellRecord } from '@/api/wells'
@@ -41,57 +41,59 @@ function StatusBadge({ status }: { status: RouteStatus }) {
 
 const STATUS_OPTIONS: DropdownOption[] = Object.entries(STATUS_COLOR).map(([v, s]) => ({ value: v, label: s.label }))
 
-// Ordered lifecycle. A route advances one step at a time — never skips.
-const STEP_FLOW: RouteStatus[] = ['PLANNED', 'DISPATCHED', 'IN_PROGRESS', 'COMPLETED']
+// Allowed moves per state (forward step + cancel). No skipping — a Planned route
+// can only be Dispatched or Cancelled, etc. Terminal states have no moves.
+const STATUS_ACTIONS: Record<RouteStatus, RouteStatus[]> = {
+  PLANNED:     ['DISPATCHED', 'CANCELLED'],
+  DISPATCHED:  ['IN_PROGRESS', 'CANCELLED'],
+  IN_PROGRESS: ['COMPLETED', 'CANCELLED'],
+  COMPLETED:   [],
+  CANCELLED:   [],
+}
+// Verb shown for the action that moves a route INTO each status.
+const ACTION_LABEL: Record<RouteStatus, string> = {
+  PLANNED: 'Planned', DISPATCHED: 'Dispatch', IN_PROGRESS: 'Start',
+  COMPLETED: 'Complete', CANCELLED: 'Cancel',
+}
 
-function StatusStepper({ value, onAdvance, canDispatch }: {
-  value: RouteStatus
-  onAdvance?: (next: RouteStatus) => void   // omitted ⇒ read-only
+function StatusDropdown({ status, canDispatch, onSelect }: {
+  status: RouteStatus
   canDispatch: boolean
+  onSelect: (target: RouteStatus) => void
 }) {
-  if (value === 'CANCELLED') {
-    return (
-      <div className="px-3 py-2 rounded-lg bg-red-50 text-red-600 text-xs font-semibold text-center ring-1 ring-red-200">
-        Cancelled
-      </div>
-    )
-  }
-  const current = STEP_FLOW.indexOf(value)
+  const [open, setOpen] = useState(false)
+  const actions = STATUS_ACTIONS[status]
+  if (actions.length === 0) return <StatusBadge status={status} />   // terminal
+
   return (
-    <div className="flex items-start">
-      {STEP_FLOW.map((s, i) => {
-        const done = i < current
-        const isCurrent = i === current
-        const isNext = i === current + 1
-        const blocked = s === 'DISPATCHED' && !canDispatch
-        const clickable = !!onAdvance && isNext && !blocked
-        return (
-          <Fragment key={s}>
-            <button
-              type="button"
-              disabled={!clickable}
-              onClick={() => clickable && onAdvance!(s)}
-              title={isNext && blocked ? 'Assign a driver first' : undefined}
-              className={`flex flex-col items-center gap-1 w-16 shrink-0 ${clickable ? 'cursor-pointer' : 'cursor-default'}`}>
-              <span
-                className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                  done || isCurrent ? 'text-white' : clickable ? 'text-white' : 'bg-gray-100 text-gray-400'
-                }`}
-                style={done || isCurrent ? { backgroundColor: 'var(--color-primary)' }
-                     : clickable ? { backgroundColor: 'var(--color-primary)', opacity: 0.55 } : {}}>
-                {done ? <Check size={11} strokeWidth={3} /> : i + 1}
-              </span>
-              <span className={`text-[9px] font-medium text-center leading-tight ${isCurrent ? 'text-gray-900' : 'text-gray-400'}`}>
-                {STATUS_COLOR[s].label}
-              </span>
-            </button>
-            {i < STEP_FLOW.length - 1 && (
-              <div className="flex-1 h-0.5 mt-3 bg-gray-200"
-                style={i < current ? { backgroundColor: 'var(--color-primary)' } : {}} />
-            )}
-          </Fragment>
-        )
-      })}
+    <div className="relative">
+      <button type="button"
+        onClick={() => setOpen(o => !o)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        className="w-full h-9 px-3 flex items-center justify-between rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-colors">
+        <StatusBadge status={status} />
+        <ChevronDown size={14} className="text-gray-400" />
+      </button>
+      {open && (
+        <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+          {actions.map(target => {
+            const blocked = target === 'DISPATCHED' && !canDispatch
+            const isCancel = target === 'CANCELLED'
+            return (
+              <button key={target} type="button"
+                disabled={blocked}
+                onMouseDown={e => e.preventDefault()}
+                onClick={() => { onSelect(target); setOpen(false) }}
+                className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                  isCancel ? 'text-red-600 hover:bg-red-50' : 'text-gray-700 hover:bg-gray-50'
+                }`}>
+                <span className="font-medium">{ACTION_LABEL[target]}</span>
+                {blocked && <span className="text-[10px] text-gray-400">assign driver first</span>}
+              </button>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
@@ -333,12 +335,12 @@ function RouteFormPanel({ open, onClose, route, driverOptions }: {
               <p className="text-[11px] text-gray-400">Pick a fleet truck or type any number — 3rd-party trucks allowed.</p>
             </div>
 
-            {/* Status — read-only progress; change it from the route view (open the route) */}
+            {/* Status — read-only here; change it from the route view (open the route) */}
             <div className="space-y-2">
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</label>
-              <StatusStepper value={selectedStatus} canDispatch={!!watch('driverId')} />
+              <div><StatusBadge status={selectedStatus} /></div>
               <p className="text-[11px] text-gray-400">
-                {isEdit ? 'Advance the status from the route view (open the route).'
+                {isEdit ? 'Change status from the route view (open the route).'
                         : 'New routes start as Planned — dispatch from the route view once a driver is assigned.'}
               </p>
             </div>
@@ -661,6 +663,14 @@ function RouteDrawer({ route, onClose, onEdit, canEdit, driverOptions }: {
     onError: () => toast.error('Failed to assign driver'),
   })
 
+  function handleStatusSelect(target: RouteStatus) {
+    if (target === 'CANCELLED') {
+      if (confirm('Cancel this route?')) cancelMutation.mutate()
+    } else {
+      advanceMutation.mutate(target)
+    }
+  }
+
   function resetStopForm() {
     setShowStopForm(false)
     setSelectedLeaseId(null)
@@ -710,14 +720,6 @@ function RouteDrawer({ route, onClose, onEdit, canEdit, driverOptions }: {
                 Edit
               </button>
             )}
-            {canEdit && (r.status === 'PLANNED' || r.status === 'DISPATCHED' || r.status === 'IN_PROGRESS') && (
-              <button
-                onClick={() => { if (confirm('Cancel this route?')) cancelMutation.mutate() }}
-                disabled={cancelMutation.isPending}
-                className="h-8 px-3 text-xs font-medium rounded-lg border border-red-100 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-60">
-                Cancel Route
-              </button>
-            )}
             {canEdit && r.status === 'CANCELLED' && (
               <button
                 onClick={() => { if (confirm('Permanently delete this route? This cannot be undone.')) deleteMutation.mutate() }}
@@ -729,10 +731,13 @@ function RouteDrawer({ route, onClose, onEdit, canEdit, driverOptions }: {
           </div>
         </div>
 
-        {/* Status progression — read-only stepper + one explicit next-step action */}
+        {/* Status — single dropdown of valid next moves (Dispatch/Start/Complete + Cancel) */}
         {canEdit && r.status !== 'CANCELLED' && (
           <div className="px-5 py-3 border-b border-gray-100 shrink-0 space-y-3">
-            <StatusStepper value={r.status} canDispatch={!!r.driverId} />
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Status</label>
+              <StatusDropdown status={r.status} canDispatch={!!r.driverId} onSelect={handleStatusSelect} />
+            </div>
 
             {/* Assign/change the driver inline (while Planned) — required to dispatch */}
             {r.status === 'PLANNED' && (
@@ -750,22 +755,6 @@ function RouteDrawer({ route, onClose, onEdit, canEdit, driverOptions }: {
                 />
               </div>
             )}
-
-            {(() => {
-              const next = NEXT_STATUSES[r.status]
-              if (!next) return null
-              const blocked = r.status === 'PLANNED' && !r.driverId
-              return (
-                <button
-                  onClick={() => advanceMutation.mutate(next)}
-                  disabled={advanceMutation.isPending || blocked}
-                  title={blocked ? 'Assign a driver first' : undefined}
-                  className="w-full h-9 text-xs font-semibold text-white rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition"
-                  style={{ backgroundColor: 'var(--color-primary)' }}>
-                  {blocked ? 'Assign a driver to dispatch' : NEXT_LABEL[r.status]}
-                </button>
-              )
-            })()}
           </div>
         )}
 
