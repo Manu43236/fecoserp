@@ -11,6 +11,8 @@ public record RouteStopResponse(
         String clientName,
         UUID wellId,
         String wellName,
+        Double gpsLat,
+        Double gpsLng,
         int sequenceOrder,
         RouteStopStatus status,
         String notes,
@@ -23,10 +25,11 @@ public record RouteStopResponse(
         java.time.LocalDateTime receivedAt,
         boolean syncedLate
 ) {
-    public static RouteStopResponse from(RouteStopEntity e, String leaseName, String clientName, String wellName, List<RouteStopItemResponse> items) {
+    public static RouteStopResponse from(RouteStopEntity e, String leaseName, String clientName, String wellName,
+                                         Double gpsLat, Double gpsLng, List<RouteStopItemResponse> items) {
         return new RouteStopResponse(
                 e.getId(), e.getRouteId(), e.getLeaseId(), leaseName, clientName,
-                e.getWellId(), wellName, e.getSequenceOrder(), e.getStatus(),
+                e.getWellId(), wellName, gpsLat, gpsLng, e.getSequenceOrder(), e.getStatus(),
                 e.getNotes(), e.getSkipReason(), items,
                 e.getDeliveryLat(), e.getDeliveryLng(), e.getDeliveryPhotoUrl(),
                 e.getDeliveredAt(), e.getReceivedAt(), e.isSyncedLate()

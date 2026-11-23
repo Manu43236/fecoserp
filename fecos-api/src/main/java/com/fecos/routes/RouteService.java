@@ -466,6 +466,9 @@ public class RouteService {
                         String clientName = lease != null
                                 ? clientRepository.findById(lease.getClientId()).map(c -> c.getCompanyName()).orElse(null)
                                 : null;
+                        // Navigate target = the lease/pad location (wells on a lease are co-located).
+                        Double gpsLat = lease != null && lease.getGpsLat() != null ? lease.getGpsLat().doubleValue() : null;
+                        Double gpsLng = lease != null && lease.getGpsLng() != null ? lease.getGpsLng().doubleValue() : null;
                         String wellName = wellRepository.findByIdAndTenantIdAndIsDeletedFalse(s.getWellId(), r.getTenantId())
                                 .map(w -> w.getWellName()).orElse(null);
                         List<RouteStopItemResponse> items = itemRepository
@@ -477,7 +480,7 @@ public class RouteService {
                                     return RouteStopItemResponse.from(i, productName);
                                 })
                                 .toList();
-                        return RouteStopResponse.from(s, leaseName, clientName, wellName, items);
+                        return RouteStopResponse.from(s, leaseName, clientName, wellName, gpsLat, gpsLng, items);
                     })
                     .toList();
         }
