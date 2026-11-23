@@ -252,7 +252,9 @@ function RouteFormPanel({ open, onClose, route, driverOptions }: {
     enabled: !isEdit && !!warehouseId,
   })
   const availableByProduct = new Map((whStock ?? []).map(s => [s.productId, s.currentQty]))
-  const stockShortages = (() => {
+  const hasProductsEntered = stops.some(s => s.items.some(i => i.productId && (parseFloat(i.quantity) || 0) > 0))
+  // Only meaningful once a warehouse is chosen — otherwise we don't know the stock.
+  const stockShortages = warehouseId ? (() => {
     const needed = new Map<string, { qty: number; unit: string }>()
     stops.forEach(st => st.items.forEach(it => {
       const q = parseFloat(it.quantity) || 0
@@ -266,7 +268,7 @@ function RouteFormPanel({ open, onClose, route, driverOptions }: {
       if (v.qty > have) out.push({ name: productOptions.find(p => p.value === pid)?.label ?? 'Product', need: v.qty, have, unit: v.unit })
     })
     return out
-  })()
+  })() : []
 
   // ── Stop draft mutators (immutable) ──
   const updateStop = (i: number, patch: Partial<StopDraft>) =>
@@ -484,6 +486,14 @@ function RouteFormPanel({ open, onClose, route, driverOptions }: {
                   className="w-full h-9 flex items-center justify-center gap-2 text-xs font-medium rounded-lg border border-dashed border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors">
                   <Plus size={13} /> Add Stop
                 </button>
+              </div>
+            )}
+
+            {/* No warehouse — can't check stock, and the route won't be startable */}
+            {!isEdit && !warehouseId && hasProductsEntered && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-1">
+                <p className="text-xs font-semibold text-amber-800">⚠ No pickup warehouse selected</p>
+                <p className="text-[11px] text-amber-700">Stock can't be checked, and drivers can't start this route until a warehouse is set. You can still save it.</p>
               </div>
             )}
 
