@@ -96,6 +96,45 @@ function StatusStepper({ value, onAdvance, canDispatch }: {
   )
 }
 
+// ── Truck combobox — dropdown of fleet trucks, but free text allowed (3rd-party) ──
+function TruckCombobox({ value, onChange, vehicles }: {
+  value: string
+  onChange: (v: string) => void
+  vehicles: Vehicle[]
+}) {
+  const [open, setOpen] = useState(false)
+  const query = value.trim().toLowerCase()
+  const filtered = query
+    ? vehicles.filter(v => `${v.licensePlate} ${v.make} ${v.model}`.toLowerCase().includes(query))
+    : vehicles
+
+  return (
+    <div className="relative">
+      <input
+        value={value}
+        onChange={e => { onChange(e.target.value); setOpen(true) }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        placeholder="Enter or select a truck number"
+        className="w-full h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2"
+      />
+      {open && filtered.length > 0 && (
+        <div className="absolute z-20 mt-1 w-full max-h-48 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg">
+          {filtered.map(v => (
+            <button key={v.id} type="button"
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => { onChange(v.licensePlate); setOpen(false) }}
+              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center justify-between gap-2">
+              <span className="font-medium text-gray-900">{v.licensePlate}</span>
+              <span className="text-xs text-gray-400 truncate">{v.make} {v.model} {v.year}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Route form schema ──────────────────────────────────────────────────────────
 const routeSchema = z.object({
   driverId:    z.string().optional().or(z.literal('')),
@@ -271,33 +310,25 @@ function RouteFormPanel({ open, onClose, route, driverOptions }: {
               {errors.routeDate && <p className="text-red-500 text-xs">{errors.routeDate.message}</p>}
             </div>
 
-            {/* Truck — free text with fleet suggestions (3rd-party trucks allowed) */}
+            {/* Truck — dropdown of fleet trucks, free text allowed (3rd-party) */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Vehicle / Truck</label>
-              <input
-                list="route-trucks"
+              <TruckCombobox
                 value={watch('truckNumber') ?? ''}
-                onChange={e => setValue('truckNumber', e.target.value)}
-                placeholder="Enter truck number"
-                className="w-full h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2"
+                onChange={v => setValue('truckNumber', v)}
+                vehicles={vehicles}
               />
-              <datalist id="route-trucks">
-                {vehicles.map(v => (
-                  <option key={v.id} value={v.licensePlate}>{`${v.make} ${v.model} ${v.year}`}</option>
-                ))}
-              </datalist>
               <p className="text-[11px] text-gray-400">Pick a fleet truck or type any number — 3rd-party trucks allowed.</p>
             </div>
 
-            {/* Status — ordered stepper (one step at a time, no skipping) */}
+            {/* Status — read-only progress; change it from the route view (open the route) */}
             <div className="space-y-2">
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</label>
-              <StatusStepper
-                value={selectedStatus}
-                canDispatch={!!watch('driverId')}
-                onAdvance={isEdit ? (next => setValue('status', next)) : undefined}
-              />
-              {!isEdit && <p className="text-[11px] text-gray-400">New routes start as Planned — dispatch them from the board once a driver is assigned.</p>}
+              <StatusStepper value={selectedStatus} canDispatch={!!watch('driverId')} />
+              <p className="text-[11px] text-gray-400">
+                {isEdit ? 'Advance the status from the route view (open the route).'
+                        : 'New routes start as Planned — dispatch from the route view once a driver is assigned.'}
+              </p>
             </div>
 
             {/* Warehouse */}
@@ -666,14 +697,25 @@ function RouteDrawer({ route, onClose, onEdit, canEdit }: {
           </div>
         </div>
 
-        {/* Status progression — advance one step at a time (driver required to dispatch) */}
+        {/* Status progression — read-only stepper + one explicit next-step action */}
         {canEdit && r.status !== 'CANCELLED' && (
-          <div className="px-5 py-3 border-b border-gray-100 shrink-0">
-            <StatusStepper
-              value={r.status}
-              canDispatch={!!r.driverId}
-              onAdvance={next => advanceMutation.mutate(next)}
-            />
+          <div className="px-5 py-3 border-b border-gray-100 shrink-0 space-y-3">
+            <StatusStepper value={r.status} canDispatch={!!r.driverId} />
+            {(() => {
+              const next = NEXT_STATUSES[r.status]
+              if (!next) return null
+              const blocked = r.status === 'PLANNED' && !r.driverId
+              return (
+                <button
+                  onClick={() => advanceMutation.mutate(next)}
+                  disabled={advanceMutation.isPending || blocked}
+                  title={blocked ? 'Assign a driver first' : undefined}
+                  className="w-full h-9 text-xs font-semibold text-white rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition"
+                  style={{ backgroundColor: 'var(--color-primary)' }}>
+                  {blocked ? 'Assign a driver to dispatch' : NEXT_LABEL[r.status]}
+                </button>
+              )
+            })()}
           </div>
         )}
 
