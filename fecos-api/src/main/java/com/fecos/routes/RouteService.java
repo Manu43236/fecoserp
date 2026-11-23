@@ -411,8 +411,10 @@ public class RouteService {
                     .map(w -> w.getWellName()).orElse("Well");
             for (RouteStopItemEntity item : itemRepository
                     .findAllByStopIdAndIsDeletedFalseOrderByCreatedAtAsc(stop.getId())) {
+                // Deduct what was actually loaded (driver-confirmed) when known; else the planned amount.
+                BigDecimal qty = item.getLoadedQty() != null ? item.getLoadedQty() : item.getQuantity();
                 items.add(new InventoryService.RouteIssueItem(
-                        item.getProductId(), item.getQuantity(), item.getUnit(),
+                        item.getProductId(), qty, item.getUnit(),
                         stop.getSequenceOrder(), wellName));
             }
         }

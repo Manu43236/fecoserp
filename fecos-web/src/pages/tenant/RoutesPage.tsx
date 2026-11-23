@@ -12,6 +12,7 @@ import { productsApi } from '@/api/products'
 import { productUnitsApi } from '@/api/productUnits'
 import { vehiclesApi, type Vehicle } from '@/api/vehicles'
 import { warehousesApi, type WarehouseRecord } from '@/api/warehouses'
+import { inventoryApi } from '@/api/inventory'
 import { SearchableDropdown, type DropdownOption } from '@/components/ui/SearchableDropdown'
 import { useDialogs } from '@/components/ui/DialogProvider'
 import { RouteLoadDialog, RouteDeliveryDialog } from '@/components/routes/RouteStartComplete'
@@ -243,6 +244,30 @@ function RouteFormPanel({ open, onClose, route, driverOptions }: {
   const wellOptionsFor = (leaseId: string): DropdownOption[] =>
     leaseId ? wells.filter(w => w.leaseId === leaseId).map(w => ({ value: w.id, label: w.wellName })) : []
 
+  // Stock at the chosen warehouse, to warn the manager up front about shortfalls (create only).
+  const warehouseId = watch('warehouseId')
+  const { data: whStock } = useQuery({
+    queryKey: ['stock', warehouseId],
+    queryFn: () => inventoryApi.stock({ warehouseId }).then(r => r.data.data ?? []),
+    enabled: !isEdit && !!warehouseId,
+  })
+  const availableByProduct = new Map((whStock ?? []).map(s => [s.productId, s.currentQty]))
+  const stockShortages = (() => {
+    const needed = new Map<string, { qty: number; unit: string }>()
+    stops.forEach(st => st.items.forEach(it => {
+      const q = parseFloat(it.quantity) || 0
+      if (!it.productId || q <= 0) return
+      const cur = needed.get(it.productId)
+      needed.set(it.productId, { qty: (cur?.qty ?? 0) + q, unit: it.unit || cur?.unit || '' })
+    }))
+    const out: { name: string; need: number; have: number; unit: string }[] = []
+    needed.forEach((v, pid) => {
+      const have = availableByProduct.get(pid) ?? 0
+      if (v.qty > have) out.push({ name: productOptions.find(p => p.value === pid)?.label ?? 'Product', need: v.qty, have, unit: v.unit })
+    })
+    return out
+  })()
+
   // ── Stop draft mutators (immutable) ──
   const updateStop = (i: number, patch: Partial<StopDraft>) =>
     setStops(s => s.map((st, j) => j === i ? { ...st, ...patch } : st))
@@ -459,6 +484,19 @@ function RouteFormPanel({ open, onClose, route, driverOptions }: {
                   className="w-full h-9 flex items-center justify-center gap-2 text-xs font-medium rounded-lg border border-dashed border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors">
                   <Plus size={13} /> Add Stop
                 </button>
+              </div>
+            )}
+
+            {/* Low-stock warning (create only) — informational, not a block */}
+            {!isEdit && stockShortages.length > 0 && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-1">
+                <p className="text-xs font-semibold text-amber-800">⚠ Low stock at this warehouse</p>
+                {stockShortages.map(s => (
+                  <p key={s.name} className="text-[11px] text-amber-700">
+                    {s.name}: route needs {s.need}, only {s.have} {s.unit} in stock
+                  </p>
+                ))}
+                <p className="text-[11px] text-amber-600/80">You can still save — drivers will load the available amount and the shortfall is recorded.</p>
               </div>
             )}
 

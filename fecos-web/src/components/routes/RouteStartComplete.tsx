@@ -58,6 +58,10 @@ export function RouteLoadDialog({ route, onClose, onDone }: {
     enabled: !!route.warehouseId,
   })
   const availableByProduct = new Map((stock ?? []).map(s => [s.productId, s.currentQty]))
+  const anyShort = route.stops.some(s => s.items.some(i => {
+    const a = availableByProduct.get(i.productId)
+    return a !== undefined && a < i.quantity
+  }))
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -81,6 +85,13 @@ export function RouteLoadDialog({ route, onClose, onDone }: {
       ) : (
         <div className="space-y-4 max-h-[55vh] overflow-y-auto">
           <p className="text-xs text-gray-500">Confirm the quantity loaded onto the truck for each product.</p>
+          {anyShort && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-2.5">
+              <p className="text-[11px] text-amber-700">
+                ⚠ Some products are low in stock (shown in red). Loading is capped at what's available — the shortfall is recorded.
+              </p>
+            </div>
+          )}
           {route.stops.filter(s => s.items.length > 0).map(s => (
             <div key={s.id} className="space-y-1.5">
               <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">{stopLabel(s)}</p>

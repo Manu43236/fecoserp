@@ -113,35 +113,27 @@ public class InventoryService {
                 .isEmpty();
     }
 
-    /** Reject the issue if the warehouse doesn't have enough of any product the route needs. */
-    private void assertStockAvailable(UUID tenantId, UUID warehouseId, List<RouteIssueItem> items) {
-        Map<UUID, BigDecimal> required = new HashMap<>();
-        for (RouteIssueItem item : items) {
-            required.merge(item.productId(), item.quantity(), BigDecimal::add);
-        }
-        Map<UUID, BigDecimal> available = new HashMap<>();
+    /** Current stock per product at a warehouse. */
+    private Map<UUID, BigDecimal> stockByProduct(UUID tenantId, UUID warehouseId) {
+        Map<UUID, BigDecimal> stock = new HashMap<>();
         for (Object[] row : txRepository.stockSummary(tenantId, warehouseId)) {
-            available.merge((UUID) row[1], (BigDecimal) row[3], BigDecimal::add);
+            stock.merge((UUID) row[1], (BigDecimal) row[3], BigDecimal::add);
         }
-        for (Map.Entry<UUID, BigDecimal> need : required.entrySet()) {
-            BigDecimal have = available.getOrDefault(need.getKey(), BigDecimal.ZERO);
-            if (have.compareTo(need.getValue()) < 0) {
-                String name = productRepository.findById(need.getKey()).map(p -> p.getName()).orElse("product");
-                throw new IllegalArgumentException(
-                        "Not enough " + name + " in stock (have " + have.stripTrailingZeros().toPlainString()
-                        + ", need " + need.getValue().stripTrailingZeros().toPlainString() + ")");
-            }
-        }
+        return stock;
     }
 
     @Transactional
     public void issueForRoute(UUID tenantId, UUID userId, String createdByName,
                               UUID warehouseId, UUID routeId, LocalDate routeDate,
                               List<RouteIssueItem> items) {
-        assertStockAvailable(tenantId, warehouseId, items);
+        // Cap each product's issue at what's actually in stock — never go negative, never block.
+        // Short loads are expected: the driver takes what's available and the shortfall is flagged upstream.
+        Map<UUID, BigDecimal> remaining = stockByProduct(tenantId, warehouseId);
         for (RouteIssueItem item : items) {
-            String productName = productRepository.findById(item.productId())
-                    .map(p -> p.getName()).orElse("");
+            BigDecimal avail = remaining.getOrDefault(item.productId(), BigDecimal.ZERO);
+            BigDecimal issueQty = item.quantity().min(avail);
+            if (issueQty.compareTo(BigDecimal.ZERO) <= 0) continue; // nothing left for this product
+            remaining.put(item.productId(), avail.subtract(issueQty));
 
             InventoryTransactionEntity tx = new InventoryTransactionEntity();
             tx.setTenantId(tenantId);
@@ -150,7 +142,7 @@ public class InventoryService {
             tx.setWarehouseId(warehouseId);
             tx.setProductId(item.productId());
             tx.setType(InventoryTransactionType.ISSUE);
-            tx.setQuantity(item.quantity().negate());
+            tx.setQuantity(issueQty.negate());
             tx.setUnit(item.unit());
             tx.setNotes("Route dispatch – Stop #" + item.stopSeq() + ": " + item.wellName());
             tx.setTransactionDate(routeDate);
