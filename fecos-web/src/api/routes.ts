@@ -21,6 +21,7 @@ export interface RouteStopRecord {
   routeId: string
   leaseId: string
   leaseName: string | null
+  clientName: string | null
   wellId: string
   wellName: string | null
   sequenceOrder: number

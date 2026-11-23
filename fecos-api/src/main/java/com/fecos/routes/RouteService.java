@@ -43,6 +43,7 @@ public class RouteService {
     private final InventoryService inventoryService;
     private final TreatmentPlanLineRepository planLineRepository;
     private final TankService tankService;
+    private final com.fecos.clients.ClientRepository clientRepository;
 
     public Page<RouteResponse> list(RouteStatus status, UUID driverId, LocalDate routeDate, int page, int size) {
         UUID tenantId = currentTenantId();
@@ -459,8 +460,11 @@ public class RouteService {
             stops = stopRepository.findAllByRouteIdAndIsDeletedFalseOrderBySequenceOrderAsc(r.getId())
                     .stream()
                     .map(s -> {
-                        String leaseName = leaseRepository.findByIdAndTenantIdAndIsDeletedFalse(s.getLeaseId(), r.getTenantId())
-                                .map(l -> l.getLeaseName()).orElse(null);
+                        var lease = leaseRepository.findByIdAndTenantIdAndIsDeletedFalse(s.getLeaseId(), r.getTenantId()).orElse(null);
+                        String leaseName = lease != null ? lease.getLeaseName() : null;
+                        String clientName = lease != null
+                                ? clientRepository.findById(lease.getClientId()).map(c -> c.getCompanyName()).orElse(null)
+                                : null;
                         String wellName = wellRepository.findByIdAndTenantIdAndIsDeletedFalse(s.getWellId(), r.getTenantId())
                                 .map(w -> w.getWellName()).orElse(null);
                         List<RouteStopItemResponse> items = itemRepository
@@ -472,7 +476,7 @@ public class RouteService {
                                     return RouteStopItemResponse.from(i, productName);
                                 })
                                 .toList();
-                        return RouteStopResponse.from(s, leaseName, wellName, items);
+                        return RouteStopResponse.from(s, leaseName, clientName, wellName, items);
                     })
                     .toList();
         }

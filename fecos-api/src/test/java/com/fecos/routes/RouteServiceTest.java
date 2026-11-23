@@ -43,6 +43,7 @@ class RouteServiceTest {
     @Mock InventoryService inventoryService;
     @Mock TreatmentPlanLineRepository planLineRepository;
     @Mock TankService tankService;
+    @Mock com.fecos.clients.ClientRepository clientRepository;
 
     private static final UUID TENANT = UUID.randomUUID();
     private static final UUID USER   = UUID.randomUUID();
@@ -51,7 +52,7 @@ class RouteServiceTest {
     private RouteService service() {
         return new RouteService(routeRepository, stopRepository, itemRepository, userRepository,
                 vehicleRepository, warehouseRepository, leaseRepository, wellRepository,
-                productRepository, inventoryService, planLineRepository, tankService);
+                productRepository, inventoryService, planLineRepository, tankService, clientRepository);
     }
 
     @BeforeEach

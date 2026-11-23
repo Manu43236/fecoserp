@@ -875,7 +875,7 @@ function RouteDrawer({ route, onClose, onEdit, canEdit, driverOptions }: {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold text-gray-900">{stop.leaseName ?? '—'}</p>
+                        <p className="text-sm font-semibold text-gray-900">{stop.clientName ?? stop.leaseName ?? '—'}</p>
                         {isDelivered && (
                           <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-700">Delivered</span>
                         )}
@@ -883,7 +883,7 @@ function RouteDrawer({ route, onClose, onEdit, canEdit, driverOptions }: {
                           <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-100 text-red-600">Skipped</span>
                         )}
                       </div>
-                      <p className="text-xs text-gray-500">{stop.wellName ?? '—'}</p>
+                      <p className="text-xs text-gray-500">{stop.leaseName ?? '—'} · {stop.wellName ?? '—'}</p>
                       {isSkipped && stop.skipReason && (
                         <p className="text-xs text-red-500 mt-0.5">Reason: {stop.skipReason}</p>
                       )}
