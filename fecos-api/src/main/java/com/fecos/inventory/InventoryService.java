@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -105,10 +106,39 @@ public class InventoryService {
 
     public record RouteIssueItem(UUID productId, BigDecimal quantity, String unit, int stopSeq, String wellName) {}
 
+    /** True if this route already had stock issued (so we don't double-issue on the self-claim start path). */
+    public boolean hasIssuesForRoute(UUID tenantId, UUID routeId) {
+        return !txRepository
+                .findByTenantIdAndReferenceIdAndReferenceTypeAndIsDeletedFalse(tenantId, routeId, "ROUTE")
+                .isEmpty();
+    }
+
+    /** Reject the issue if the warehouse doesn't have enough of any product the route needs. */
+    private void assertStockAvailable(UUID tenantId, UUID warehouseId, List<RouteIssueItem> items) {
+        Map<UUID, BigDecimal> required = new HashMap<>();
+        for (RouteIssueItem item : items) {
+            required.merge(item.productId(), item.quantity(), BigDecimal::add);
+        }
+        Map<UUID, BigDecimal> available = new HashMap<>();
+        for (Object[] row : txRepository.stockSummary(tenantId, warehouseId)) {
+            available.merge((UUID) row[1], (BigDecimal) row[3], BigDecimal::add);
+        }
+        for (Map.Entry<UUID, BigDecimal> need : required.entrySet()) {
+            BigDecimal have = available.getOrDefault(need.getKey(), BigDecimal.ZERO);
+            if (have.compareTo(need.getValue()) < 0) {
+                String name = productRepository.findById(need.getKey()).map(p -> p.getName()).orElse("product");
+                throw new IllegalArgumentException(
+                        "Not enough " + name + " in stock (have " + have.stripTrailingZeros().toPlainString()
+                        + ", need " + need.getValue().stripTrailingZeros().toPlainString() + ")");
+            }
+        }
+    }
+
     @Transactional
     public void issueForRoute(UUID tenantId, UUID userId, String createdByName,
                               UUID warehouseId, UUID routeId, LocalDate routeDate,
                               List<RouteIssueItem> items) {
+        assertStockAvailable(tenantId, warehouseId, items);
         for (RouteIssueItem item : items) {
             String productName = productRepository.findById(item.productId())
                     .map(p -> p.getName()).orElse("");

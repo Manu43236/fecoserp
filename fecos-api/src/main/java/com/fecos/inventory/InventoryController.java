@@ -19,7 +19,7 @@ public class InventoryController {
     private final InventoryService inventoryService;
 
     @GetMapping("/stock")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP','TRUCK_DRIVER')")
     public ResponseEntity<ApiResponse<List<StockResponse>>> stock(
             @RequestParam(required = false) UUID warehouseId) {
         return ResponseEntity.ok(ApiResponse.ok(inventoryService.stock(warehouseId)));

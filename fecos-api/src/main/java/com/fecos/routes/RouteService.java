@@ -76,6 +76,28 @@ public class RouteService {
         return toResponse(saved, hasStops);
     }
 
+    /** Unassigned pool a driver can claim: PLANNED, no driver, today or overdue; optional client/lease filter. */
+    public List<RouteResponse> availableForClaim(UUID clientId, UUID leaseId) {
+        UUID tenantId = currentTenantId();
+        return routeRepository.availableForClaim(tenantId, LocalDate.now(), clientId, leaseId)
+                .stream().map(r -> toResponse(r, true)).toList();
+    }
+
+    /** A driver claims an unassigned route. Atomic — exactly one driver wins. */
+    @Transactional
+    public RouteResponse claim(UUID routeId) {
+        UUID tenantId = currentTenantId();
+        int rows = routeRepository.claim(routeId, tenantId, currentUserId());
+        if (rows == 0) {
+            RouteEntity r = findForTenant(routeId); // 404 if it no longer exists
+            String who = r.getDriverId() != null
+                    ? userRepository.findById(r.getDriverId()).map(u -> u.getFullName()).orElse("another driver")
+                    : "another driver";
+            throw new IllegalStateException("This route was just picked up by " + who);
+        }
+        return findById(routeId);
+    }
+
     @Transactional
     public RouteResponse update(UUID id, RouteRequest req) {
         RouteEntity r = findForTenant(id);
@@ -85,7 +107,8 @@ public class RouteService {
         RouteEntity saved = routeRepository.save(r);
 
         if (prevStatus != RouteStatus.DISPATCHED && saved.getStatus() == RouteStatus.DISPATCHED
-                && saved.getWarehouseId() != null) {
+                && saved.getWarehouseId() != null
+                && !inventoryService.hasIssuesForRoute(saved.getTenantId(), saved.getId())) {
             issueInventoryForRoute(saved);
         }
         if (saved.getStatus() == RouteStatus.CANCELLED
@@ -137,6 +160,19 @@ public class RouteService {
                 item.setNotes(ir.getNotes());
                 itemRepository.save(item);
             }
+        }
+    }
+
+    /** Gate the Start (→ IN_PROGRESS) transition: a warehouse to load from, and no other active route. */
+    private void startChecks(RouteEntity r) {
+        if (r.getWarehouseId() == null) {
+            throw new IllegalArgumentException(
+                    "No pickup warehouse set on this route — ask the office to set one before starting.");
+        }
+        if (r.getDriverId() != null && routeRepository
+                .existsByTenantIdAndDriverIdAndStatusAndIsDeletedFalseAndIdNot(
+                        r.getTenantId(), r.getDriverId(), RouteStatus.IN_PROGRESS, r.getId())) {
+            throw new IllegalStateException("Finish your current route before starting another.");
         }
     }
 
@@ -195,12 +231,21 @@ public class RouteService {
     public RouteResponse updateStatus(UUID routeId, RouteStatus status) {
         RouteEntity r = findForTenant(routeId);
         RouteStatus prevStatus = r.getStatus();
+
+        if (status == RouteStatus.IN_PROGRESS && prevStatus != RouteStatus.IN_PROGRESS) {
+            startChecks(r);
+        }
+
         r.setStatus(status);
         requireDriverForDispatch(r);
         RouteEntity saved = routeRepository.save(r);
 
-        if (prevStatus != RouteStatus.DISPATCHED && status == RouteStatus.DISPATCHED
-                && saved.getWarehouseId() != null) {
+        // Issue stock when the route goes out — office Dispatch, or a driver's Start on a
+        // route that was never dispatched (self-claim path). Never double-issue.
+        boolean goingOut = (status == RouteStatus.DISPATCHED || status == RouteStatus.IN_PROGRESS)
+                && prevStatus != RouteStatus.DISPATCHED && prevStatus != RouteStatus.IN_PROGRESS;
+        if (goingOut && saved.getWarehouseId() != null
+                && !inventoryService.hasIssuesForRoute(saved.getTenantId(), saved.getId())) {
             issueInventoryForRoute(saved);
         }
         if (status == RouteStatus.CANCELLED

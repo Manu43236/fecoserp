@@ -11,6 +11,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -37,6 +38,22 @@ public class RouteController {
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP','TRUCK_DRIVER')")
     public ResponseEntity<ApiResponse<RouteResponse>> get(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok("Route retrieved", routeService.findById(id)));
+    }
+
+    /** Unassigned routes a driver can pick up (today or overdue), optionally filtered by client/lease. */
+    @GetMapping("/available")
+    @PreAuthorize("hasAnyRole('TRUCK_DRIVER','ADMIN')")
+    public ResponseEntity<ApiResponse<List<RouteResponse>>> available(
+            @RequestParam(required = false) UUID clientId,
+            @RequestParam(required = false) UUID leaseId) {
+        return ResponseEntity.ok(ApiResponse.ok("Available routes retrieved",
+                routeService.availableForClaim(clientId, leaseId)));
+    }
+
+    @PostMapping("/{id}/claim")
+    @PreAuthorize("hasAnyRole('TRUCK_DRIVER','ADMIN')")
+    public ResponseEntity<ApiResponse<RouteResponse>> claim(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok("Route claimed", routeService.claim(id)));
     }
 
     @PostMapping
