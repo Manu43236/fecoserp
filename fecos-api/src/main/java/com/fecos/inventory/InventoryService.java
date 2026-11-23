@@ -122,6 +122,18 @@ public class InventoryService {
         return stock;
     }
 
+    /** Of the given products, the names that are fully out of stock (≤ 0) at the warehouse. */
+    public List<String> outOfStockNames(UUID tenantId, UUID warehouseId, java.util.Collection<UUID> productIds) {
+        Map<UUID, BigDecimal> stock = stockByProduct(tenantId, warehouseId);
+        List<String> names = new ArrayList<>();
+        for (UUID pid : productIds) {
+            if (stock.getOrDefault(pid, BigDecimal.ZERO).compareTo(BigDecimal.ZERO) <= 0) {
+                names.add(productRepository.findById(pid).map(p -> p.getName()).orElse("product"));
+            }
+        }
+        return names;
+    }
+
     @Transactional
     public void issueForRoute(UUID tenantId, UUID userId, String createdByName,
                               UUID warehouseId, UUID routeId, LocalDate routeDate,

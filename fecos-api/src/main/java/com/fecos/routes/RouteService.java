@@ -174,11 +174,27 @@ public class RouteService {
         }
     }
 
-    /** Gate the Start (→ IN_PROGRESS) transition: a warehouse to load from, and no other active route. */
+    /** Gate the Start (→ IN_PROGRESS) transition: warehouse, in-stock products, and no other active route. */
     private void startChecks(RouteEntity r) {
         if (r.getWarehouseId() == null) {
             throw new IllegalArgumentException(
                     "No pickup warehouse set on this route — ask the office to set one before starting.");
+        }
+        // Fully out-of-stock products block the start — there's nothing to load (partial stock proceeds capped).
+        java.util.Set<UUID> needed = new java.util.LinkedHashSet<>();
+        for (RouteStopEntity stop : stopRepository.findAllByRouteIdAndIsDeletedFalseOrderBySequenceOrderAsc(r.getId())) {
+            for (RouteStopItemEntity item : itemRepository.findAllByStopIdAndIsDeletedFalseOrderByCreatedAtAsc(stop.getId())) {
+                if (item.getQuantity() != null && item.getQuantity().compareTo(BigDecimal.ZERO) > 0) {
+                    needed.add(item.getProductId());
+                }
+            }
+        }
+        if (!needed.isEmpty()) {
+            List<String> out = inventoryService.outOfStockNames(r.getTenantId(), r.getWarehouseId(), needed);
+            if (!out.isEmpty()) {
+                throw new IllegalArgumentException(
+                        "Out of stock: " + String.join(", ", out) + ". Ask the office to restock before starting.");
+            }
         }
         if (r.getDriverId() != null && routeRepository
                 .existsByTenantIdAndDriverIdAndStatusAndIsDeletedFalseAndIdNot(

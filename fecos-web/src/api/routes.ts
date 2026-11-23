@@ -10,6 +10,8 @@ export interface RouteStopItemRecord {
   productId: string
   productName: string | null
   quantity: number
+  loadedQty: number | null
+  actualQtyDelivered: number | null
   unit: string
   notes: string | null
 }

@@ -900,7 +900,18 @@ function RouteDrawer({ route, onClose, onEdit, canEdit, driverOptions }: {
                         <div key={item.id} className="flex items-center gap-2 group">
                           <Package size={11} className="text-gray-400 shrink-0" />
                           <span className="text-xs text-gray-700 flex-1">{item.productName ?? '—'}</span>
-                          <span className="text-xs text-gray-500">{item.quantity} {item.unit}</span>
+                          {item.actualQtyDelivered != null ? (
+                            <span className="text-xs text-right">
+                              <span className={`font-semibold ${item.actualQtyDelivered < item.quantity ? 'text-amber-600' : 'text-emerald-600'}`}>
+                                {item.actualQtyDelivered} {item.unit} delivered
+                              </span>
+                              {item.actualQtyDelivered < item.quantity && (
+                                <span className="text-gray-400"> of {item.quantity} planned</span>
+                              )}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-500">{item.quantity} {item.unit}</span>
+                          )}
                           {canEdit && r.status === 'PLANNED' && (
                             <button
                               onClick={() => removeItemMutation.mutate({ stopId: stop.id, itemId: item.id })}
