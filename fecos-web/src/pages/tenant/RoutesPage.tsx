@@ -84,10 +84,13 @@ function StatusDropdown({ status, canDispatch, onSelect }: {
                 disabled={blocked}
                 onMouseDown={e => e.preventDefault()}
                 onClick={() => { onSelect(target); setOpen(false) }}
-                className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                  isCancel ? 'text-red-600 hover:bg-red-50' : 'text-gray-700 hover:bg-gray-50'
+                className={`w-full text-left px-3 py-2 flex items-center justify-between gap-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                  isCancel ? 'hover:bg-red-50' : 'hover:bg-gray-50'
                 }`}>
-                <span className="font-medium">{ACTION_LABEL[target]}</span>
+                <span className="flex items-center gap-2">
+                  <StatusBadge status={target} />
+                  <span className="text-[11px] text-gray-400">{ACTION_LABEL[target]}</span>
+                </span>
                 {blocked && <span className="text-[10px] text-gray-400">assign driver first</span>}
               </button>
             )
