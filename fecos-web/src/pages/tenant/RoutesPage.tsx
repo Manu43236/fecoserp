@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, Fragment } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -41,10 +41,65 @@ function StatusBadge({ status }: { status: RouteStatus }) {
 
 const STATUS_OPTIONS: DropdownOption[] = Object.entries(STATUS_COLOR).map(([v, s]) => ({ value: v, label: s.label }))
 
+// Ordered lifecycle. A route advances one step at a time — never skips.
+const STEP_FLOW: RouteStatus[] = ['PLANNED', 'DISPATCHED', 'IN_PROGRESS', 'COMPLETED']
+
+function StatusStepper({ value, onAdvance, canDispatch }: {
+  value: RouteStatus
+  onAdvance?: (next: RouteStatus) => void   // omitted ⇒ read-only
+  canDispatch: boolean
+}) {
+  if (value === 'CANCELLED') {
+    return (
+      <div className="px-3 py-2 rounded-lg bg-red-50 text-red-600 text-xs font-semibold text-center ring-1 ring-red-200">
+        Cancelled
+      </div>
+    )
+  }
+  const current = STEP_FLOW.indexOf(value)
+  return (
+    <div className="flex items-start">
+      {STEP_FLOW.map((s, i) => {
+        const done = i < current
+        const isCurrent = i === current
+        const isNext = i === current + 1
+        const blocked = s === 'DISPATCHED' && !canDispatch
+        const clickable = !!onAdvance && isNext && !blocked
+        return (
+          <Fragment key={s}>
+            <button
+              type="button"
+              disabled={!clickable}
+              onClick={() => clickable && onAdvance!(s)}
+              title={isNext && blocked ? 'Assign a driver first' : undefined}
+              className={`flex flex-col items-center gap-1 w-16 shrink-0 ${clickable ? 'cursor-pointer' : 'cursor-default'}`}>
+              <span
+                className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                  done || isCurrent ? 'text-white' : clickable ? 'text-white' : 'bg-gray-100 text-gray-400'
+                }`}
+                style={done || isCurrent ? { backgroundColor: 'var(--color-primary)' }
+                     : clickable ? { backgroundColor: 'var(--color-primary)', opacity: 0.55 } : {}}>
+                {done ? <Check size={11} strokeWidth={3} /> : i + 1}
+              </span>
+              <span className={`text-[9px] font-medium text-center leading-tight ${isCurrent ? 'text-gray-900' : 'text-gray-400'}`}>
+                {STATUS_COLOR[s].label}
+              </span>
+            </button>
+            {i < STEP_FLOW.length - 1 && (
+              <div className="flex-1 h-0.5 mt-3 bg-gray-200"
+                style={i < current ? { backgroundColor: 'var(--color-primary)' } : {}} />
+            )}
+          </Fragment>
+        )
+      })}
+    </div>
+  )
+}
+
 // ── Route form schema ──────────────────────────────────────────────────────────
 const routeSchema = z.object({
   driverId:    z.string().optional().or(z.literal('')),
-  vehicleId:   z.string().optional().or(z.literal('')),
+  truckNumber: z.string().optional().or(z.literal('')),
   warehouseId: z.string().optional().or(z.literal('')),
   routeDate:   z.string().min(1, 'Date is required'),
   status:      z.enum(['PLANNED', 'DISPATCHED', 'IN_PROGRESS', 'COMPLETED']),
@@ -75,7 +130,7 @@ function RouteFormPanel({ open, onClose, route, driverOptions }: {
     resolver: zodResolver(routeSchema),
     defaultValues: {
       driverId:    route?.driverId    ?? '',
-      vehicleId:   route?.vehicleId   ?? '',
+      truckNumber: route?.truckNumber ?? '',
       warehouseId: route?.warehouseId ?? '',
       routeDate:   route?.routeDate   ?? '',
       status:      route?.status      ?? 'PLANNED',
@@ -91,10 +146,7 @@ function RouteFormPanel({ open, onClose, route, driverOptions }: {
     queryKey: ['vehicles-available'],
     queryFn: () => vehiclesApi.list({ size: 200 }).then(r => (r.data as ApiResponse<PageResponse<Vehicle>>).data?.content ?? []),
   })
-  const vehicleOptions: DropdownOption[] = (vehiclesData ?? []).map(v => ({
-    value: v.id,
-    label: `${v.licensePlate} — ${v.make} ${v.model} ${v.year}`,
-  }))
+  const vehicles: Vehicle[] = vehiclesData ?? []
 
   const { data: warehousesData } = useQuery({
     queryKey: ['warehouses-active'],
@@ -171,9 +223,12 @@ function RouteFormPanel({ open, onClose, route, driverOptions }: {
         return { leaseId: s.leaseId, wellId: s.wellId, notes: s.notes || undefined, items: items.length ? items : undefined }
       })
     }
+    const truck = data.truckNumber?.trim() || ''
+    const matchedVehicle = vehicles.find(v => v.licensePlate.toLowerCase() === truck.toLowerCase())
     mutation.mutate({
       driverId:    data.driverId    || undefined,
-      vehicleId:   data.vehicleId   || undefined,
+      truckNumber: truck || undefined,
+      vehicleId:   matchedVehicle?.id,
       warehouseId: data.warehouseId || undefined,
       routeDate:   data.routeDate,
       status:      data.status,
@@ -216,33 +271,33 @@ function RouteFormPanel({ open, onClose, route, driverOptions }: {
               {errors.routeDate && <p className="text-red-500 text-xs">{errors.routeDate.message}</p>}
             </div>
 
-            {/* Driver */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                Driver
-                <span className="ml-1 text-gray-400 font-normal normal-case">(optional — required to dispatch)</span>
-              </label>
-              <SearchableDropdown
-                value={watch('driverId') || null}
-                onChange={v => setValue('driverId', v ?? '', { shouldValidate: true })}
-                options={driverOptions}
-                placeholder="Select driver"
-                searchPlaceholder="Search drivers…"
-                showClear={true}
-              />
-            </div>
-
-            {/* Vehicle */}
+            {/* Truck — free text with fleet suggestions (3rd-party trucks allowed) */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Vehicle / Truck</label>
-              <SearchableDropdown
-                value={watch('vehicleId') || null}
-                onChange={v => setValue('vehicleId', v ?? '')}
-                options={vehicleOptions}
-                placeholder="Select vehicle"
-                searchPlaceholder="Search by plate or make…"
-                showClear={true}
+              <input
+                list="route-trucks"
+                value={watch('truckNumber') ?? ''}
+                onChange={e => setValue('truckNumber', e.target.value)}
+                placeholder="Enter truck number"
+                className="w-full h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2"
               />
+              <datalist id="route-trucks">
+                {vehicles.map(v => (
+                  <option key={v.id} value={v.licensePlate}>{`${v.make} ${v.model} ${v.year}`}</option>
+                ))}
+              </datalist>
+              <p className="text-[11px] text-gray-400">Pick a fleet truck or type any number — 3rd-party trucks allowed.</p>
+            </div>
+
+            {/* Status — ordered stepper (one step at a time, no skipping) */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</label>
+              <StatusStepper
+                value={selectedStatus}
+                canDispatch={!!watch('driverId')}
+                onAdvance={isEdit ? (next => setValue('status', next)) : undefined}
+              />
+              {!isEdit && <p className="text-[11px] text-gray-400">New routes start as Planned — dispatch them from the board once a driver is assigned.</p>}
             </div>
 
             {/* Warehouse */}
@@ -258,35 +313,6 @@ function RouteFormPanel({ open, onClose, route, driverOptions }: {
                 placeholder="Select warehouse"
                 searchPlaceholder="Search warehouses…"
                 showClear={true}
-              />
-            </div>
-
-            {/* Status */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</label>
-              <div className="grid grid-cols-2 gap-2">
-                {(['PLANNED', 'DISPATCHED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'] as RouteStatus[]).map(s => (
-                  <button key={s} type="button"
-                    onClick={() => setValue('status', s)}
-                    className={`h-9 text-xs font-semibold rounded-lg border transition-colors ${
-                      selectedStatus === s ? 'text-white border-transparent' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                    }`}
-                    style={selectedStatus === s ? { backgroundColor: 'var(--color-primary)' } : {}}>
-                    {STATUS_COLOR[s].label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Notes */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Notes</label>
-              <textarea
-                value={watch('notes') ?? ''}
-                onChange={e => setValue('notes', e.target.value)}
-                rows={3}
-                placeholder="Special instructions, route notes…"
-                className="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 resize-none"
               />
             </div>
 
@@ -387,6 +413,34 @@ function RouteFormPanel({ open, onClose, route, driverOptions }: {
                 </button>
               </div>
             )}
+
+            {/* Notes */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Notes</label>
+              <textarea
+                value={watch('notes') ?? ''}
+                onChange={e => setValue('notes', e.target.value)}
+                rows={3}
+                placeholder="Special instructions, route notes…"
+                className="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 resize-none"
+              />
+            </div>
+
+            {/* Driver — last: optional at creation, required to dispatch */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Driver
+                <span className="ml-1 text-gray-400 font-normal normal-case">(optional — required to dispatch)</span>
+              </label>
+              <SearchableDropdown
+                value={watch('driverId') || null}
+                onChange={v => setValue('driverId', v ?? '', { shouldValidate: true })}
+                options={driverOptions}
+                placeholder="Select driver"
+                searchPlaceholder="Search drivers…"
+                showClear={true}
+              />
+            </div>
           </div>
 
           <div className="px-5 py-4 flex gap-3 shrink-0" style={{ borderTop: '1px solid rgba(0,0,0,0.07)' }}>
@@ -506,6 +560,7 @@ function RouteDrawer({ route, onClose, onEdit, canEdit }: {
     mutationFn: () => routesApi.update(route.id, {
       driverId:    r.driverId ?? undefined,
       vehicleId:   r.vehicleId   ?? undefined,
+      truckNumber: r.truckNumber ?? undefined,
       warehouseId: r.warehouseId ?? undefined,
       routeDate:   r.routeDate,
       status:      'CANCELLED',
@@ -529,6 +584,18 @@ function RouteDrawer({ route, onClose, onEdit, canEdit }: {
       onClose()
     },
     onError: () => toast.error('Failed to delete route'),
+  })
+
+  const advanceMutation = useMutation({
+    mutationFn: (next: RouteStatus) => routesApi.updateStatus(route.id, next),
+    onSuccess: () => {
+      toast.success('Status updated')
+      qc.invalidateQueries({ queryKey: ['route', route.id] })
+      qc.invalidateQueries({ queryKey: ['routes'] })
+      qc.invalidateQueries({ queryKey: ['routes-board'] })
+    },
+    onError: (e: unknown) =>
+      toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to update status'),
   })
 
   function resetStopForm() {
@@ -598,6 +665,17 @@ function RouteDrawer({ route, onClose, onEdit, canEdit }: {
             )}
           </div>
         </div>
+
+        {/* Status progression — advance one step at a time (driver required to dispatch) */}
+        {canEdit && r.status !== 'CANCELLED' && (
+          <div className="px-5 py-3 border-b border-gray-100 shrink-0">
+            <StatusStepper
+              value={r.status}
+              canDispatch={!!r.driverId}
+              onAdvance={next => advanceMutation.mutate(next)}
+            />
+          </div>
+        )}
 
         {/* Meta */}
         {r.notes && (
@@ -944,6 +1022,7 @@ function BoardView({ boardDate, onDateChange, canEdit, onSelectRoute, driverOpti
       routesApi.update(route.id, {
         driverId:    route.driverId ?? undefined,
         vehicleId:   route.vehicleId   ?? undefined,
+        truckNumber: route.truckNumber ?? undefined,
         warehouseId: route.warehouseId ?? undefined,
         routeDate:   route.routeDate,
         status:      next,

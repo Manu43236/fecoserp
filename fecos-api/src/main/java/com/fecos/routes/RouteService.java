@@ -332,10 +332,14 @@ public class RouteService {
     private void apply(RouteEntity r, RouteRequest req) {
         r.setDriverId(req.getDriverId());
         r.setVehicleId(req.getVehicleId());
-        r.setTruckNumber(req.getVehicleId() != null
-                ? vehicleRepository.findById(req.getVehicleId())
-                        .map(v -> v.getLicensePlate()).orElse(null)
-                : null);
+        // Free-text truck number wins (supports 3rd-party vehicles); fall back to
+        // the matched fleet vehicle's plate when only an id was sent.
+        String truck = req.getTruckNumber() != null && !req.getTruckNumber().isBlank()
+                ? req.getTruckNumber().trim()
+                : (req.getVehicleId() != null
+                        ? vehicleRepository.findById(req.getVehicleId()).map(v -> v.getLicensePlate()).orElse(null)
+                        : null);
+        r.setTruckNumber(truck);
         r.setWarehouseId(req.getWarehouseId());
         r.setRouteDate(req.getRouteDate());
         r.setStatus(req.getStatus() != null ? req.getStatus() : RouteStatus.PLANNED);

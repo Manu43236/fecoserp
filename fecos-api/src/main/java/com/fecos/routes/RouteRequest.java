@@ -18,6 +18,10 @@ public class RouteRequest {
 
     private UUID vehicleId;
 
+    // Free-text truck number. Lets a dispatcher type any value (incl. 3rd-party
+    // trucks not in the fleet); matched fleet trucks also send vehicleId.
+    private String truckNumber;
+
     private UUID warehouseId;
 
     @NotNull(message = "Route date is required")
