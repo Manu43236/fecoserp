@@ -731,8 +731,8 @@ function RouteDrawer({ route, onClose, onEdit, canEdit, driverOptions }: {
           </div>
         </div>
 
-        {/* Status — single dropdown of valid next moves (Dispatch/Start/Complete + Cancel) */}
-        {canEdit && r.status !== 'CANCELLED' && (
+        {/* Status — only when the route has moves left (hidden for Completed/Cancelled) */}
+        {canEdit && STATUS_ACTIONS[r.status].length > 0 && (
           <div className="px-5 py-3 border-b border-gray-100 shrink-0 space-y-3">
             <div className="space-y-1">
               <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Status</label>
