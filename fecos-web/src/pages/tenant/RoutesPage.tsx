@@ -1179,73 +1179,13 @@ function monthGrid(year: number, month: number): string[] {
   })
 }
 
-// Expanding panel listing a single day's routes. Mount-in transition on opacity/transform.
-function DayPanel({ date, routes, canEdit, onSelectRoute, onCreateForDate, onClose }: {
-  date: string
-  routes: RouteRecord[]
+function CalendarView({ canEdit, onOpenDay, onCreateForDate }: {
   canEdit: boolean
-  onSelectRoute: (r: RouteRecord) => void
-  onCreateForDate: (date: string) => void
-  onClose: () => void
-}) {
-  const [show, setShow] = useState(false)
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setShow(true))
-    return () => cancelAnimationFrame(id)
-  }, [])
-  const label = new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
-
-  return (
-    <div className={`bg-white rounded-xl border border-gray-200 overflow-hidden transition-all duration-300 ${show ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}`}>
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-        <div>
-          <p className="text-sm font-semibold text-gray-900">{label}</p>
-          <p className="text-xs text-gray-400">{routes.length} route{routes.length !== 1 ? 's' : ''}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {canEdit && (
-            <button onClick={() => onCreateForDate(date)}
-              className="h-8 px-3 text-xs font-semibold text-white rounded-lg flex items-center gap-1.5"
-              style={{ backgroundColor: 'var(--color-primary)' }}>
-              <Plus size={13} /> New Route
-            </button>
-          )}
-          <button onClick={onClose}
-            className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-gray-400 hover:bg-gray-50 transition-colors">
-            <X size={14} />
-          </button>
-        </div>
-      </div>
-      <div className="divide-y divide-gray-100">
-        {routes.map(r => (
-          <div key={r.id} onClick={() => onSelectRoute(r)}
-            className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors">
-            <span className={`px-2 py-0.5 rounded-md text-xs font-bold shrink-0 ${CAL_CHIP[r.status]}`}>
-              #{r.routeNumber ?? '—'}
-            </span>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
-                {r.driverName ?? 'Unassigned'}{r.truckNumber ? ` · ${r.truckNumber}` : ''}
-              </p>
-              <p className="text-xs text-gray-500">{r.stopCount} stop{r.stopCount !== 1 ? 's' : ''}</p>
-            </div>
-            <StatusBadge status={r.status} />
-            <ChevronRight size={14} className="text-gray-400 shrink-0" />
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function CalendarView({ canEdit, onSelectRoute, onCreateForDate }: {
-  canEdit: boolean
-  onSelectRoute: (r: RouteRecord) => void
+  onOpenDay: (date: string) => void
   onCreateForDate: (date: string) => void
 }) {
   const today = toDateStr(new Date())
   const [cursor, setCursor] = useState(() => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() } })
-  const [expandedDay, setExpandedDay] = useState<string | null>(null)
 
   const cells = monthGrid(cursor.y, cursor.m)
   const from = cells[0]
@@ -1265,15 +1205,9 @@ function CalendarView({ canEdit, onSelectRoute, onCreateForDate }: {
     byDate.set(r.routeDate, arr)
   }
 
-  const shiftMonth = (n: number) => {
-    setExpandedDay(null)
+  const shiftMonth = (n: number) =>
     setCursor(c => { const d = new Date(c.y, c.m + n, 1); return { y: d.getFullYear(), m: d.getMonth() } })
-  }
-  const goToday = () => {
-    setExpandedDay(null)
-    const d = new Date()
-    setCursor({ y: d.getFullYear(), m: d.getMonth() })
-  }
+  const goToday = () => { const d = new Date(); setCursor({ y: d.getFullYear(), m: d.getMonth() }) }
 
   const monthName = new Date(cursor.y, cursor.m, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 
@@ -1312,51 +1246,45 @@ function CalendarView({ canEdit, onSelectRoute, onCreateForDate }: {
             const isToday = date === today
             const isEmpty = dayRoutes.length === 0
             const extra = dayRoutes.length - MAX_CHIPS
-            const isExpanded = expandedDay === date
             return (
               <div key={date}
-                onClick={() => { if (!isEmpty) setExpandedDay(d => d === date ? null : date) }}
-                className={`group min-h-[100px] border-b border-r border-gray-100 p-1.5 flex flex-col gap-1 transition-colors ${(i + 1) % 7 === 0 ? 'border-r-0' : ''} ${inMonth ? 'bg-white' : 'bg-gray-50/60'} ${!isEmpty ? 'cursor-pointer hover:bg-gray-50' : ''} ${isExpanded ? 'ring-2 ring-inset' : ''}`}
-                style={isExpanded ? ({ '--tw-ring-color': 'var(--color-primary)' } as React.CSSProperties) : undefined}>
-                <div className="flex items-center justify-between">
+                onClick={() => { if (!isEmpty) onOpenDay(date) }}
+                className={`group min-h-[100px] border-b border-r border-gray-100 p-1.5 flex flex-col gap-1 transition-colors ${(i + 1) % 7 === 0 ? 'border-r-0' : ''} ${inMonth ? 'bg-white' : 'bg-gray-50/60'} ${!isEmpty ? 'cursor-pointer hover:bg-gray-50' : ''}`}>
+                <div className="flex">
                   <span className={`text-xs font-semibold w-5 h-5 flex items-center justify-center rounded-full ${isToday ? 'text-white' : inMonth ? 'text-gray-700' : 'text-gray-300'}`}
                     style={isToday ? { backgroundColor: 'var(--color-primary)' } : undefined}>
                     {dayNum}
                   </span>
-                  {isEmpty && canEdit && (
+                </div>
+
+                {isEmpty ? (
+                  canEdit && (
                     <button onClick={e => { e.stopPropagation(); onCreateForDate(date) }}
                       title="Add route"
-                      className="w-5 h-5 rounded-full flex items-center justify-center text-gray-300 opacity-0 group-hover:opacity-100 hover:text-white hover:bg-[var(--color-primary)] transition-all">
-                      <Plus size={13} />
+                      className="flex-1 flex items-center justify-center">
+                      <span className="w-7 h-7 rounded-full border border-dashed border-gray-300 flex items-center justify-center text-gray-300 opacity-0 group-hover:opacity-100 hover:border-transparent hover:text-white hover:bg-[var(--color-primary)] transition-all">
+                        <Plus size={14} />
+                      </span>
                     </button>
-                  )}
-                </div>
-                {dayRoutes.slice(0, MAX_CHIPS).map(r => (
-                  <div key={r.id}
-                    className={`px-1.5 py-0.5 rounded text-[11px] font-semibold truncate ${CAL_CHIP[r.status]}`}>
-                    #{r.routeNumber ?? '—'}
-                  </div>
-                ))}
-                {extra > 0 && (
-                  <span className="text-[10px] font-medium text-gray-400 px-1">+{extra} more</span>
+                  )
+                ) : (
+                  <>
+                    {dayRoutes.slice(0, MAX_CHIPS).map(r => (
+                      <div key={r.id}
+                        className={`px-1.5 py-0.5 rounded text-[11px] font-semibold truncate ${CAL_CHIP[r.status]}`}>
+                        #{r.routeNumber ?? '—'}
+                      </div>
+                    ))}
+                    {extra > 0 && (
+                      <span className="text-[10px] font-medium text-gray-400 px-1">+{extra} more</span>
+                    )}
+                  </>
                 )}
               </div>
             )
           })}
         </div>
       </div>
-
-      {/* Expanded day */}
-      {expandedDay && (
-        <DayPanel
-          date={expandedDay}
-          routes={byDate.get(expandedDay) ?? []}
-          canEdit={canEdit}
-          onSelectRoute={onSelectRoute}
-          onCreateForDate={onCreateForDate}
-          onClose={() => setExpandedDay(null)}
-        />
-      )}
     </div>
   )
 }
@@ -1460,7 +1388,7 @@ export default function RoutesPage() {
       {view === 'calendar' && (
         <CalendarView
           canEdit={canEdit}
-          onSelectRoute={r => { setSelected(r); setFormOpen(false) }}
+          onOpenDay={d => { setDateFilter(d); setPage(0); setView('list') }}
           onCreateForDate={openCreateForDate}
         />
       )}
