@@ -77,6 +77,7 @@ export interface ServiceVisit {
   status:    VisitStatus
   notes:     string | null
   stops:     ServiceVisitStop[]
+  createdByName: string
   createdAt: string
 }
 

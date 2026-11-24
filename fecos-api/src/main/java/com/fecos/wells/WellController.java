@@ -20,7 +20,7 @@ public class WellController {
     private final WellService wellService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP','LAB_TECH')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP','LAB_TECH','SERVICE_TECH')")
     public ResponseEntity<ApiResponse<Page<WellResponse>>> list(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) UUID leaseId,
@@ -32,7 +32,7 @@ public class WellController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP','LAB_TECH')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP','LAB_TECH','SERVICE_TECH')")
     public ResponseEntity<ApiResponse<WellResponse>> get(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok("Well retrieved", wellService.findById(id)));
     }

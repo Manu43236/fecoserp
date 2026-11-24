@@ -20,7 +20,7 @@ public class LeaseController {
     private final LeaseService leaseService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP','LAB_TECH')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP','LAB_TECH','SERVICE_TECH')")
     public ResponseEntity<ApiResponse<Page<LeaseResponse>>> list(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) UUID clientId,
@@ -32,7 +32,7 @@ public class LeaseController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP','LAB_TECH')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP','LAB_TECH','SERVICE_TECH')")
     public ResponseEntity<ApiResponse<LeaseResponse>> get(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok("Lease retrieved", leaseService.findById(id)));
     }

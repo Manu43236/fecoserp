@@ -63,7 +63,10 @@ public class ServiceVisitService {
         v.setTenantId(tenantId);
         v.setName(req.name());
         v.setVisitDate(req.visitDate());
-        v.setTechId(req.techId());
+        // ponytail: ADMIN/MANAGER may assign to any tech; anyone else (self-scheduling
+        // SERVICE_TECH) is forced onto their own id — multi-role safe, no spoofing another tech.
+        boolean canAssignOthers = currentUserHasRole("ADMIN") || currentUserHasRole("MANAGER");
+        v.setTechId(canAssignOthers && req.techId() != null ? req.techId() : userId);
         v.setNotes(req.notes());
         v.setStatus(ServiceVisitStatus.SCHEDULED);
         v.setCreatedBy(userId);
@@ -250,6 +253,10 @@ public class ServiceVisitService {
         String techName = userRepo.findById(v.getTechId())
                 .map(u -> u.getFullName()).orElse("Unknown");
 
+        String createdByName = v.getCreatedBy() != null
+                ? userRepo.findById(v.getCreatedBy()).map(u -> u.getFullName()).orElse("—")
+                : "—";
+
         List<ServiceVisitStopResponse> stops = Collections.emptyList();
         if (includeStops) {
             stops = stopRepo.findAllByServiceVisitIdAndIsDeletedFalseOrderBySequenceAsc(v.getId())
@@ -258,7 +265,7 @@ public class ServiceVisitService {
 
         return new ServiceVisitResponse(
                 v.getId(), v.getName(), v.getVisitDate(), v.getTechId(), techName,
-                v.getStatus(), v.getNotes(), stops, v.getCreatedAt()
+                v.getStatus(), v.getNotes(), stops, createdByName, v.getCreatedAt()
         );
     }
 
@@ -293,5 +300,10 @@ public class ServiceVisitService {
 
     private UUID currentUserId() {
         return UUID.fromString(SecurityContextHolder.getContext().getAuthentication().getName());
+    }
+
+    private boolean currentUserHasRole(String role) {
+        return SecurityContextHolder.getContext().getAuthentication().getAuthorities()
+                .stream().anyMatch(a -> a.getAuthority().equals("ROLE_" + role));
     }
 }

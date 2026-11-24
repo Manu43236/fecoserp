@@ -14,5 +14,6 @@ public record ServiceVisitResponse(
         ServiceVisitStatus status,
         String notes,
         List<ServiceVisitStopResponse> stops,
+        String createdByName,
         Instant createdAt
 ) {}

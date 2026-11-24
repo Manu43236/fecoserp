@@ -20,7 +20,7 @@ public class ClientController {
     private final ClientService clientService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP','LAB_TECH')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP','LAB_TECH','SERVICE_TECH')")
     public ResponseEntity<ApiResponse<Page<ClientResponse>>> list(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) UUID accountRepId,
@@ -31,7 +31,7 @@ public class ClientController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP','LAB_TECH')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ACCOUNT_REP','LAB_TECH','SERVICE_TECH')")
     public ResponseEntity<ApiResponse<ClientResponse>> get(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(clientService.findById(id)));
     }

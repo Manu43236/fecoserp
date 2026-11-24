@@ -944,6 +944,7 @@ export default function ServiceVisitsPage() {
             <tr className="text-xs font-semibold uppercase tracking-wide text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
               <th className="px-4 py-3 text-left">Date</th>
               <th className="px-4 py-3 text-left">Service Tech</th>
+              <th className="px-4 py-3 text-left">Created By</th>
               <th className="px-4 py-3 text-left">Wells</th>
               <th className="px-4 py-3 text-left">Status</th>
               <th className="px-4 py-3" />
@@ -952,10 +953,10 @@ export default function ServiceVisitsPage() {
           <tbody className="divide-y divide-gray-100">
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i}><td colSpan={5} className="px-4 py-3"><div className="h-4 bg-gray-100 rounded animate-pulse w-3/4" /></td></tr>
+                <tr key={i}><td colSpan={6} className="px-4 py-3"><div className="h-4 bg-gray-100 rounded animate-pulse w-3/4" /></td></tr>
               ))
             ) : filteredVisits.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-gray-400">No service visits found</td></tr>
+              <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-400">No service visits found</td></tr>
             ) : filteredVisits.map(v => (
               <tr key={v.id} onClick={() => serviceVisitsApi.get(v.id).then(r => setActiveVisit(r.data?.data ?? null))}
                 className="hover:bg-gray-50 cursor-pointer transition-colors">
@@ -964,6 +965,11 @@ export default function ServiceVisitsPage() {
                   {v.name && <p className="text-xs text-gray-400 mt-0.5">{new Date(v.visitDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>}
                 </td>
                 <td className="px-4 py-3 text-gray-700">{v.techName}</td>
+                <td className="px-4 py-3 text-gray-700">
+                  {v.createdByName === v.techName
+                    ? <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-indigo-100 text-indigo-700">Self-scheduled</span>
+                    : v.createdByName}
+                </td>
                 <td className="px-4 py-3 text-gray-700">
                   <span className="inline-flex items-center gap-1.5 flex-wrap">
                     <span className="inline-flex items-center gap-1">

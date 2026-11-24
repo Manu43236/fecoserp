@@ -45,7 +45,7 @@ public class ServiceVisitController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','SERVICE_TECH')")
     public ResponseEntity<ApiResponse<ServiceVisitResponse>> create(@RequestBody ServiceVisitRequest req) {
         return ResponseEntity.ok(ApiResponse.ok(service.create(req)));
     }
