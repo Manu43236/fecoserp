@@ -8,6 +8,7 @@ import java.util.UUID;
 
 public record RouteResponse(
         UUID id,
+        Integer routeNumber,
         UUID driverId,
         String driverName,
         UUID vehicleId,
@@ -28,7 +29,7 @@ public record RouteResponse(
     public static RouteResponse from(RouteEntity e, String driverName, String warehouseName,
                                      int stopCount, int completedStopCount, List<RouteStopResponse> stops) {
         return new RouteResponse(
-                e.getId(), e.getDriverId(), driverName,
+                e.getId(), e.getRouteNumber(), e.getDriverId(), driverName,
                 e.getVehicleId(), e.getTruckNumber(),
                 e.getWarehouseId(), warehouseName,
                 e.getRouteDate(), e.getStatus(), e.getNotes(), stopCount, completedStopCount, stops,

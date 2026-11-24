@@ -39,6 +39,7 @@ export interface RouteStopRecord {
 
 export interface RouteRecord {
   id: string
+  routeNumber: number | null
   driverId: string | null
   driverName: string | null
   vehicleId: string | null

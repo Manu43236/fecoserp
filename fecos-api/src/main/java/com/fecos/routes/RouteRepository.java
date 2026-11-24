@@ -21,6 +21,8 @@ public interface RouteRepository extends JpaRepository<RouteEntity, UUID> {
           AND (:status IS NULL OR r.status = :status)
           AND (:driverId IS NULL OR r.driverId = :driverId)
           AND (:routeDate IS NULL OR r.routeDate = :routeDate)
+          AND (:from IS NULL OR r.routeDate >= :from)
+          AND (:to IS NULL OR r.routeDate <= :to)
         ORDER BY r.routeDate DESC, r.createdAt DESC
         """)
     Page<RouteEntity> search(
@@ -28,7 +30,13 @@ public interface RouteRepository extends JpaRepository<RouteEntity, UUID> {
             @Param("status") RouteStatus status,
             @Param("driverId") UUID driverId,
             @Param("routeDate") LocalDate routeDate,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to,
             Pageable pageable);
+
+    /** Highest route number ever assigned for a tenant (incl. deleted, so numbers are never reused). */
+    @Query("SELECT COALESCE(MAX(r.routeNumber), 0) FROM RouteEntity r WHERE r.tenantId = :tenantId")
+    int maxRouteNumber(@Param("tenantId") UUID tenantId);
 
     Optional<RouteEntity> findByIdAndTenantIdAndIsDeletedFalse(UUID id, UUID tenantId);
 

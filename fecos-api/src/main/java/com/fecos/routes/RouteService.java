@@ -46,9 +46,10 @@ public class RouteService {
     private final com.fecos.clients.ClientRepository clientRepository;
 
     public Page<RouteResponse> list(RouteStatus status, UUID driverId, LocalDate routeDate,
+                                    LocalDate from, LocalDate to,
                                     int page, int size, boolean withStops) {
         UUID tenantId = currentTenantId();
-        return routeRepository.search(tenantId, status, driverId, routeDate, PageRequest.of(page, size))
+        return routeRepository.search(tenantId, status, driverId, routeDate, from, to, PageRequest.of(page, size))
                 .map(r -> toResponse(r, withStops));
     }
 
@@ -62,6 +63,10 @@ public class RouteService {
         RouteEntity r = new RouteEntity();
         r.setTenantId(tenantId);
         r.setCreatedBy(currentUserId());
+        // ponytail: naive max+1 — the (tenant_id, route_number) unique index catches
+        // the rare concurrent-create race. Low concurrency here (a few managers); add a
+        // retry/sequence only if duplicate-key errors ever show up.
+        r.setRouteNumber(routeRepository.maxRouteNumber(tenantId) + 1);
         apply(r, req);
         requireDriverForDispatch(r);
         RouteEntity saved = routeRepository.save(r);

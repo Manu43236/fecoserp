@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import toast from 'react-hot-toast'
-import { Plus, X, Search, ChevronRight, ChevronDown, Truck, MapPin, Trash2, Package, LayoutList, LayoutGrid, ChevronLeft, Check } from 'lucide-react'
+import { Plus, X, Search, ChevronRight, ChevronDown, Truck, MapPin, Trash2, Package, LayoutList, Calendar, ChevronLeft, Check } from 'lucide-react'
 import { routesApi, type RouteRecord, type RoutePayload, type RouteStopPayload, type RouteStopItemPayload, type RouteStatus } from '@/api/routes'
 import { leasesApi, type LeaseRecord } from '@/api/leases'
 import { wellsApi, type WellRecord } from '@/api/wells'
@@ -174,10 +174,11 @@ const emptyItem = (): ItemRow => ({ productId: '', quantity: '', unit: '' })
 const emptyStop = (): StopDraft => ({ leaseId: '', wellId: '', notes: '', items: [emptyItem()] })
 
 // ── Route form panel ───────────────────────────────────────────────────────────
-function RouteFormPanel({ open, onClose, route, driverOptions }: {
+function RouteFormPanel({ open, onClose, route, initialDate, driverOptions }: {
   open: boolean
   onClose: () => void
   route?: RouteRecord
+  initialDate?: string
   driverOptions: DropdownOption[]
 }) {
   const qc = useQueryClient()
@@ -189,7 +190,7 @@ function RouteFormPanel({ open, onClose, route, driverOptions }: {
       driverId:    route?.driverId    ?? '',
       truckNumber: route?.truckNumber ?? '',
       warehouseId: route?.warehouseId ?? '',
-      routeDate:   route?.routeDate   ?? '',
+      routeDate:   route?.routeDate   ?? initialDate ?? '',
       status:      route?.status      ?? 'PLANNED',
       notes:       route?.notes       ?? '',
     },
@@ -287,7 +288,7 @@ function RouteFormPanel({ open, onClose, route, driverOptions }: {
     onSuccess: () => {
       toast.success(isEdit ? 'Route updated' : 'Route created')
       qc.invalidateQueries({ queryKey: ['routes'] })
-      qc.invalidateQueries({ queryKey: ['routes-board'] })
+      qc.invalidateQueries({ queryKey: ['routes-calendar'] })
       onClose(); reset(); setStops([])
     },
     onError: (e: unknown) =>
@@ -617,7 +618,7 @@ function RouteDrawer({ route, onClose, onEdit, canEdit, driverOptions }: {
       toast.success('Stop added')
       qc.invalidateQueries({ queryKey: ['route', route.id] })
       qc.invalidateQueries({ queryKey: ['routes'] })
-      qc.invalidateQueries({ queryKey: ['routes-board'] })
+      qc.invalidateQueries({ queryKey: ['routes-calendar'] })
       resetStopForm()
     },
     onError: () => toast.error('Failed to add stop'),
@@ -629,7 +630,7 @@ function RouteDrawer({ route, onClose, onEdit, canEdit, driverOptions }: {
       toast.success('Stop removed')
       qc.invalidateQueries({ queryKey: ['route', route.id] })
       qc.invalidateQueries({ queryKey: ['routes'] })
-      qc.invalidateQueries({ queryKey: ['routes-board'] })
+      qc.invalidateQueries({ queryKey: ['routes-calendar'] })
     },
     onError: () => toast.error('Failed to remove stop'),
   })
@@ -669,7 +670,7 @@ function RouteDrawer({ route, onClose, onEdit, canEdit, driverOptions }: {
     onSuccess: () => {
       toast.success('Route cancelled')
       qc.invalidateQueries({ queryKey: ['routes'] })
-      qc.invalidateQueries({ queryKey: ['routes-board'] })
+      qc.invalidateQueries({ queryKey: ['routes-calendar'] })
       qc.invalidateQueries({ queryKey: ['route', route.id] })
     },
     onError: () => toast.error('Failed to cancel route'),
@@ -680,7 +681,7 @@ function RouteDrawer({ route, onClose, onEdit, canEdit, driverOptions }: {
     onSuccess: () => {
       toast.success('Route deleted')
       qc.invalidateQueries({ queryKey: ['routes'] })
-      qc.invalidateQueries({ queryKey: ['routes-board'] })
+      qc.invalidateQueries({ queryKey: ['routes-calendar'] })
       onClose()
     },
     onError: () => toast.error('Failed to delete route'),
@@ -692,7 +693,7 @@ function RouteDrawer({ route, onClose, onEdit, canEdit, driverOptions }: {
       toast.success('Status updated')
       qc.invalidateQueries({ queryKey: ['route', route.id] })
       qc.invalidateQueries({ queryKey: ['routes'] })
-      qc.invalidateQueries({ queryKey: ['routes-board'] })
+      qc.invalidateQueries({ queryKey: ['routes-calendar'] })
     },
     onError: (e: unknown) =>
       toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to update status'),
@@ -712,7 +713,7 @@ function RouteDrawer({ route, onClose, onEdit, canEdit, driverOptions }: {
       toast.success('Driver assigned')
       qc.invalidateQueries({ queryKey: ['route', route.id] })
       qc.invalidateQueries({ queryKey: ['routes'] })
-      qc.invalidateQueries({ queryKey: ['routes-board'] })
+      qc.invalidateQueries({ queryKey: ['routes-calendar'] })
     },
     onError: () => toast.error('Failed to assign driver'),
   })
@@ -737,7 +738,7 @@ function RouteDrawer({ route, onClose, onEdit, canEdit, driverOptions }: {
   const invalidateRoute = () => {
     qc.invalidateQueries({ queryKey: ['route', route.id] })
     qc.invalidateQueries({ queryKey: ['routes'] })
-    qc.invalidateQueries({ queryKey: ['routes-board'] })
+    qc.invalidateQueries({ queryKey: ['routes-calendar'] })
   }
 
   function resetStopForm() {
@@ -776,7 +777,12 @@ function RouteDrawer({ route, onClose, onEdit, canEdit, driverOptions }: {
               <X size={16} />
             </button>
             <div>
-              <p className="text-sm font-semibold text-gray-900">
+              <p className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                {r.routeNumber != null && (
+                  <span className="px-1.5 py-0.5 rounded-md text-xs font-bold text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
+                    #{r.routeNumber}
+                  </span>
+                )}
                 {new Date(r.routeDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
               </p>
               <p className="text-xs text-gray-400">{r.driverName ?? '—'}{r.truckNumber ? ` · ${r.truckNumber}` : ''}</p>
@@ -1146,203 +1152,209 @@ function toDateStr(d: Date) {
   return `${d.getFullYear()}-${m}-${day}`
 }
 
-function addDays(dateStr: string, n: number) {
-  const d = new Date(dateStr + 'T00:00:00')
-  d.setDate(d.getDate() + n)
-  return toDateStr(d)
+
+// ── Calendar view ───────────────────────────────────────────────────────────────
+const MAX_CHIPS = 3
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+// Chip colour by status: planned/dispatched → grey, in-progress → amber,
+// completed → green, cancelled → red.
+const CAL_CHIP: Record<RouteStatus, string> = {
+  PLANNED:     'bg-gray-200 text-gray-700',
+  DISPATCHED:  'bg-gray-200 text-gray-700',
+  IN_PROGRESS: 'bg-amber-200 text-amber-900',
+  COMPLETED:   'bg-emerald-200 text-emerald-900',
+  CANCELLED:   'bg-red-200 text-red-700',
 }
 
-const NEXT_STATUSES: Partial<Record<RouteStatus, RouteStatus>> = {
-  PLANNED:     'DISPATCHED',
-  DISPATCHED:  'IN_PROGRESS',
-  IN_PROGRESS: 'COMPLETED',
+// 6×7 grid of date strings for the month containing (year, month0), padded to full weeks.
+function monthGrid(year: number, month: number): string[] {
+  const first = new Date(year, month, 1)
+  const start = new Date(first)
+  start.setDate(first.getDate() - first.getDay())   // back up to the Sunday
+  return Array.from({ length: 42 }, (_, i) => {
+    const d = new Date(start)
+    d.setDate(start.getDate() + i)
+    return toDateStr(d)
+  })
 }
 
-const NEXT_LABEL: Partial<Record<RouteStatus, string>> = {
-  PLANNED:     'Dispatch',
-  DISPATCHED:  'Start',
-  IN_PROGRESS: 'Complete',
-}
-
-// ── Board view ─────────────────────────────────────────────────────────────────
-function BoardView({ boardDate, onDateChange, canEdit, onSelectRoute, driverOptions }: {
-  boardDate: string
-  onDateChange: (d: string) => void
+// Expanding panel listing a single day's routes. Mount-in transition on opacity/transform.
+function DayPanel({ date, routes, canEdit, onSelectRoute, onCreateForDate, onClose }: {
+  date: string
+  routes: RouteRecord[]
   canEdit: boolean
   onSelectRoute: (r: RouteRecord) => void
-  driverOptions: DropdownOption[]
+  onCreateForDate: (date: string) => void
+  onClose: () => void
 }) {
-  const qc = useQueryClient()
-  const dialogs = useDialogs()
-  const [formOpen, setFormOpen] = useState(false)
-
-  const { data, isLoading } = useQuery({
-    queryKey: ['routes-board', boardDate],
-    queryFn:  () => routesApi.list({ routeDate: boardDate, size: 100 }),
-    refetchInterval: 30_000,
-  })
-
-  const routes = data?.data?.data?.content ?? []
-
-  const counts = {
-    PLANNED:     routes.filter(r => r.status === 'PLANNED').length,
-    DISPATCHED:  routes.filter(r => r.status === 'DISPATCHED').length,
-    IN_PROGRESS: routes.filter(r => r.status === 'IN_PROGRESS').length,
-    COMPLETED:   routes.filter(r => r.status === 'COMPLETED').length,
-    CANCELLED:   routes.filter(r => r.status === 'CANCELLED').length,
-  }
-
-  const advanceMutation = useMutation({
-    mutationFn: ({ route, next }: { route: RouteRecord; next: RouteStatus }) =>
-      routesApi.update(route.id, {
-        driverId:    route.driverId ?? undefined,
-        vehicleId:   route.vehicleId   ?? undefined,
-        truckNumber: route.truckNumber ?? undefined,
-        warehouseId: route.warehouseId ?? undefined,
-        routeDate:   route.routeDate,
-        status:      next,
-        notes:       route.notes ?? undefined,
-      }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['routes-board', boardDate] }),
-    onError:   () => toast.error('Failed to update status'),
-  })
-
-  const isToday  = boardDate === toDateStr(new Date())
-  const dateLabel = isToday
-    ? 'Today'
-    : new Date(boardDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
-
-  const STAT_ITEMS: { key: RouteStatus; label: string }[] = [
-    { key: 'PLANNED',     label: 'Planned'     },
-    { key: 'DISPATCHED',  label: 'Dispatched'  },
-    { key: 'IN_PROGRESS', label: 'In Progress' },
-    { key: 'COMPLETED',   label: 'Completed'   },
-  ]
+  const [show, setShow] = useState(false)
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setShow(true))
+    return () => cancelAnimationFrame(id)
+  }, [])
+  const label = new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 
   return (
-    <div className="space-y-5">
-      {/* Date nav */}
-      <div className="flex items-center justify-between">
+    <div className={`bg-white rounded-xl border border-gray-200 overflow-hidden transition-all duration-300 ${show ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}`}>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+        <div>
+          <p className="text-sm font-semibold text-gray-900">{label}</p>
+          <p className="text-xs text-gray-400">{routes.length} route{routes.length !== 1 ? 's' : ''}</p>
+        </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => onDateChange(addDays(boardDate, -1))}
-            className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors">
-            <ChevronLeft size={15} />
-          </button>
-          <div className="text-center px-2">
-            <p className="text-sm font-semibold text-gray-900">{dateLabel}</p>
-            {!isToday && <p className="text-xs text-gray-400">{boardDate}</p>}
-          </div>
-          <button onClick={() => onDateChange(addDays(boardDate, 1))}
-            className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors">
-            <ChevronRight size={15} />
-          </button>
-          {!isToday && (
-            <button onClick={() => onDateChange(toDateStr(new Date()))}
-              className="h-8 px-3 text-xs font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors ml-1">
-              Today
+          {canEdit && (
+            <button onClick={() => onCreateForDate(date)}
+              className="h-8 px-3 text-xs font-semibold text-white rounded-lg flex items-center gap-1.5"
+              style={{ backgroundColor: 'var(--color-primary)' }}>
+              <Plus size={13} /> New Route
             </button>
           )}
-        </div>
-        {canEdit && (
-          <button onClick={() => setFormOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-lg"
-            style={{ backgroundColor: 'var(--color-primary)' }}>
-            <Plus size={15} /> New Route
+          <button onClick={onClose}
+            className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-gray-400 hover:bg-gray-50 transition-colors">
+            <X size={14} />
           </button>
-        )}
+        </div>
       </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-4 gap-3">
-        {STAT_ITEMS.map(({ key, label }) => {
-          const s = STATUS_COLOR[key]
-          return (
-            <div key={key} className={`rounded-xl p-4 ring-1 ${s.bg} ${s.ring}`}>
-              <p className={`text-2xl font-bold ${s.text}`}>{counts[key]}</p>
-              <p className={`text-xs font-medium mt-0.5 ${s.text} opacity-80`}>{label}</p>
+      <div className="divide-y divide-gray-100">
+        {routes.map(r => (
+          <div key={r.id} onClick={() => onSelectRoute(r)}
+            className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors">
+            <span className={`px-2 py-0.5 rounded-md text-xs font-bold shrink-0 ${CAL_CHIP[r.status]}`}>
+              #{r.routeNumber ?? '—'}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {r.driverName ?? 'Unassigned'}{r.truckNumber ? ` · ${r.truckNumber}` : ''}
+              </p>
+              <p className="text-xs text-gray-500">{r.stopCount} stop{r.stopCount !== 1 ? 's' : ''}</p>
             </div>
-          )
-        })}
+            <StatusBadge status={r.status} />
+            <ChevronRight size={14} className="text-gray-400 shrink-0" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function CalendarView({ canEdit, onSelectRoute, onCreateForDate }: {
+  canEdit: boolean
+  onSelectRoute: (r: RouteRecord) => void
+  onCreateForDate: (date: string) => void
+}) {
+  const today = toDateStr(new Date())
+  const [cursor, setCursor] = useState(() => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() } })
+  const [expandedDay, setExpandedDay] = useState<string | null>(null)
+
+  const cells = monthGrid(cursor.y, cursor.m)
+  const from = cells[0]
+  const to = cells[cells.length - 1]
+
+  const { data } = useQuery({
+    queryKey: ['routes-calendar', from, to],
+    queryFn:  () => routesApi.list({ from, to, size: 300 }),
+    refetchInterval: 30_000,
+  })
+  const routes = data?.data?.data?.content ?? []
+
+  const byDate = new Map<string, RouteRecord[]>()
+  for (const r of routes) {
+    const arr = byDate.get(r.routeDate) ?? []
+    arr.push(r)
+    byDate.set(r.routeDate, arr)
+  }
+
+  const shiftMonth = (n: number) => {
+    setExpandedDay(null)
+    setCursor(c => { const d = new Date(c.y, c.m + n, 1); return { y: d.getFullYear(), m: d.getMonth() } })
+  }
+  const goToday = () => {
+    setExpandedDay(null)
+    const d = new Date()
+    setCursor({ y: d.getFullYear(), m: d.getMonth() })
+  }
+
+  const monthName = new Date(cursor.y, cursor.m, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+
+  return (
+    <div className="space-y-4">
+      {/* Month nav */}
+      <div className="flex items-center gap-2">
+        <button onClick={() => shiftMonth(-1)}
+          className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors">
+          <ChevronLeft size={15} />
+        </button>
+        <p className="text-sm font-semibold text-gray-900 w-40 text-center">{monthName}</p>
+        <button onClick={() => shiftMonth(1)}
+          className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors">
+          <ChevronRight size={15} />
+        </button>
+        <button onClick={goToday}
+          className="h-8 px-3 text-xs font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors ml-1">
+          Today
+        </button>
       </div>
 
-      {/* Route cards */}
-      {isLoading ? (
-        <div className="grid grid-cols-2 gap-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-28 bg-gray-100 rounded-xl animate-pulse" />
+      {/* Grid */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="grid grid-cols-7 border-b border-gray-100">
+          {WEEKDAYS.map(d => (
+            <div key={d} className="px-2 py-2 text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wide">{d}</div>
           ))}
         </div>
-      ) : routes.length === 0 ? (
-        <div className="text-center py-16">
-          <Truck size={36} className="mx-auto text-gray-300 mb-3" />
-          <p className="text-sm text-gray-500 font-medium">No routes for {dateLabel}</p>
-          {canEdit && <p className="text-xs text-gray-400 mt-1">Create a route above to get started</p>}
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 gap-3">
-          {routes.map(route => {
-            const s   = STATUS_COLOR[route.status]
-            const next = NEXT_STATUSES[route.status]
-            // A route can't be dispatched until a driver is assigned.
-            const blockedNoDriver = route.status === 'PLANNED' && !route.driverId
+        <div className="grid grid-cols-7">
+          {cells.map((date, i) => {
+            const dt = new Date(date + 'T00:00:00')
+            const inMonth = dt.getMonth() === cursor.m
+            const dayNum = dt.getDate()
+            const dayRoutes = byDate.get(date) ?? []
+            const isToday = date === today
+            const isEmpty = dayRoutes.length === 0
+            const extra = dayRoutes.length - MAX_CHIPS
+            const isExpanded = expandedDay === date
             return (
-              <div key={route.id}
-                className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-sm transition-shadow">
-                {/* Card header */}
-                <div className={`px-4 py-2 flex items-center justify-between ring-1 ${s.bg} ${s.ring} ring-inset`}>
-                  <StatusBadge status={route.status} />
-                  {route.truckNumber && (
-                    <span className="text-xs font-mono text-gray-500">{route.truckNumber}</span>
+              <div key={date}
+                onClick={() => { if (!isEmpty) setExpandedDay(d => d === date ? null : date) }}
+                className={`group min-h-[100px] border-b border-r border-gray-100 p-1.5 flex flex-col gap-1 transition-colors ${(i + 1) % 7 === 0 ? 'border-r-0' : ''} ${inMonth ? 'bg-white' : 'bg-gray-50/60'} ${!isEmpty ? 'cursor-pointer hover:bg-gray-50' : ''} ${isExpanded ? 'ring-2 ring-inset' : ''}`}
+                style={isExpanded ? ({ '--tw-ring-color': 'var(--color-primary)' } as React.CSSProperties) : undefined}>
+                <div className="flex items-center justify-between">
+                  <span className={`text-xs font-semibold w-5 h-5 flex items-center justify-center rounded-full ${isToday ? 'text-white' : inMonth ? 'text-gray-700' : 'text-gray-300'}`}
+                    style={isToday ? { backgroundColor: 'var(--color-primary)' } : undefined}>
+                    {dayNum}
+                  </span>
+                  {isEmpty && canEdit && (
+                    <button onClick={e => { e.stopPropagation(); onCreateForDate(date) }}
+                      title="Add route"
+                      className="w-5 h-5 rounded-full flex items-center justify-center text-gray-300 opacity-0 group-hover:opacity-100 hover:text-white hover:bg-[var(--color-primary)] transition-all">
+                      <Plus size={13} />
+                    </button>
                   )}
                 </div>
-                {/* Card body */}
-                <div className="px-4 py-3 cursor-pointer" onClick={() => onSelectRoute(route)}>
-                  <p className="text-sm font-semibold text-gray-900 truncate">{route.driverName ?? '—'}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    {route.stopCount} stop{route.stopCount !== 1 ? 's' : ''}
-                  </p>
-                </div>
-                {/* Actions */}
-                {canEdit && route.status !== 'COMPLETED' && route.status !== 'CANCELLED' && (
-                  <div className="px-4 pb-3 flex gap-2">
-                    {next && (
-                      <button
-                        onClick={() => {
-                          // Start/Complete need load/delivery entry — open the route to capture it.
-                          if (next === 'IN_PROGRESS' || next === 'COMPLETED') onSelectRoute(route)
-                          else advanceMutation.mutate({ route, next })
-                        }}
-                        disabled={advanceMutation.isPending || blockedNoDriver}
-                        title={blockedNoDriver ? 'Assign a driver before dispatching' : undefined}
-                        className="flex-1 h-8 text-xs font-semibold text-white rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition"
-                        style={{ backgroundColor: 'var(--color-primary)' }}>
-                        {blockedNoDriver ? 'Assign driver first' : NEXT_LABEL[route.status]}
-                      </button>
-                    )}
-                    <button
-                      onClick={async () => {
-                        const ok = await dialogs.confirm({
-                          title: 'Cancel route?', message: 'This route will be cancelled.',
-                          danger: true, confirmLabel: 'Cancel route', cancelLabel: 'Keep route',
-                        })
-                        if (ok) advanceMutation.mutate({ route, next: 'CANCELLED' })
-                      }}
-                      className="h-8 px-3 text-xs font-medium rounded-lg border border-red-100 text-red-500 hover:bg-red-50 transition-colors">
-                      Cancel
-                    </button>
+                {dayRoutes.slice(0, MAX_CHIPS).map(r => (
+                  <div key={r.id}
+                    className={`px-1.5 py-0.5 rounded text-[11px] font-semibold truncate ${CAL_CHIP[r.status]}`}>
+                    #{r.routeNumber ?? '—'}
                   </div>
+                ))}
+                {extra > 0 && (
+                  <span className="text-[10px] font-medium text-gray-400 px-1">+{extra} more</span>
                 )}
               </div>
             )
           })}
         </div>
-      )}
+      </div>
 
-      {formOpen && (
-        <RouteFormPanel
-          open={formOpen}
-          onClose={() => setFormOpen(false)}
-          driverOptions={driverOptions}
+      {/* Expanded day */}
+      {expandedDay && (
+        <DayPanel
+          date={expandedDay}
+          routes={byDate.get(expandedDay) ?? []}
+          canEdit={canEdit}
+          onSelectRoute={onSelectRoute}
+          onCreateForDate={onCreateForDate}
+          onClose={() => setExpandedDay(null)}
         />
       )}
     </div>
@@ -1354,14 +1366,14 @@ export default function RoutesPage() {
   const { user } = useAuthStore()
   const canEdit = hasAnyRole(user, 'ADMIN', 'MANAGER')
 
-  const [view, setView]                 = useState<'list' | 'board' | 'skipped'>('list')
-  const [boardDate, setBoardDate]       = useState(toDateStr(new Date()))
+  const [view, setView]                 = useState<'calendar' | 'list' | 'skipped'>('calendar')
   const [search, setSearch]             = useState('')
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
   const [dateFilter, setDateFilter]     = useState('')
   const [page, setPage]                 = useState(0)
   const [formOpen, setFormOpen]         = useState(false)
   const [editing, setEditing]           = useState<RouteRecord | undefined>()
+  const [createDate, setCreateDate]     = useState<string | undefined>()
   const [selected, setSelected]         = useState<RouteRecord | undefined>()
 
   const listParams = { status: statusFilter || undefined, routeDate: dateFilter || undefined, page, size: PAGE_SIZE }
@@ -1391,8 +1403,9 @@ export default function RoutesPage() {
       )
     : routes
 
-  function openCreate() { setEditing(undefined); setSelected(undefined); setFormOpen(true) }
-  function openEdit(r: RouteRecord) { setEditing(r); setSelected(undefined); setFormOpen(true) }
+  function openCreate() { setEditing(undefined); setCreateDate(undefined); setSelected(undefined); setFormOpen(true) }
+  function openCreateForDate(date: string) { setEditing(undefined); setCreateDate(date); setSelected(undefined); setFormOpen(true) }
+  function openEdit(r: RouteRecord) { setEditing(r); setCreateDate(undefined); setSelected(undefined); setFormOpen(true) }
 
   return (
     <div className="p-6 space-y-5">
@@ -1401,18 +1414,18 @@ export default function RoutesPage() {
         <div>
           <h1 className="text-xl font-bold text-gray-900">Routes & Dispatch</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            {view === 'board' ? 'Daily dispatch board' : `${total} route${total !== 1 ? 's' : ''} total`}
+            {view === 'calendar' ? 'Monthly schedule' : `${total} route${total !== 1 ? 's' : ''} total`}
           </p>
         </div>
         <div className="flex items-center gap-2">
           {/* View toggle */}
           <div className="flex items-center bg-gray-100 rounded-lg p-1">
             <button
-              onClick={() => setView('board')}
+              onClick={() => setView('calendar')}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                view === 'board' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                view === 'calendar' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
               }`}>
-              <LayoutGrid size={13} /> Board
+              <Calendar size={13} /> Calendar
             </button>
             <button
               onClick={() => setView('list')}
@@ -1443,14 +1456,12 @@ export default function RoutesPage() {
       {/* Skipped stops view */}
       {view === 'skipped' && <SkippedStopsView />}
 
-      {/* Board view */}
-      {view === 'board' && (
-        <BoardView
-          boardDate={boardDate}
-          onDateChange={setBoardDate}
+      {/* Calendar view */}
+      {view === 'calendar' && (
+        <CalendarView
           canEdit={canEdit}
           onSelectRoute={r => { setSelected(r); setFormOpen(false) }}
-          driverOptions={driverOptions}
+          onCreateForDate={openCreateForDate}
         />
       )}
 
@@ -1493,7 +1504,7 @@ export default function RoutesPage() {
             <div className="overflow-x-auto"><table className="w-full text-sm">
               <thead>
                 <tr style={{ backgroundColor: 'var(--color-primary)' }}>
-                  {['Date', 'Driver', 'Truck #', '# Stops', 'Status', ''].map(h => (
+                  {['Route #', 'Date', 'Driver', 'Truck #', '# Stops', 'Status', ''].map(h => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-white/90 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
@@ -1501,13 +1512,13 @@ export default function RoutesPage() {
               <tbody className="divide-y divide-gray-100">
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
-                    <tr key={i}>{Array.from({ length: 6 }).map((_, j) => (
+                    <tr key={i}>{Array.from({ length: 7 }).map((_, j) => (
                       <td key={j} className="px-4 py-3"><div className="h-4 bg-gray-100 rounded animate-pulse w-3/4" /></td>
                     ))}</tr>
                   ))
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-14 text-center">
+                    <td colSpan={7} className="px-4 py-14 text-center">
                       <Truck size={32} className="mx-auto text-gray-300 mb-3" />
                       <p className="text-sm text-gray-500 font-medium">No routes found</p>
                       <p className="text-xs text-gray-400 mt-1">
@@ -1519,6 +1530,9 @@ export default function RoutesPage() {
                   <tr key={r.id}
                     onClick={() => { setSelected(r); setFormOpen(false) }}
                     className="hover:bg-gray-50 cursor-pointer transition-colors">
+                    <td className="px-4 py-3 font-semibold text-gray-900">
+                      {r.routeNumber != null ? `#${r.routeNumber}` : '—'}
+                    </td>
                     <td className="px-4 py-3 font-medium text-gray-900">
                       {new Date(r.routeDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </td>
@@ -1550,8 +1564,9 @@ export default function RoutesPage() {
       {formOpen && (
         <RouteFormPanel
           open={formOpen}
-          onClose={() => { setFormOpen(false); setEditing(undefined) }}
+          onClose={() => { setFormOpen(false); setEditing(undefined); setCreateDate(undefined) }}
           route={editing}
+          initialDate={createDate}
           driverOptions={driverOptions}
         />
       )}

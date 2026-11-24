@@ -14,6 +14,10 @@ import java.util.UUID;
 @Table(name = "routes")
 public class RouteEntity extends TenantAwareEntity {
 
+    // Per-tenant sequential, human-facing route number (e.g. #1024). Set on create.
+    @Column(name = "route_number")
+    private Integer routeNumber;
+
     @Column(name = "driver_id")
     private UUID driverId;
 
