@@ -99,7 +99,7 @@ public class GeneralReportService {
         LocalDate safeFrom = from != null ? from : LocalDate.of(2000, 1, 1);
         LocalDate safeTo   = to   != null ? to   : LocalDate.now();
 
-        var routes = routeRepo.search(tenantId, null, null, null, ALL).getContent().stream()
+        var routes = routeRepo.search(tenantId, null, null, null, null, null, ALL).getContent().stream()
                 .filter(r -> !r.getRouteDate().isBefore(safeFrom) && !r.getRouteDate().isAfter(safeTo))
                 .collect(Collectors.toList());
 
@@ -225,7 +225,7 @@ public class GeneralReportService {
                         v.getStatus() != null ? v.getStatus().name() : ""
                 }));
 
-        routeRepo.search(tenantId, null, null, null, ALL).getContent().stream()
+        routeRepo.search(tenantId, null, null, null, null, null, ALL).getContent().stream()
                 .filter(r -> !r.getRouteDate().isBefore(safeFrom) && !r.getRouteDate().isAfter(safeTo))
                 .forEach(r -> rows.add(new String[]{
                         r.getRouteDate().format(DATE_FMT),

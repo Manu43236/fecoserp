@@ -76,7 +76,7 @@ public class MonthlyCostSummaryPdf {
                 .collect(Collectors.toList());
 
         // deliveries for this client's wells this month
-        var allRoutes = routeRepo.search(tenantId, null, null, null, PageRequest.of(0, 5000)).getContent().stream()
+        var allRoutes = routeRepo.search(tenantId, null, null, null, null, null, PageRequest.of(0, 5000)).getContent().stream()
                 .filter(r -> !r.getRouteDate().isBefore(from) && !r.getRouteDate().isAfter(to))
                 .collect(Collectors.toList());
         var routeIds  = allRoutes.stream().map(r -> r.getId()).collect(Collectors.toSet());
