@@ -5,6 +5,7 @@ import java.util.UUID;
 
 public record WellResponse(
         UUID id,
+        String refNumber,
         UUID leaseId,
         String leaseName,
         String clientName,
@@ -18,6 +19,7 @@ public record WellResponse(
     public static WellResponse from(WellEntity w, String leaseName, String clientName) {
         return new WellResponse(
                 w.getId(),
+                w.getRefNumber(),
                 w.getLeaseId(),
                 leaseName,
                 clientName,

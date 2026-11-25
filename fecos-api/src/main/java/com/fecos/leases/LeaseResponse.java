@@ -6,6 +6,7 @@ import java.util.UUID;
 
 public record LeaseResponse(
         UUID id,
+        String refNumber,
         UUID clientId,
         String clientName,
         UUID accountRepId,
@@ -22,6 +23,7 @@ public record LeaseResponse(
     public static LeaseResponse from(LeaseEntity l, String clientName, UUID accountRepId, String accountRepName) {
         return new LeaseResponse(
                 l.getId(),
+                l.getRefNumber(),
                 l.getClientId(),
                 clientName,
                 accountRepId,

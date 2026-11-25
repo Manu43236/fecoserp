@@ -1,5 +1,6 @@
 package com.fecos.routes;
 
+import com.fecos.common.RefNumberService;
 import com.fecos.inventory.InventoryService;
 import com.fecos.inventory.WarehouseRepository;
 import com.fecos.leases.LeaseRepository;
@@ -44,6 +45,7 @@ public class RouteService {
     private final TreatmentPlanLineRepository planLineRepository;
     private final TankService tankService;
     private final com.fecos.clients.ClientRepository clientRepository;
+    private final RefNumberService refNumberService;
 
     public Page<RouteResponse> list(RouteStatus status, UUID driverId, LocalDate routeDate,
                                     LocalDate from, LocalDate to,
@@ -67,6 +69,7 @@ public class RouteService {
         // the rare concurrent-create race. Low concurrency here (a few managers); add a
         // retry/sequence only if duplicate-key errors ever show up.
         r.setRouteNumber(routeRepository.maxRouteNumber(tenantId) + 1);
+        r.setRefNumber(refNumberService.next(tenantId, "R", r.getRouteNumber()));
         apply(r, req);
         requireDriverForDispatch(r);
         RouteEntity saved = routeRepository.save(r);

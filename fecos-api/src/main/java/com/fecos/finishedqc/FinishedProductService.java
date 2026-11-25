@@ -4,6 +4,7 @@ import com.fecos.inventory.InventoryService;
 import com.fecos.inventory.InventoryTransactionRequest;
 import com.fecos.inventory.InventoryTransactionType;
 import com.fecos.products.ProductRepository;
+import com.fecos.common.RefNumberService;
 import com.fecos.users.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class FinishedProductService {
     private final UserRepository userRepository;
     private final com.fecos.inventory.WarehouseRepository warehouseRepository;
     private final InventoryService inventoryService;
+    private final RefNumberService refNumberService;
 
     public Page<FinishedProductBatchResponse> list(FinishedProductStatus status, int page, int size) {
         UUID tenantId = currentTenantId();
@@ -50,6 +52,9 @@ public class FinishedProductService {
         var entity = new FinishedProductBatchEntity();
         entity.setTenantId(tenantId);
         entity.setCreatedBy(currentUserId());
+        int seq = repository.maxRefSeq(tenantId) + 1;
+        entity.setRefSeq(seq);
+        entity.setRefNumber(refNumberService.next(tenantId, "FP", seq));
         entity.setBatchNumber(generateBatchNumber(tenantId, req.getBlendDate()));
         entity.setProductId(req.getProductId());
         entity.setQuantity(req.getQuantity());
@@ -135,7 +140,7 @@ public class FinishedProductService {
                 ? warehouseRepository.findById(e.getWarehouseId()).map(w -> w.getName()).orElse(null)
                 : null;
         return new FinishedProductBatchResponse(
-                e.getId(), e.getBatchNumber(), e.getProductId(), productName,
+                e.getId(), e.getRefNumber(), e.getBatchNumber(), e.getProductId(), productName,
                 e.getQuantity(), e.getUnit(), e.getBlendDate(), e.getStatus(),
                 e.getAppearance(), e.getColorOk(), e.getOdor(), e.getPh(), e.getSpecificGravity(),
                 e.getNotes(), testedByName, e.getTestedAt(),

@@ -695,6 +695,7 @@ export function UsersPage() {
             <div className="flex items-center gap-3 min-w-0">
               <Avatar name={u.fullName} role={u.role} />
               <div className="min-w-0">
+                {u.refNumber && <p className="font-mono text-[10px] text-gray-400 leading-none mb-0.5">{u.refNumber}</p>}
                 <p className="text-sm font-semibold text-gray-900 truncate">{u.fullName}</p>
                 <p className="text-xs text-gray-500 mt-0.5">+1 {formatPhone(u.mobileNumber)}</p>
                 <p className="text-xs text-gray-400 truncate">{u.email || '—'}</p>

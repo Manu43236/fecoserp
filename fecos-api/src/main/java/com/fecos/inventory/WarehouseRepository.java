@@ -28,4 +28,7 @@ public interface WarehouseRepository extends JpaRepository<WarehouseEntity, UUID
     Optional<WarehouseEntity> findByIdAndTenantIdAndIsDeletedFalse(UUID id, UUID tenantId);
 
     boolean existsByNameAndTenantIdAndIsDeletedFalse(String name, UUID tenantId);
+
+    @Query("SELECT COALESCE(MAX(w.refSeq), 0) FROM WarehouseEntity w WHERE w.tenantId = :tenantId")
+    int maxRefSeq(@Param("tenantId") UUID tenantId);
 }

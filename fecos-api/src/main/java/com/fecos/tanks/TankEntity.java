@@ -45,4 +45,10 @@ public class TankEntity extends TenantAwareEntity {
 
     @Column(name = "removed_at")
     private Instant removedAt;
+
+    @Column(name = "ref_seq")
+    private Integer refSeq;
+
+    @Column(name = "ref_number", length = 20)
+    private String refNumber;
 }

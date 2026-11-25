@@ -67,4 +67,10 @@ public class FinishedProductBatchEntity extends TenantAwareEntity {
 
     @Column(name = "moved_at")
     private LocalDateTime movedAt;
+
+    @Column(name = "ref_seq")
+    private Integer refSeq;
+
+    @Column(name = "ref_number", length = 20)
+    private String refNumber;
 }

@@ -77,4 +77,7 @@ public interface ServiceVisitRepository extends JpaRepository<ServiceVisitEntity
     long countByTenantIdAndStatusAndVisitDateAndIsDeletedFalse(UUID tenantId, ServiceVisitStatus status, LocalDate visitDate);
 
     long countByTenantIdAndVisitDateAndIsDeletedFalse(UUID tenantId, LocalDate visitDate);
+
+    @Query("SELECT COALESCE(MAX(v.refSeq), 0) FROM ServiceVisitEntity v WHERE v.tenantId = :tenantId")
+    int maxRefSeq(@Param("tenantId") UUID tenantId);
 }

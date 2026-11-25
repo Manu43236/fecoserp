@@ -5,6 +5,7 @@ import java.util.UUID;
 
 public record VehicleResponse(
         UUID id,
+        String refNumber,
         VehicleType vehicleType,
         String make,
         String model,

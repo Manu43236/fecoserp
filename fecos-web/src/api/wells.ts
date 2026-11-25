@@ -3,6 +3,7 @@ import type { ApiResponse, PageResponse } from '@/types'
 
 export interface WellRecord {
   id: string
+  refNumber?: string
   leaseId: string
   leaseName: string | null
   clientName: string | null

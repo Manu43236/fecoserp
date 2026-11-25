@@ -534,7 +534,10 @@ export default function FinishedProductQcPage() {
                 <tr key={b.id} onClick={() => setSelectedId(b.id)}
                   className="cursor-pointer hover:bg-gray-50 transition-colors"
                   style={{ borderTop: i > 0 ? '1px solid rgba(0,0,0,0.05)' : undefined }}>
-                  <td className="px-4 py-3 font-mono text-xs text-gray-700">{b.batchNumber}</td>
+                  <td className="px-4 py-3">
+                    {b.refNumber && <span className="font-mono text-[10px] text-gray-400 block leading-none mb-0.5">{b.refNumber}</span>}
+                    <span className="font-mono text-xs text-gray-700">{b.batchNumber}</span>
+                  </td>
                   <td className="px-4 py-3 font-medium text-gray-900">{b.productName}</td>
                   <td className="px-4 py-3 text-gray-600">{b.quantity} {b.unit}</td>
                   <td className="px-4 py-3 text-gray-600">{b.blendDate}</td>

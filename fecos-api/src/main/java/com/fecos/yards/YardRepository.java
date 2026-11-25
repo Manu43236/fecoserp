@@ -28,4 +28,7 @@ public interface YardRepository extends JpaRepository<YardEntity, UUID> {
     Optional<YardEntity> findByIdAndTenantIdAndIsDeletedFalse(UUID id, UUID tenantId);
 
     boolean existsByNameAndTenantIdAndIsDeletedFalse(String name, UUID tenantId);
+
+    @Query("SELECT COALESCE(MAX(y.refSeq), 0) FROM YardEntity y WHERE y.tenantId = :tenantId")
+    int maxRefSeq(@Param("tenantId") UUID tenantId);
 }

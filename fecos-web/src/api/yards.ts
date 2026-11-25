@@ -3,6 +3,7 @@ import type { ApiResponse, PageResponse } from '@/types'
 
 export interface YardRecord {
   id: string
+  refNumber?: string
   name: string
   location: string | null
   isActive: boolean

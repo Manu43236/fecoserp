@@ -6,6 +6,7 @@ import java.util.UUID;
 
 public record ProductResponse(
         UUID id,
+        String refNumber,
         String name,
         String productCode,
         String category,
@@ -17,7 +18,7 @@ public record ProductResponse(
 ) {
     public static ProductResponse from(ProductEntity p) {
         return new ProductResponse(
-                p.getId(), p.getName(), p.getProductCode(),
+                p.getId(), p.getRefNumber(), p.getName(), p.getProductCode(),
                 p.getCategory(), p.getUnit(), p.getDescription(),
                 p.getPricePerUnit(), p.isActive(), p.getCreatedAt()
         );

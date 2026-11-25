@@ -32,4 +32,7 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
     @Query("SELECT u FROM UserEntity u WHERE u.tenantId = :tenantId AND u.isDeleted = false "
             + "AND :role MEMBER OF u.roles ORDER BY u.createdAt ASC")
     List<UserEntity> findByTenantIdAndRoleOrderByCreatedAt(@Param("tenantId") UUID tenantId, @Param("role") Role role);
+
+    @Query("SELECT COALESCE(MAX(u.refSeq), 0) FROM UserEntity u WHERE u.tenantId = :tenantId")
+    int maxRefSeq(@Param("tenantId") UUID tenantId);
 }

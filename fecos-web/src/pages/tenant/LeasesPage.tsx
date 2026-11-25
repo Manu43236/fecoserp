@@ -493,7 +493,10 @@ export function LeasesPage() {
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
                     <LeaseInitials name={lease.leaseName} />
-                    <span className="font-medium text-gray-900">{lease.leaseName}</span>
+                    <div>
+                      {lease.refNumber && <span className="font-mono text-[10px] text-gray-400 block leading-none mb-0.5">{lease.refNumber}</span>}
+                      <span className="font-medium text-gray-900">{lease.leaseName}</span>
+                    </div>
                   </div>
                 </td>
                 <td className="px-4 py-3 text-gray-600">{lease.clientName ?? '—'}</td>

@@ -8,6 +8,7 @@ import com.fecos.pumpshop.PumpStatus;
 import com.fecos.tanks.TankRepository;
 import com.fecos.tanks.TankService;
 import com.fecos.tanks.TankStatus;
+import com.fecos.common.RefNumberService;
 import com.fecos.users.UserRepository;
 import com.fecos.wells.WellRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -41,6 +42,7 @@ public class TreatmentPlanService {
     private final TankService tankService;
     private final TankRepository tankRepository;
     private final PumpRepository pumpRepository;
+    private final RefNumberService refNumberService;
 
     public Page<TreatmentPlanResponse> list(TreatmentPlanStatus status, UUID wellId, UUID accountRepId, int page, int size) {
         UUID tenantId = currentTenantId();
@@ -59,6 +61,9 @@ public class TreatmentPlanService {
         TreatmentPlanEntity p = new TreatmentPlanEntity();
         p.setTenantId(tenantId);
         p.setCreatedBy(currentUserId());
+        int seq = planRepository.maxRefSeq(tenantId) + 1;
+        p.setRefSeq(seq);
+        p.setRefNumber(refNumberService.next(tenantId, "TP", seq));
         apply(p, req, tenantId);
         return toResponse(planRepository.save(p), false);
     }

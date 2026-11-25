@@ -50,4 +50,10 @@ public class LabSampleEntity extends TenantAwareEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private LabSampleStatus status = LabSampleStatus.RECEIVED;
+
+    @Column(name = "ref_seq")
+    private Integer refSeq;
+
+    @Column(name = "ref_number", length = 20)
+    private String refNumber;
 }

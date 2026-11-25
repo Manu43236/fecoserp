@@ -2,6 +2,7 @@ package com.fecos.leases;
 
 import com.fecos.clients.ClientRepository;
 import com.fecos.common.BulkResult;
+import com.fecos.common.RefNumberService;
 import com.fecos.users.UserRepository;
 import com.opencsv.CSVReader;
 import jakarta.persistence.EntityNotFoundException;
@@ -26,6 +27,7 @@ public class LeaseService {
     private final LeaseRepository leaseRepository;
     private final ClientRepository clientRepository;
     private final UserRepository userRepository;
+    private final RefNumberService refNumberService;
 
     public Page<LeaseResponse> list(String search, UUID clientId, Boolean isActive, int page, int size) {
         UUID tenantId = currentTenantId();
@@ -48,6 +50,9 @@ public class LeaseService {
         LeaseEntity l = new LeaseEntity();
         l.setTenantId(tenantId);
         l.setCreatedBy(currentUserId());
+        int seq = leaseRepository.maxRefSeq(tenantId) + 1;
+        l.setRefSeq(seq);
+        l.setRefNumber(refNumberService.next(tenantId, "LS", seq));
         apply(l, req);
         return toResponse(leaseRepository.save(l));
     }
@@ -65,6 +70,7 @@ public class LeaseService {
         UUID userId   = currentUserId();
         int created   = 0;
         List<BulkResult.RowError> errors = new ArrayList<>();
+        int[] seq = { leaseRepository.maxRefSeq(tenantId) };
 
         // CSV columns: clientCompanyName,leaseName,county,state,gpsLat,gpsLng,directions
         try (var reader = new CSVReader(new InputStreamReader(file.getInputStream()))) {
@@ -90,6 +96,7 @@ public class LeaseService {
                         rowNum++; continue;
                     }
 
+                    seq[0]++;
                     LeaseEntity l = new LeaseEntity();
                     l.setTenantId(tenantId);
                     l.setCreatedBy(userId);
@@ -101,6 +108,8 @@ public class LeaseService {
                     l.setGpsLng(parseDec(lngStr));
                     l.setDirections(notBlank(directions));
                     l.setActive(true);
+                    l.setRefSeq(seq[0]);
+                    l.setRefNumber(refNumberService.next(tenantId, "LS", seq[0]));
                     leaseRepository.save(l);
                     created++;
                 } catch (Exception e) {

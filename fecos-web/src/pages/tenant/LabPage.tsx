@@ -546,6 +546,7 @@ function LabReportDrawer({ sample, onClose, onEnterResults, onStartTesting }: {
       <div className="relative bg-white w-[600px] h-full shadow-2xl flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
           <div>
+            {s.refNumber && <p className="font-mono text-[10px] text-gray-400 leading-none mb-1">{s.refNumber}</p>}
             <p className="text-sm font-bold text-gray-900 font-mono">{s.custodyCode ?? s.sampleNumber}</p>
             <p className="text-xs text-gray-400 mt-0.5">
               {SAMPLE_TYPE_LABEL[s.sampleType]} · {s.wellName} · {s.leaseName}
@@ -886,6 +887,7 @@ export default function LabPage() {
                   onClick={() => setSelected(s)}
                   className="cursor-pointer hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3">
+                    {s.refNumber && <p className="font-mono text-[10px] text-gray-400 leading-none mb-0.5">{s.refNumber}</p>}
                     <p className="font-mono text-xs font-semibold text-gray-800">{s.sampleNumber}</p>
                     {s.custodyCode && <p className="font-mono text-[11px] text-gray-400">{s.custodyCode}</p>}
                   </td>

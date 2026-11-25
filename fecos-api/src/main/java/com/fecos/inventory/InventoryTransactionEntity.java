@@ -48,4 +48,10 @@ public class InventoryTransactionEntity extends TenantAwareEntity {
 
     @Column(name = "reference_id")
     private UUID referenceId;
+
+    @Column(name = "ref_seq")
+    private Integer refSeq;
+
+    @Column(name = "ref_number", length = 20)
+    private String refNumber;
 }

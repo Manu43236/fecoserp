@@ -10,6 +10,7 @@ import com.fecos.servicevisits.ServiceVisitStatus;
 import com.fecos.servicevisits.ServiceVisitStopRepository;
 import com.fecos.servicevisits.ServiceVisitStopStatus;
 import com.fecos.tanks.TankRepository;
+import com.fecos.common.RefNumberService;
 import com.fecos.users.UserRepository;
 import com.fecos.wells.WellEntity;
 import com.fecos.wells.WellRepository;
@@ -41,6 +42,7 @@ public class ServiceReportService {
     private final TreatmentPlanLineRepository planLineRepo;
     private final TankRepository tankRepo;
     private final LabService labService;
+    private final RefNumberService refNumberService;
 
     // ── Submit report for a stop ──────────────────────────────────────────────
 
@@ -62,6 +64,12 @@ public class ServiceReportService {
                     r.setCreatedBy(userId);
                     return r;
                 });
+
+        if (report.getRefNumber() == null) {
+            int seq = reportRepo.maxRefSeq(tenantId) + 1;
+            report.setRefSeq(seq);
+            report.setRefNumber(refNumberService.next(tenantId, "SR", seq));
+        }
 
         report.setSoar(req.soar());
         report.setSpecialTreat(req.specialTreat());
@@ -490,7 +498,7 @@ public class ServiceReportService {
         }
 
         return new ServiceReportResponse(
-                r.getId(), r.getServiceVisitStopId(), wellName, leaseName, techName,
+                r.getId(), r.getRefNumber(), r.getServiceVisitStopId(), wellName, leaseName, techName,
                 r.isSoar(), r.getSpecialTreat(), r.getNotes(),
                 chemicals, r.getSubmittedAt(), r.getCreatedAt()
         );

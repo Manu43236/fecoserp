@@ -24,4 +24,7 @@ public interface VehicleRepository extends JpaRepository<VehicleEntity, UUID> {
     Page<VehicleEntity> search(@Param("tenantId") UUID tenantId, @Param("q") String q, Pageable pageable);
 
     Optional<VehicleEntity> findByIdAndTenantIdAndIsDeletedFalse(UUID id, UUID tenantId);
+
+    @Query("SELECT COALESCE(MAX(v.refSeq), 0) FROM VehicleEntity v WHERE v.tenantId = :tenantId")
+    int maxRefSeq(@Param("tenantId") UUID tenantId);
 }

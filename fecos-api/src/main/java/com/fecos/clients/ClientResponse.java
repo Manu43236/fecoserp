@@ -4,6 +4,7 @@ import java.time.Instant;
 
 public record ClientResponse(
         String id,
+        String refNumber,
         String companyName,
         String contactName,
         String contactPhone,
@@ -23,6 +24,7 @@ public record ClientResponse(
     public static ClientResponse from(ClientEntity c, String accountRepName, String yardName) {
         return new ClientResponse(
                 c.getId().toString(),
+                c.getRefNumber(),
                 c.getCompanyName(),
                 c.getContactName(),
                 c.getContactPhone(),

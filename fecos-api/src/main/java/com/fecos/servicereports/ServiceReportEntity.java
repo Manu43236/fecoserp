@@ -83,4 +83,10 @@ public class ServiceReportEntity extends TenantAwareEntity {
 
     @Column(name = "synced_late", nullable = false)
     private boolean syncedLate;
+
+    @Column(name = "ref_seq")
+    private Integer refSeq;
+
+    @Column(name = "ref_number", length = 20)
+    private String refNumber;
 }

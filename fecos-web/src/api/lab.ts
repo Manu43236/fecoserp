@@ -61,6 +61,7 @@ export interface LabResultRecord {
 
 export interface LabSampleRecord {
   id: string
+  refNumber?: string
   sampleNumber: string
   custodyCode: string | null
   sampleType: SampleType

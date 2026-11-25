@@ -1,5 +1,6 @@
 package com.fecos.products;
 
+import com.fecos.common.RefNumberService;
 import com.fecos.users.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,7 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
+    private final RefNumberService refNumberService;
 
     public Page<ProductResponse> list(String search, String category, Boolean isActive, int page, int size) {
         return productRepository
@@ -37,6 +39,9 @@ public class ProductService {
         ProductEntity p = new ProductEntity();
         p.setTenantId(tenantId);
         p.setCreatedBy(currentUserId());
+        int seq = productRepository.maxRefSeq(tenantId) + 1;
+        p.setRefSeq(seq);
+        p.setRefNumber(refNumberService.next(tenantId, "PRD", seq));
         apply(p, req);
         return ProductResponse.from(productRepository.save(p));
     }

@@ -1,5 +1,6 @@
 package com.fecos.yards;
 
+import com.fecos.common.RefNumberService;
 import com.fecos.users.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ public class YardService {
 
     private final YardRepository yardRepository;
     private final UserRepository userRepository;
+    private final RefNumberService refNumberService;
 
     public Page<YardResponse> list(String search, int page, int size) {
         return yardRepository
@@ -44,6 +46,9 @@ public class YardService {
         YardEntity y = new YardEntity();
         y.setTenantId(tenantId);
         y.setCreatedBy(currentUserId());
+        int seq = yardRepository.maxRefSeq(tenantId) + 1;
+        y.setRefSeq(seq);
+        y.setRefNumber(refNumberService.next(tenantId, "Y", seq));
         apply(y, req);
         return YardResponse.from(yardRepository.save(y));
     }

@@ -1,6 +1,7 @@
 package com.fecos.wells;
 
 import com.fecos.common.BulkResult;
+import com.fecos.common.RefNumberService;
 import com.fecos.leases.LeaseRepository;
 import com.fecos.clients.ClientRepository;
 import com.fecos.users.UserRepository;
@@ -27,6 +28,7 @@ public class WellService {
     private final LeaseRepository leaseRepository;
     private final ClientRepository clientRepository;
     private final UserRepository userRepository;
+    private final RefNumberService refNumberService;
 
     public Page<WellResponse> list(String search, UUID leaseId, Boolean isActive, int page, int size) {
         UUID tenantId = currentTenantId();
@@ -45,6 +47,9 @@ public class WellService {
         WellEntity w = new WellEntity();
         w.setTenantId(tenantId);
         w.setCreatedBy(currentUserId());
+        int seq = wellRepository.maxRefSeq(tenantId) + 1;
+        w.setRefSeq(seq);
+        w.setRefNumber(refNumberService.next(tenantId, "WL", seq));
         apply(w, req);
         return resolve(wellRepository.save(w));
     }
@@ -62,6 +67,7 @@ public class WellService {
         UUID userId   = currentUserId();
         int created   = 0;
         List<BulkResult.RowError> errors = new ArrayList<>();
+        int[] seq = { wellRepository.maxRefSeq(tenantId) };
 
         // CSV columns: leaseName,wellName,wellNumber,apiNumber,pumpType
         try (var reader = new CSVReader(new InputStreamReader(file.getInputStream()))) {
@@ -80,6 +86,7 @@ public class WellService {
                     var lease = leaseRepository.findByLeaseNameAndTenantIdAndIsDeletedFalse(leaseName, tenantId)
                             .orElseThrow(() -> new IllegalArgumentException("Lease \"" + leaseName + "\" not found"));
 
+                    seq[0]++;
                     WellEntity w = new WellEntity();
                     w.setTenantId(tenantId);
                     w.setCreatedBy(userId);
@@ -89,6 +96,8 @@ public class WellService {
                     w.setApiNumber(notBlank(apiNumber));
                     w.setPumpType(pumpType != null && !pumpType.isBlank() ? pumpType : "Rod Pump");
                     w.setActive(true);
+                    w.setRefSeq(seq[0]);
+                    w.setRefNumber(refNumberService.next(tenantId, "WL", seq[0]));
                     wellRepository.save(w);
                     created++;
                 } catch (Exception e) {

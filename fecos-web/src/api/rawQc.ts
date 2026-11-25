@@ -5,6 +5,7 @@ export type RawMaterialStatus = 'PENDING' | 'IN_PROGRESS' | 'PASSED' | 'FAILED'
 
 export interface RawMaterialBatch {
   id: string
+  refNumber?: string
   batchNumber: string
   supplierName: string
   materialName: string

@@ -1,5 +1,6 @@
 package com.fecos.vehicles;
 
+import com.fecos.common.RefNumberService;
 import com.fecos.users.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,7 @@ public class VehicleService {
 
     private final VehicleRepository vehicleRepository;
     private final UserRepository userRepository;
+    private final RefNumberService refNumberService;
 
     public Page<VehicleResponse> list(VehicleType type, VehicleStatus status, String search, int page, int size) {
         UUID tenantId = currentTenantId();
@@ -43,8 +45,12 @@ public class VehicleService {
 
     @Transactional
     public VehicleResponse create(VehicleRequest req) {
+        UUID tenantId = currentTenantId();
+        int seq = vehicleRepository.maxRefSeq(tenantId) + 1;
         VehicleEntity v = new VehicleEntity();
-        v.setTenantId(currentTenantId());
+        v.setTenantId(tenantId);
+        v.setRefSeq(seq);
+        v.setRefNumber(refNumberService.next(tenantId, "VH", seq));
         v.setCreatedBy(currentUserId());
         apply(v, req);
         return toResponse(vehicleRepository.save(v));
@@ -84,7 +90,7 @@ public class VehicleService {
 
     private VehicleResponse toResponse(VehicleEntity v) {
         return new VehicleResponse(
-                v.getId(), v.getVehicleType(), v.getMake(), v.getModel(),
+                v.getId(), v.getRefNumber(), v.getVehicleType(), v.getMake(), v.getModel(),
                 v.getYear(), v.getLicensePlate(), v.getVinNumber(), v.getDotNumber(),
                 v.getCurrentMileage(), v.getStatus(), v.getNotes(), v.getCreatedAt()
         );

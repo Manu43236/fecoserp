@@ -6,6 +6,7 @@ import java.util.UUID;
 
 public record UserResponse(
         String id,
+        String refNumber,
         String fullName,
         String mobileNumber,
         String email,
@@ -25,6 +26,7 @@ public record UserResponse(
         Role primary = u.getPrimaryRole();
         return new UserResponse(
                 u.getId().toString(),
+                u.getRefNumber(),
                 u.getFullName(),
                 u.getMobileNumber(),
                 u.getEmail(),

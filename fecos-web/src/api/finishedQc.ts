@@ -5,6 +5,7 @@ export type FinishedProductStatus = 'PENDING' | 'IN_PROGRESS' | 'PASSED' | 'FAIL
 
 export interface FinishedProductBatch {
   id: string
+  refNumber?: string
   batchNumber: string
   productId: string
   productName: string | null

@@ -70,6 +70,7 @@ export interface TreatmentReport {
 
 export interface ServiceVisit {
   id:        string
+  refNumber?: string
   name:      string | null
   visitDate: string
   techId:    string

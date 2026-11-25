@@ -12,6 +12,7 @@ import java.util.UUID;
 public class WarehouseResponse {
 
     private UUID id;
+    private String refNumber;
     private String name;
     private String location;
     private UUID yardId;
@@ -27,6 +28,7 @@ public class WarehouseResponse {
     public static WarehouseResponse from(WarehouseEntity w, String yardName) {
         WarehouseResponse r = new WarehouseResponse();
         r.id        = w.getId();
+        r.refNumber = w.getRefNumber();
         r.name      = w.getName();
         r.location  = w.getLocation();
         r.yardId    = w.getYardId();

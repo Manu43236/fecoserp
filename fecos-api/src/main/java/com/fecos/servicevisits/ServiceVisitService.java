@@ -7,6 +7,7 @@ import com.fecos.programs.TreatmentPlanRepository;
 import com.fecos.programs.TreatmentPlanSchedule;
 import com.fecos.programs.TreatmentPlanStatus;
 import com.fecos.servicereports.ServiceReportRepository;
+import com.fecos.common.RefNumberService;
 import com.fecos.users.UserRepository;
 import com.fecos.wells.WellEntity;
 import com.fecos.wells.WellRepository;
@@ -33,6 +34,7 @@ public class ServiceVisitService {
     private final ClientRepository clientRepo;
     private final TreatmentPlanRepository planRepo;
     private final ServiceReportRepository reportRepo;
+    private final RefNumberService refNumberService;
 
     // ── List ─────────────────────────────────────────────────────────────────
 
@@ -70,6 +72,9 @@ public class ServiceVisitService {
         v.setNotes(req.notes());
         v.setStatus(ServiceVisitStatus.SCHEDULED);
         v.setCreatedBy(userId);
+        int refSeq = visitRepo.maxRefSeq(tenantId) + 1;
+        v.setRefSeq(refSeq);
+        v.setRefNumber(refNumberService.next(tenantId, "SV", refSeq));
         v = visitRepo.save(v);
 
         if (req.wellIds() != null) {
@@ -264,7 +269,7 @@ public class ServiceVisitService {
         }
 
         return new ServiceVisitResponse(
-                v.getId(), v.getName(), v.getVisitDate(), v.getTechId(), techName,
+                v.getId(), v.getRefNumber(), v.getName(), v.getVisitDate(), v.getTechId(), techName,
                 v.getStatus(), v.getNotes(), stops, createdByName, v.getCreatedAt()
         );
     }

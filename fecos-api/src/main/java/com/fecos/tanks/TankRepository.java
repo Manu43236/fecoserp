@@ -41,4 +41,7 @@ public interface TankRepository extends JpaRepository<TankEntity, UUID> {
 
     List<TankEntity> findAllByTenantIdAndWellIdInAndStatusInAndIsDeletedFalse(
             UUID tenantId, java.util.Collection<UUID> wellIds, java.util.Collection<TankStatus> statuses);
+
+    @Query("SELECT COALESCE(MAX(t.refSeq), 0) FROM TankEntity t WHERE t.tenantId = :tenantId")
+    int maxRefSeq(@Param("tenantId") UUID tenantId);
 }

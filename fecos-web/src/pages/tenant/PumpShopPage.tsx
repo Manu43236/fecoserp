@@ -854,7 +854,10 @@ export default function PumpShopPage() {
               <tr key={p.id}
                 onClick={() => { setSelected(p); setFormOpen(false) }}
                 className="hover:bg-gray-50 cursor-pointer transition-colors">
-                <td className="px-4 py-3 font-mono text-xs font-semibold text-gray-700">{p.serialNumber}</td>
+                <td className="px-4 py-3">
+                  {p.refNumber && <span className="font-mono text-[10px] text-gray-400 block leading-none mb-0.5">{p.refNumber}</span>}
+                  <span className="font-mono text-xs font-semibold text-gray-700">{p.serialNumber}</span>
+                </td>
                 <td className="px-4 py-3 text-gray-600 text-xs">{[p.make, p.model].filter(Boolean).join(' ') || '—'}</td>
                 <td className="px-4 py-3 text-gray-600 text-xs">{p.pumpType ?? '—'}</td>
                 <td className="px-4 py-3 text-xs">

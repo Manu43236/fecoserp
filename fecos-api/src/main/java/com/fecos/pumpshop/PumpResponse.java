@@ -6,6 +6,7 @@ import java.util.UUID;
 
 public record PumpResponse(
         UUID id,
+        String refNumber,
         String serialNumber,
         String make,
         String model,

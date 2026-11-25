@@ -1,5 +1,6 @@
 package com.fecos.users;
 
+import com.fecos.common.RefNumberService;
 import com.fecos.yards.YardRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final YardRepository yardRepository;
     private final PasswordEncoder passwordEncoder;
+    private final RefNumberService refNumberService;
 
     /** Roles that require the user to belong to at least one yard. */
     private static final Set<Role> YARD_REQUIRED = Set.of(
@@ -48,6 +50,9 @@ public class UserService {
 
         UserEntity user = new UserEntity();
         user.setTenantId(tenantId);
+        int seq = userRepository.maxRefSeq(tenantId) + 1;
+        user.setRefSeq(seq);
+        user.setRefNumber(refNumberService.next(tenantId, "USR", seq));
         user.setFullName(req.getFullName());
         user.setMobileNumber(req.getMobileNumber());
         user.setEmail(req.getEmail());
@@ -94,6 +99,9 @@ public class UserService {
 
         UserEntity user = new UserEntity();
         user.setTenantId(tenantId);
+        int seq2 = userRepository.maxRefSeq(tenantId) + 1;
+        user.setRefSeq(seq2);
+        user.setRefNumber(refNumberService.next(tenantId, "USR", seq2));
         user.setFullName(req.getFullName());
         user.setMobileNumber(req.getMobileNumber());
         user.setEmail(req.getEmail());

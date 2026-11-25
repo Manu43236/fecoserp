@@ -3,6 +3,7 @@ import type { ApiResponse, PageResponse } from '@/types'
 
 export interface LeaseRecord {
   id: string
+  refNumber?: string
   clientId: string
   clientName: string | null
   accountRepId: string | null

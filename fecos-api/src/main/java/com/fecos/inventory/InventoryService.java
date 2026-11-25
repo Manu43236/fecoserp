@@ -1,5 +1,6 @@
 package com.fecos.inventory;
 
+import com.fecos.common.RefNumberService;
 import com.fecos.products.ProductRepository;
 import com.fecos.users.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -27,6 +28,7 @@ public class InventoryService {
     private final WarehouseRepository warehouseRepository;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
+    private final RefNumberService refNumberService;
 
     public List<StockResponse> stock(UUID warehouseId) {
         UUID tenantId = currentTenantId();
@@ -83,8 +85,11 @@ public class InventoryService {
         String createdByName = userRepository.findById(userId)
                 .map(u -> u.getFullName()).orElse("Unknown");
 
+        int seq = txRepository.maxRefSeq(tenantId) + 1;
         InventoryTransactionEntity tx = new InventoryTransactionEntity();
         tx.setTenantId(tenantId);
+        tx.setRefSeq(seq);
+        tx.setRefNumber(refNumberService.next(tenantId, "TX", seq));
         tx.setCreatedBy(userId);
         tx.setCreatedByName(createdByName);
         tx.setWarehouseId(req.getWarehouseId());
@@ -141,14 +146,18 @@ public class InventoryService {
         // Cap each product's issue at what's actually in stock — never go negative, never block.
         // Short loads are expected: the driver takes what's available and the shortfall is flagged upstream.
         Map<UUID, BigDecimal> remaining = stockByProduct(tenantId, warehouseId);
+        int[] issueSeq = { txRepository.maxRefSeq(tenantId) };
         for (RouteIssueItem item : items) {
             BigDecimal avail = remaining.getOrDefault(item.productId(), BigDecimal.ZERO);
             BigDecimal issueQty = item.quantity().min(avail);
             if (issueQty.compareTo(BigDecimal.ZERO) <= 0) continue; // nothing left for this product
             remaining.put(item.productId(), avail.subtract(issueQty));
 
+            issueSeq[0]++;
             InventoryTransactionEntity tx = new InventoryTransactionEntity();
             tx.setTenantId(tenantId);
+            tx.setRefSeq(issueSeq[0]);
+            tx.setRefNumber(refNumberService.next(tenantId, "TX", issueSeq[0]));
             tx.setCreatedBy(userId);
             tx.setCreatedByName(createdByName);
             tx.setWarehouseId(warehouseId);
@@ -168,10 +177,14 @@ public class InventoryService {
     public void returnForRoute(UUID tenantId, UUID userId, String createdByName,
                                UUID warehouseId, UUID routeId, LocalDate routeDate,
                                List<com.fecos.routes.ReturnInventoryRequest.ReturnItem> items) {
+        int[] returnSeq = { txRepository.maxRefSeq(tenantId) };
         for (var item : items) {
             if (item.getQty() == null || item.getQty().compareTo(BigDecimal.ZERO) <= 0) continue;
+            returnSeq[0]++;
             InventoryTransactionEntity tx = new InventoryTransactionEntity();
             tx.setTenantId(tenantId);
+            tx.setRefSeq(returnSeq[0]);
+            tx.setRefNumber(refNumberService.next(tenantId, "TX", returnSeq[0]));
             tx.setCreatedBy(userId);
             tx.setCreatedByName(createdByName);
             tx.setWarehouseId(warehouseId);
@@ -191,9 +204,13 @@ public class InventoryService {
     public void reverseRouteIssues(UUID tenantId, UUID userId, String createdByName, UUID routeId) {
         List<InventoryTransactionEntity> issued = txRepository
                 .findByTenantIdAndReferenceIdAndReferenceTypeAndIsDeletedFalse(tenantId, routeId, "ROUTE");
+        int[] reversalSeq = { txRepository.maxRefSeq(tenantId) };
         for (InventoryTransactionEntity issue : issued) {
+            reversalSeq[0]++;
             InventoryTransactionEntity reversal = new InventoryTransactionEntity();
             reversal.setTenantId(tenantId);
+            reversal.setRefSeq(reversalSeq[0]);
+            reversal.setRefNumber(refNumberService.next(tenantId, "TX", reversalSeq[0]));
             reversal.setCreatedBy(userId);
             reversal.setCreatedByName(createdByName);
             reversal.setWarehouseId(issue.getWarehouseId());

@@ -58,4 +58,7 @@ public interface WellRepository extends JpaRepository<WellEntity, UUID> {
             @Param("tenantId") UUID tenantId, @Param("leaseIds") java.util.Collection<UUID> leaseIds);
 
     long countByTenantIdAndLeaseIdInAndIsDeletedFalse(UUID tenantId, java.util.Collection<UUID> leaseIds);
+
+    @Query("SELECT COALESCE(MAX(w.refSeq), 0) FROM WellEntity w WHERE w.tenantId = :tenantId")
+    int maxRefSeq(@Param("tenantId") UUID tenantId);
 }

@@ -42,4 +42,10 @@ public class VehicleEntity extends TenantAwareEntity {
 
     @Column(columnDefinition = "TEXT")
     private String notes;
+
+    @Column(name = "ref_seq")
+    private Integer refSeq;
+
+    @Column(name = "ref_number", length = 20)
+    private String refNumber;
 }

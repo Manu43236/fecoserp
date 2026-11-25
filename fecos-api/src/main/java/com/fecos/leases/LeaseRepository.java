@@ -52,4 +52,7 @@ public interface LeaseRepository extends JpaRepository<LeaseEntity, UUID> {
     @Query("SELECT l.id FROM LeaseEntity l WHERE l.tenantId = :tenantId AND l.clientId IN :clientIds AND l.isDeleted = false")
     List<UUID> findIdsByTenantIdAndClientIdIn(
             @Param("tenantId") UUID tenantId, @Param("clientIds") java.util.Collection<UUID> clientIds);
+
+    @Query("SELECT COALESCE(MAX(l.refSeq), 0) FROM LeaseEntity l WHERE l.tenantId = :tenantId")
+    int maxRefSeq(@Param("tenantId") UUID tenantId);
 }

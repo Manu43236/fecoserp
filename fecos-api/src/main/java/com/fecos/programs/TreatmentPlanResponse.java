@@ -7,6 +7,7 @@ import java.util.UUID;
 
 public record TreatmentPlanResponse(
         UUID id,
+        String refNumber,
         UUID wellId,
         String wellName,
         String leaseName,
@@ -35,6 +36,7 @@ public record TreatmentPlanResponse(
             long lineCount) {
         return new TreatmentPlanResponse(
                 p.getId(),
+                p.getRefNumber(),
                 p.getWellId(),
                 wellName,
                 leaseName,

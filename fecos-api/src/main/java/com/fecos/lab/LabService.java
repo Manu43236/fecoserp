@@ -4,6 +4,7 @@ import com.fecos.clients.ClientRepository;
 import com.fecos.leases.LeaseRepository;
 import com.fecos.programs.TreatmentPlanRepository;
 import com.fecos.programs.TreatmentPlanStatus;
+import com.fecos.common.RefNumberService;
 import com.fecos.users.UserRepository;
 import com.fecos.wells.WellRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -36,6 +37,7 @@ public class LabService {
     private final LeaseRepository leaseRepository;
     private final ClientRepository clientRepository;
     private final TreatmentPlanRepository treatmentPlanRepository;
+    private final RefNumberService refNumberService;
 
     public Page<LabSampleResponse> list(LabSampleStatus status, UUID wellId, SampleType sampleType,
                                         LocalDateTime dateFrom, LocalDateTime dateTo, int page, int size) {
@@ -55,6 +57,9 @@ public class LabService {
         LabSampleEntity s = new LabSampleEntity();
         s.setTenantId(tenantId);
         s.setCreatedBy(currentUserId());
+        int seq = sampleRepository.maxRefSeq(tenantId) + 1;
+        s.setRefSeq(seq);
+        s.setRefNumber(refNumberService.next(tenantId, "SMP", seq));
         s.setSampleNumber(generateSampleNumber(tenantId, req.getReceivedAt().toLocalDate()));
         apply(s, req);
         return toResponse(sampleRepository.save(s), false);
@@ -90,6 +95,9 @@ public class LabService {
         LabSampleEntity s = new LabSampleEntity();
         s.setTenantId(tenantId);
         s.setCreatedBy(collectedById);
+        int seq = sampleRepository.maxRefSeq(tenantId) + 1;
+        s.setRefSeq(seq);
+        s.setRefNumber(refNumberService.next(tenantId, "SMP", seq));
         s.setSampleNumber(generateSampleNumber(tenantId, LocalDate.now()));
         s.setCustodyCode(custodyCode);
         s.setSampleType(sampleType);
@@ -295,7 +303,7 @@ public class LabService {
         }
 
         return new LabSampleResponse(
-                s.getId(), s.getSampleNumber(), s.getCustodyCode(), s.getSampleType(),
+                s.getId(), s.getRefNumber(), s.getSampleNumber(), s.getCustodyCode(), s.getSampleType(),
                 s.getWellId(), wellName, leaseName, clientName,
                 s.getCollectedById(), collectedByName,
                 s.getCollectedAt(), s.getReceivedAt(),

@@ -6,6 +6,7 @@ import com.fecos.programs.TreatmentPlanLineRepository;
 import com.fecos.programs.TreatmentPlanStatus;
 import com.fecos.tanks.TankEntity;
 import com.fecos.tanks.TankRepository;
+import com.fecos.common.RefNumberService;
 import com.fecos.users.UserRepository;
 import com.fecos.wells.WellRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -31,6 +32,7 @@ public class PumpService {
     private final LeaseRepository leaseRepository;
     private final ClientRepository clientRepository;
     private final UserRepository userRepository;
+    private final RefNumberService refNumberService;
 
     public Page<PumpResponse> list(PumpStatus status, PumpOwner owner, int page, int size) {
         UUID tenantId = currentTenantId();
@@ -45,8 +47,12 @@ public class PumpService {
 
     @Transactional
     public PumpResponse create(PumpRequest req) {
+        UUID tenantId = currentTenantId();
+        int seq = pumpRepository.maxRefSeq(tenantId) + 1;
         PumpEntity p = new PumpEntity();
-        p.setTenantId(currentTenantId());
+        p.setTenantId(tenantId);
+        p.setRefSeq(seq);
+        p.setRefNumber(refNumberService.next(tenantId, "P", seq));
         p.setCreatedBy(currentUserId());
         apply(p, req);
         return toResponse(pumpRepository.save(p), false);
@@ -215,7 +221,7 @@ public class PumpService {
                 : null;
 
         return new PumpResponse(
-                p.getId(), p.getSerialNumber(), p.getMake(), p.getModel(),
+                p.getId(), p.getRefNumber(), p.getSerialNumber(), p.getMake(), p.getModel(),
                 p.getPumpType(), p.getOwner(), p.getClientId(), ownerClientName, p.getThirdPartyName(),
                 p.getStatus(),
                 p.getTankId(), tankSerial, wellId, wellName, leaseName, clientName,

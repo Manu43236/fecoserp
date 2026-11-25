@@ -35,4 +35,7 @@ public interface TreatmentPlanRepository extends JpaRepository<TreatmentPlanEnti
 
     List<TreatmentPlanEntity> findAllByTenantIdAndStatusAndIsDeletedFalse(
             UUID tenantId, TreatmentPlanStatus status);
+
+    @Query("SELECT COALESCE(MAX(p.refSeq), 0) FROM TreatmentPlanEntity p WHERE p.tenantId = :tenantId")
+    int maxRefSeq(@Param("tenantId") UUID tenantId);
 }

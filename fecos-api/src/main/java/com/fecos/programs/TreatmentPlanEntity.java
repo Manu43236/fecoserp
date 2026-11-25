@@ -52,4 +52,10 @@ public class TreatmentPlanEntity extends TenantAwareEntity {
 
     @Column(name = "superseded_at")
     private Instant supersededAt;
+
+    @Column(name = "ref_seq")
+    private Integer refSeq;
+
+    @Column(name = "ref_number", length = 20)
+    private String refNumber;
 }

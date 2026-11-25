@@ -58,4 +58,7 @@ public interface ClientRepository extends JpaRepository<ClientEntity, UUID> {
     @Query("SELECT c.id FROM ClientEntity c WHERE c.tenantId = :tenantId AND c.accountRepId = :repId AND c.isDeleted = false")
     java.util.List<UUID> findIdsByTenantIdAndAccountRepId(
             @Param("tenantId") UUID tenantId, @Param("repId") UUID repId);
+
+    @Query("SELECT COALESCE(MAX(c.refSeq), 0) FROM ClientEntity c WHERE c.tenantId = :tenantId")
+    int maxRefSeq(@Param("tenantId") UUID tenantId);
 }

@@ -3,6 +3,7 @@ import type { ApiResponse } from '@/types'
 
 export interface UserRecord {
   id: string
+  refNumber?: string
   fullName: string
   mobileNumber: string
   email: string | null

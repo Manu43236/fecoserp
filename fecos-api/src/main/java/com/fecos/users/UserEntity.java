@@ -56,6 +56,12 @@ public class UserEntity extends BaseEntity {
     @Column(name = "is_active", nullable = false)
     private boolean isActive = true;
 
+    @Column(name = "ref_seq")
+    private Integer refSeq;
+
+    @Column(name = "ref_number", length = 20)
+    private String refNumber;
+
     /** The single highest-precedence role, used for nav/home/dashboard selection. */
     @Transient
     public Role getPrimaryRole() {

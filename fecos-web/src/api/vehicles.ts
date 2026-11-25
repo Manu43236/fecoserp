@@ -5,6 +5,7 @@ export type VehicleStatus = 'AVAILABLE' | 'ASSIGNED' | 'ON_TRIP'
 
 export interface Vehicle {
   id:             string
+  refNumber?:     string
   vehicleType:    VehicleType
   make:           string
   model:          string

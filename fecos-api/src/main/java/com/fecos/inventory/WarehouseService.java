@@ -1,5 +1,6 @@
 package com.fecos.inventory;
 
+import com.fecos.common.RefNumberService;
 import com.fecos.users.UserRepository;
 import com.fecos.yards.YardRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -20,6 +21,7 @@ public class WarehouseService {
     private final WarehouseRepository warehouseRepository;
     private final YardRepository yardRepository;
     private final UserRepository userRepository;
+    private final RefNumberService refNumberService;
 
     public Page<WarehouseResponse> list(String search, int page, int size) {
         return warehouseRepository
@@ -46,6 +48,9 @@ public class WarehouseService {
         WarehouseEntity w = new WarehouseEntity();
         w.setTenantId(tenantId);
         w.setCreatedBy(currentUserId());
+        int seq = warehouseRepository.maxRefSeq(tenantId) + 1;
+        w.setRefSeq(seq);
+        w.setRefNumber(refNumberService.next(tenantId, "WH", seq));
         apply(w, req);
         return toResponse(warehouseRepository.save(w));
     }

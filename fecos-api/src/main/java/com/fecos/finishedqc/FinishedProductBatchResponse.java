@@ -8,6 +8,7 @@ import java.util.UUID;
 
 public record FinishedProductBatchResponse(
         UUID id,
+        String refNumber,
         String batchNumber,
         UUID productId,
         String productName,

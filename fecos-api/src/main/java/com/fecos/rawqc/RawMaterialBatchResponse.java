@@ -8,6 +8,7 @@ import java.util.UUID;
 
 public record RawMaterialBatchResponse(
         UUID id,
+        String refNumber,
         String batchNumber,
         String supplierName,
         String materialName,

@@ -7,6 +7,7 @@ import java.util.UUID;
 
 public record ServiceVisitResponse(
         UUID id,
+        String refNumber,
         String name,
         LocalDate visitDate,
         UUID techId,

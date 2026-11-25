@@ -377,7 +377,10 @@ export default function VehiclesPage() {
                 <td className="px-4 py-3">{typeBadge(v.vehicleType)}</td>
                 <td className="px-4 py-3 font-medium text-gray-900">{v.make} {v.model}</td>
                 <td className="px-4 py-3 text-gray-600">{v.year}</td>
-                <td className="px-4 py-3 font-mono text-xs text-gray-700">{v.licensePlate}</td>
+                <td className="px-4 py-3">
+                  {v.refNumber && <span className="font-mono text-[10px] text-gray-400 block leading-none mb-0.5">{v.refNumber}</span>}
+                  <span className="font-mono text-xs text-gray-700">{v.licensePlate}</span>
+                </td>
                 <td className="px-4 py-3 text-gray-600">{v.dotNumber ?? '—'}</td>
                 <td className="px-4 py-3 text-gray-600">{v.currentMileage != null ? `${v.currentMileage.toLocaleString()} mi` : '—'}</td>
                 <td className="px-4 py-3">{statusDot(v.status)}</td>

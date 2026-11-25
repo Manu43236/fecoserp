@@ -1068,6 +1068,7 @@ function TransactionsSection({ canEdit }: { canEdit: boolean }) {
             ) : transactions.map(t => (
               <tr key={t.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3 whitespace-nowrap">
+                  {t.refNumber && <p className="font-mono text-[10px] text-gray-400 leading-none mb-0.5">{t.refNumber}</p>}
                   <p className="text-gray-800 text-xs font-medium">{t.transactionDate}</p>
                   <p className="text-gray-400 text-xs mt-0.5">{fmtDateTime(t.createdAt)}</p>
                 </td>

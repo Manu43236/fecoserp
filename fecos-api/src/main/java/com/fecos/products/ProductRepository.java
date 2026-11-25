@@ -32,4 +32,7 @@ public interface ProductRepository extends JpaRepository<ProductEntity, UUID> {
     java.util.List<ProductEntity> findAllByTenantIdAndIsDeletedFalse(UUID tenantId);
 
     boolean existsByNameAndTenantIdAndIsDeletedFalse(String name, UUID tenantId);
+
+    @Query("SELECT COALESCE(MAX(p.refSeq), 0) FROM ProductEntity p WHERE p.tenantId = :tenantId")
+    int maxRefSeq(@Param("tenantId") UUID tenantId);
 }

@@ -6,6 +6,7 @@ import java.util.UUID;
 
 public record LabSampleResponse(
         UUID id,
+        String refNumber,
         String sampleNumber,
         String custodyCode,
         SampleType sampleType,

@@ -31,4 +31,7 @@ public interface ServiceReportRepository extends JpaRepository<ServiceReportEnti
     Page<ServiceReportEntity> findAllByTenant(@Param("tenantId") UUID tenantId, Pageable pageable);
 
     long countByTenantIdAndSoarTrueAndSoarAckByIsNullAndIsDeletedFalse(UUID tenantId);
+
+    @Query("SELECT COALESCE(MAX(r.refSeq), 0) FROM ServiceReportEntity r WHERE r.tenantId = :tenantId")
+    int maxRefSeq(@Param("tenantId") UUID tenantId);
 }

@@ -1,5 +1,6 @@
 package com.fecos.tanks;
 
+import com.fecos.common.RefNumberService;
 import com.fecos.users.UserRepository;
 import com.fecos.wells.WellRepository;
 import com.fecos.leases.LeaseRepository;
@@ -30,6 +31,7 @@ public class TankService {
     private final LeaseRepository leaseRepository;
     private final ClientRepository clientRepository;
     private final UserRepository userRepository;
+    private final RefNumberService refNumberService;
 
     public Page<TankResponse> list(TankStatus status, TankOwner owner, int page, int size) {
         UUID tenantId = currentTenantId();
@@ -49,6 +51,9 @@ public class TankService {
         t.setTenantId(tenantId);
         t.setCreatedBy(currentUserId());
         t.setStatus(TankStatus.AVAILABLE);
+        int seq = tankRepository.maxRefSeq(tenantId) + 1;
+        t.setRefSeq(seq);
+        t.setRefNumber(refNumberService.next(tenantId, "TK", seq));
         apply(t, req);
         return toResponse(tankRepository.save(t), false);
     }
@@ -338,7 +343,7 @@ public class TankService {
         }
 
         return new TankResponse(
-                t.getId(), t.getSerialNumber(), t.getCapacityGallons(),
+                t.getId(), t.getRefNumber(), t.getSerialNumber(), t.getCapacityGallons(),
                 t.getOwner(), t.getClientId(), ownerClientName, t.getThirdPartyName(),
                 t.getWellId(), wellName, leaseName, clientName,
                 t.getStatus(), t.getInstalledAt(), t.getRemovedAt(),

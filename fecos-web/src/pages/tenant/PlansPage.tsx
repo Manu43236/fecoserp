@@ -1607,7 +1607,10 @@ export default function PlansPage() {
               <tr key={p.id}
                 onClick={() => { setSelected(p); setFormOpen(false) }}
                 className="hover:bg-gray-50 cursor-pointer transition-colors">
-                <td className="px-4 py-3 font-medium text-gray-900">{p.wellName ?? '—'}</td>
+                <td className="px-4 py-3">
+                  {p.refNumber && <span className="font-mono text-[10px] text-gray-400 block leading-none mb-0.5">{p.refNumber}</span>}
+                  <span className="font-medium text-gray-900">{p.wellName ?? '—'}</span>
+                </td>
                 <td className="px-4 py-3 text-gray-600">{p.leaseName ?? '—'}</td>
                 <td className="px-4 py-3 text-gray-600">{p.clientName ?? '—'}</td>
                 <td className="px-4 py-3 text-gray-600">{p.accountRepName ?? '—'}</td>

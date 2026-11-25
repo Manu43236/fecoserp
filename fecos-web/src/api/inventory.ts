@@ -14,6 +14,7 @@ export interface StockRecord {
 
 export interface TransactionRecord {
   id: string
+  refNumber?: string
   warehouseId: string
   warehouseName: string
   productId: string

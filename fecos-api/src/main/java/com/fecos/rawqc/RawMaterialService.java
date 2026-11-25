@@ -1,5 +1,6 @@
 package com.fecos.rawqc;
 
+import com.fecos.common.RefNumberService;
 import com.fecos.users.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ public class RawMaterialService {
 
     private final RawMaterialBatchRepository repository;
     private final UserRepository userRepository;
+    private final RefNumberService refNumberService;
 
     public Page<RawMaterialBatchResponse> list(RawMaterialStatus status, int page, int size) {
         UUID tenantId = currentTenantId();
@@ -40,6 +42,9 @@ public class RawMaterialService {
         var entity = new RawMaterialBatchEntity();
         entity.setTenantId(tenantId);
         entity.setCreatedBy(currentUserId());
+        int seq = repository.maxRefSeq(tenantId) + 1;
+        entity.setRefSeq(seq);
+        entity.setRefNumber(refNumberService.next(tenantId, "RM", seq));
         entity.setBatchNumber(generateBatchNumber(tenantId, req.getReceivedDate()));
         entity.setSupplierName(req.getSupplierName());
         entity.setMaterialName(req.getMaterialName());
@@ -106,7 +111,7 @@ public class RawMaterialService {
                 ? userRepository.findById(e.getTestedById()).map(u -> u.getFullName()).orElse(null)
                 : null;
         return new RawMaterialBatchResponse(
-                e.getId(), e.getBatchNumber(), e.getSupplierName(), e.getMaterialName(),
+                e.getId(), e.getRefNumber(), e.getBatchNumber(), e.getSupplierName(), e.getMaterialName(),
                 e.getQuantity(), e.getUnit(), e.getReceivedDate(), e.getSupplierLotNumber(),
                 e.getStatus(), e.getAppearance(), e.getColorOk(), e.getOdor(),
                 e.getPh(), e.getSpecificGravity(), e.getNotes(),

@@ -609,7 +609,10 @@ export function ClientsPage() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <ClientInitials name={client.companyName} />
-                      <span className="font-medium text-gray-900">{client.companyName}</span>
+                      <div>
+                        {client.refNumber && <span className="font-mono text-[10px] text-gray-400 block leading-none mb-0.5">{client.refNumber}</span>}
+                        <span className="font-medium text-gray-900">{client.companyName}</span>
+                      </div>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-gray-600">{client.contactName ?? '—'}</td>

@@ -3,6 +3,7 @@ import type { ApiResponse, PageResponse } from '@/types'
 
 export interface ClientRecord {
   id: string
+  refNumber?: string
   companyName: string
   contactName: string | null
   contactPhone: string | null

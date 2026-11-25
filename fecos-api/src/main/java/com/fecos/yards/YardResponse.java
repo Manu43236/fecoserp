@@ -12,6 +12,7 @@ import java.util.UUID;
 public class YardResponse {
 
     private UUID id;
+    private String refNumber;
     private String name;
     private String location;
     @JsonProperty("isActive")
@@ -21,6 +22,7 @@ public class YardResponse {
     public static YardResponse from(YardEntity y) {
         YardResponse r = new YardResponse();
         r.id        = y.getId();
+        r.refNumber = y.getRefNumber();
         r.name      = y.getName();
         r.location  = y.getLocation();
         r.isActive  = y.isActive();

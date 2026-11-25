@@ -3,6 +3,7 @@ import type { ApiResponse, PageResponse } from '@/types'
 
 export interface WarehouseRecord {
   id: string
+  refNumber?: string
   name: string
   location: string | null
   yardId: string | null

@@ -16,6 +16,7 @@ export interface MaintenanceLogRecord {
 
 export interface PumpRecord {
   id: string
+  refNumber?: string
   serialNumber: string
   make: string | null
   model: string | null

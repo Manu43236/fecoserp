@@ -64,4 +64,10 @@ public class RawMaterialBatchEntity extends TenantAwareEntity {
 
     @Column(name = "tested_at")
     private LocalDateTime testedAt;
+
+    @Column(name = "ref_seq")
+    private Integer refSeq;
+
+    @Column(name = "ref_number", length = 20)
+    private String refNumber;
 }

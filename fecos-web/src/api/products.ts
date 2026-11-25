@@ -3,6 +3,7 @@ import type { ApiResponse, PageResponse } from '@/types'
 
 export interface ProductRecord {
   id: string
+  refNumber?: string
   name: string
   productCode: string | null
   category: string

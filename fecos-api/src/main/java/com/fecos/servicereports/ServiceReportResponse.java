@@ -6,6 +6,7 @@ import java.util.UUID;
 
 public record ServiceReportResponse(
         UUID id,
+        String refNumber,
         UUID serviceVisitStopId,
         String wellName,
         String leaseName,

@@ -50,4 +50,7 @@ public class TenantEntity extends BaseEntity {
 
     @Column(name = "is_active", nullable = false)
     private boolean isActive = true;
+
+    @Column(name = "tenant_number", length = 5)
+    private String tenantNumber;
 }

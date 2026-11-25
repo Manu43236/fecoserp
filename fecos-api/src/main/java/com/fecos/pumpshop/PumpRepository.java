@@ -28,4 +28,7 @@ public interface PumpRepository extends JpaRepository<PumpEntity, UUID> {
                             @Param("status") PumpStatus status,
                             @Param("owner") PumpOwner owner,
                             Pageable pageable);
+
+    @Query("SELECT COALESCE(MAX(p.refSeq), 0) FROM PumpEntity p WHERE p.tenantId = :tenantId")
+    int maxRefSeq(@Param("tenantId") UUID tenantId);
 }

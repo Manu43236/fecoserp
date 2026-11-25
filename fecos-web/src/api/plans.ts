@@ -34,6 +34,7 @@ export interface PlanLineRecord {
 
 export interface PlanRecord {
   id: string
+  refNumber?: string
   wellId: string
   wellName: string | null
   leaseName: string | null

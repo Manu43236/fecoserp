@@ -51,4 +51,7 @@ public class RouteEntity extends TenantAwareEntity {
 
     @Column(name = "pre_trip_notes", columnDefinition = "TEXT")
     private String preTripNotes;
+
+    @Column(name = "ref_number", length = 20)
+    private String refNumber;
 }

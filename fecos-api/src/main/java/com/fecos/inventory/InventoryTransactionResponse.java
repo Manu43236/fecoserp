@@ -13,6 +13,7 @@ import java.util.UUID;
 public class InventoryTransactionResponse {
 
     private UUID id;
+    private String refNumber;
     private UUID warehouseId;
     private String warehouseName;
     private UUID productId;
@@ -33,6 +34,7 @@ public class InventoryTransactionResponse {
             InventoryTransactionEntity t, String warehouseName, String productName) {
         InventoryTransactionResponse r = new InventoryTransactionResponse();
         r.id              = t.getId();
+        r.refNumber       = t.getRefNumber();
         r.warehouseId     = t.getWarehouseId();
         r.warehouseName   = warehouseName;
         r.productId       = t.getProductId();

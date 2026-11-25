@@ -1,6 +1,7 @@
 package com.fecos.clients;
 
 import com.fecos.common.BulkResult;
+import com.fecos.common.RefNumberService;
 import com.fecos.users.UserRepository;
 import com.fecos.yards.YardRepository;
 import com.opencsv.CSVReader;
@@ -25,6 +26,7 @@ public class ClientService {
     private final ClientRepository clientRepository;
     private final UserRepository userRepository;
     private final YardRepository yardRepository;
+    private final RefNumberService refNumberService;
 
     public Page<ClientResponse> list(String search, UUID accountRepId, Boolean isActive, int page, int size) {
         UUID tenantId = currentTenantId();
@@ -46,6 +48,9 @@ public class ClientService {
         ClientEntity c = new ClientEntity();
         c.setTenantId(tenantId);
         c.setCreatedBy(currentUserId());
+        int seq = clientRepository.maxRefSeq(tenantId) + 1;
+        c.setRefSeq(seq);
+        c.setRefNumber(refNumberService.next(tenantId, "CL", seq));
         applyRequest(c, req);
         return toResponse(clientRepository.save(c));
     }
@@ -63,6 +68,7 @@ public class ClientService {
         UUID userId   = currentUserId();
         int created   = 0;
         List<BulkResult.RowError> errors = new ArrayList<>();
+        int[] seq = { clientRepository.maxRefSeq(tenantId) };
 
         try (var reader = new CSVReader(new InputStreamReader(file.getInputStream()))) {
             reader.readNext(); // skip header
@@ -81,9 +87,12 @@ public class ClientService {
                         errors.add(new BulkResult.RowError(rowNum, "\"" + companyName + "\" already exists"));
                         rowNum++; continue;
                     }
+                    seq[0]++;
                     ClientEntity c = new ClientEntity();
                     c.setTenantId(tenantId);
                     c.setCreatedBy(userId);
+                    c.setRefSeq(seq[0]);
+                    c.setRefNumber(refNumberService.next(tenantId, "CL", seq[0]));
                     c.setCompanyName(companyName);
                     c.setContactName(notBlank(contactName));
                     c.setContactPhone(notBlank(contactPhone));

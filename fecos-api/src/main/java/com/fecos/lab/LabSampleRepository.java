@@ -62,4 +62,7 @@ public interface LabSampleRepository extends JpaRepository<LabSampleEntity, UUID
 
     long countByTenantIdAndWellIdInAndStatusAndIsDeletedFalse(
             UUID tenantId, java.util.Collection<UUID> wellIds, LabSampleStatus status);
+
+    @Query("SELECT COALESCE(MAX(s.refSeq), 0) FROM LabSampleEntity s WHERE s.tenantId = :tenantId")
+    int maxRefSeq(@Param("tenantId") UUID tenantId);
 }

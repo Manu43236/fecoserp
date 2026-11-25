@@ -39,4 +39,7 @@ public interface InventoryTransactionRepository extends JpaRepository<InventoryT
     List<Object[]> stockSummary(
             @Param("tenantId") UUID tenantId,
             @Param("warehouseId") UUID warehouseId);
+
+    @Query("SELECT COALESCE(MAX(t.refSeq), 0) FROM InventoryTransactionEntity t WHERE t.tenantId = :tenantId")
+    int maxRefSeq(@Param("tenantId") UUID tenantId);
 }

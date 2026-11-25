@@ -7,6 +7,7 @@ import java.util.UUID;
 
 public record TankResponse(
         UUID id,
+        String refNumber,
         String serialNumber,
         BigDecimal capacityGallons,
         TankOwner owner,

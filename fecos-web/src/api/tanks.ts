@@ -18,6 +18,7 @@ export interface TankEventRecord {
 
 export interface TankRecord {
   id: string
+  refNumber?: string
   serialNumber: string | null
   capacityGallons: number
   owner: TankOwner
