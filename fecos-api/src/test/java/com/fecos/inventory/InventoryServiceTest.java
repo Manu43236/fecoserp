@@ -1,5 +1,6 @@
 package com.fecos.inventory;
 
+import com.fecos.common.RefNumberService;
 import com.fecos.products.ProductRepository;
 import com.fecos.users.UserRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -25,9 +26,10 @@ class InventoryServiceTest {
     @Mock WarehouseRepository warehouseRepository;
     @Mock ProductRepository productRepository;
     @Mock UserRepository userRepository;
+    @Mock RefNumberService refNumberService;
 
     private InventoryService service() {
-        return new InventoryService(txRepository, warehouseRepository, productRepository, userRepository);
+        return new InventoryService(txRepository, warehouseRepository, productRepository, userRepository, refNumberService);
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.fecos.routes;
 
+import com.fecos.common.RefNumberService;
 import com.fecos.inventory.InventoryService;
 import com.fecos.inventory.WarehouseRepository;
 import com.fecos.leases.LeaseRepository;
@@ -44,6 +45,7 @@ class RouteServiceTest {
     @Mock TreatmentPlanLineRepository planLineRepository;
     @Mock TankService tankService;
     @Mock com.fecos.clients.ClientRepository clientRepository;
+    @Mock RefNumberService refNumberService;
 
     private static final UUID TENANT = UUID.randomUUID();
     private static final UUID USER   = UUID.randomUUID();
@@ -52,7 +54,8 @@ class RouteServiceTest {
     private RouteService service() {
         return new RouteService(routeRepository, stopRepository, itemRepository, userRepository,
                 vehicleRepository, warehouseRepository, leaseRepository, wellRepository,
-                productRepository, inventoryService, planLineRepository, tankService, clientRepository);
+                productRepository, inventoryService, planLineRepository, tankService, clientRepository,
+                refNumberService);
     }
 
     @BeforeEach
