@@ -1,6 +1,7 @@
 package com.fecos.lab;
 
 import com.fecos.clients.ClientRepository;
+import com.fecos.common.RefNumberService;
 import com.fecos.leases.LeaseRepository;
 import com.fecos.programs.TreatmentPlanRepository;
 import com.fecos.users.UserRepository;
@@ -32,10 +33,12 @@ class LabServiceTest {
     @Mock LeaseRepository leaseRepository;
     @Mock ClientRepository clientRepository;
     @Mock TreatmentPlanRepository treatmentPlanRepository;
+    @Mock RefNumberService refNumberService;
 
     private LabService service() {
         return new LabService(sampleRepository, resultRepository, userRepository,
-                wellRepository, leaseRepository, clientRepository, treatmentPlanRepository);
+                wellRepository, leaseRepository, clientRepository, treatmentPlanRepository,
+                refNumberService);
     }
 
     @Test
