@@ -961,7 +961,7 @@ export default function ServiceVisitsPage() {
               <tr key={v.id} onClick={() => serviceVisitsApi.get(v.id).then(r => setActiveVisit(r.data?.data ?? null))}
                 className="hover:bg-gray-50 cursor-pointer transition-colors">
                 <td className="px-4 py-3">
-                  {v.refNumber && <p className="font-mono text-[10px] text-gray-400 leading-none mb-0.5">{v.refNumber}</p>}
+                  {v.refNumber && <p className="font-mono text-[11px] font-semibold mb-0.5" style={{ color: 'var(--color-primary)' }}>{v.refNumber}</p>}
                   <p className="font-medium text-gray-900">{v.name ?? new Date(v.visitDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
                   {v.name && <p className="text-xs text-gray-400 mt-0.5">{new Date(v.visitDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>}
                 </td>

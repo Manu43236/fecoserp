@@ -777,13 +777,8 @@ function RouteDrawer({ route, onClose, onEdit, canEdit, driverOptions }: {
               <X size={16} />
             </button>
             <div>
-              {r.refNumber && <p className="font-mono text-[10px] text-gray-400 leading-none mb-1">{r.refNumber}</p>}
-              <p className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                {r.routeNumber != null && (
-                  <span className="px-1.5 py-0.5 rounded-md text-xs font-bold text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
-                    #{r.routeNumber}
-                  </span>
-                )}
+              {r.refNumber && <p className="font-mono text-[11px] font-semibold mb-1" style={{ color: 'var(--color-primary)' }}>{r.refNumber}</p>}
+              <p className="text-sm font-semibold text-gray-900">
                 {new Date(r.routeDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
               </p>
               <p className="text-xs text-gray-400">{r.driverName ?? '—'}{r.truckNumber ? ` · ${r.truckNumber}` : ''}</p>
@@ -1273,7 +1268,7 @@ function CalendarView({ canEdit, onOpenDay, onCreateForDate }: {
                     {dayRoutes.slice(0, MAX_CHIPS).map(r => (
                       <div key={r.id}
                         className={`px-1.5 py-0.5 rounded text-[11px] font-semibold truncate ${CAL_CHIP[r.status]}`}>
-                        #{r.routeNumber ?? '—'}
+                        {r.refNumber ?? `#${r.routeNumber}` ?? '—'}
                       </div>
                     ))}
                     {extra > 0 && (
@@ -1460,8 +1455,8 @@ export default function RoutesPage() {
                     onClick={() => { setSelected(r); setFormOpen(false) }}
                     className="hover:bg-gray-50 cursor-pointer transition-colors">
                     <td className="px-4 py-3">
-                      {r.refNumber && <span className="font-mono text-[10px] text-gray-400 block leading-none mb-0.5">{r.refNumber}</span>}
-                      <span className="font-semibold text-gray-900">{r.routeNumber != null ? `#${r.routeNumber}` : '—'}</span>
+                      {r.refNumber && <span className="block font-mono text-[11px] font-semibold" style={{ color: 'var(--color-primary)' }}>{r.refNumber}</span>}
+                      {!r.refNumber && <span className="font-semibold text-gray-900">—</span>}
                     </td>
                     <td className="px-4 py-3 font-medium text-gray-900">
                       {new Date(r.routeDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}

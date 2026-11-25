@@ -494,7 +494,7 @@ export function LeasesPage() {
                   <div className="flex items-center gap-3">
                     <LeaseInitials name={lease.leaseName} />
                     <div>
-                      {lease.refNumber && <span className="font-mono text-[10px] text-gray-400 block leading-none mb-0.5">{lease.refNumber}</span>}
+                      {lease.refNumber && <span className="block font-mono text-[11px] font-semibold" style={{ color: 'var(--color-primary)' }}>{lease.refNumber}</span>}
                       <span className="font-medium text-gray-900">{lease.leaseName}</span>
                     </div>
                   </div>

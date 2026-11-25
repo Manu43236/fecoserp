@@ -610,7 +610,7 @@ export function ClientsPage() {
                     <div className="flex items-center gap-3">
                       <ClientInitials name={client.companyName} />
                       <div>
-                        {client.refNumber && <span className="font-mono text-[10px] text-gray-400 block leading-none mb-0.5">{client.refNumber}</span>}
+                        {client.refNumber && <span className="block font-mono text-[11px] font-semibold" style={{ color: 'var(--color-primary)' }}>{client.refNumber}</span>}
                         <span className="font-medium text-gray-900">{client.companyName}</span>
                       </div>
                     </div>

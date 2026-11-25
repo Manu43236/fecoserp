@@ -277,7 +277,7 @@ function TankDrawer({ tank, onClose, onEdit, canDelete }: {
         <div className="px-5 pt-4 pb-3 border-b border-gray-100 shrink-0 space-y-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 break-words">
-              {t.refNumber && <p className="font-mono text-[10px] text-gray-400 leading-none mb-1">{t.refNumber}</p>}
+              {t.refNumber && <p className="font-mono text-[11px] font-semibold mb-1" style={{ color: 'var(--color-primary)' }}>{t.refNumber}</p>}
               <p className="text-sm font-semibold text-gray-900">
                 {t.serialNumber ?? 'Unnamed Tank'}
                 <span className="ml-2 text-xs font-normal text-gray-400">{t.capacityGallons.toLocaleString()} gal</span>
@@ -441,7 +441,7 @@ export default function TanksPage() {
                 onClick={() => { setSelected(t); setFormOpen(false) }}
                 className="hover:bg-gray-50 cursor-pointer transition-colors">
                 <td className="px-4 py-3">
-                  {t.refNumber && <span className="font-mono text-[10px] text-gray-400 block leading-none mb-0.5">{t.refNumber}</span>}
+                  {t.refNumber && <span className="block font-mono text-[11px] font-semibold" style={{ color: 'var(--color-primary)' }}>{t.refNumber}</span>}
                   <span className="font-mono text-xs font-semibold text-gray-700">{t.serialNumber ?? '—'}</span>
                 </td>
                 <td className="px-4 py-3 text-gray-600">{t.capacityGallons.toLocaleString()} gal</td>

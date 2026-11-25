@@ -449,7 +449,7 @@ export function WellsPage() {
                   <div className="flex items-center gap-3">
                     <WellInitials name={well.wellName} />
                     <div>
-                      {well.refNumber && <p className="font-mono text-[10px] text-gray-400 leading-none mb-0.5">{well.refNumber}</p>}
+                      {well.refNumber && <p className="font-mono text-[11px] font-semibold mb-0.5" style={{ color: 'var(--color-primary)' }}>{well.refNumber}</p>}
                       <p className="font-medium text-gray-900">{well.wellName}</p>
                       {well.wellNumber && <p className="text-xs text-gray-400">#{well.wellNumber}</p>}
                     </div>
