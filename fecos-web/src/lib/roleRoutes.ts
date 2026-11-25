@@ -5,7 +5,7 @@ export const roleHomeMap: Record<Role, string> = {
   ADMIN:         '/dashboard',
   MANAGER:       '/dashboard',
   LAB_TECH:      '/lab/queue',
-  ACCOUNT_REP:   '/rep/portfolio',
+  ACCOUNT_REP:   '/dashboard',
   TRUCK_DRIVER:  '/login',   // mobile only — redirect away
   SERVICE_TECH:  '/login',   // mobile only — redirect away
 }

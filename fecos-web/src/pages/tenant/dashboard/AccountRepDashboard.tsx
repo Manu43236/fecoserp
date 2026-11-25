@@ -10,7 +10,7 @@ interface Props { stats: DashboardStats; name: string }
 
 export function AccountRepDashboard({ stats, name }: Props) {
   const alerts = [
-    { count: stats.mySoarFlags,  label: 'SOAR Flags in My Territory',  sub: 'Chemical anomalies needing attention',  path: '/qc',        icon: Droplets, urgent: true  },
+    { count: stats.mySoarFlags,  label: 'SOAR Flags in My Territory',  sub: 'Chemical anomalies needing attention',  path: '/schedule',  icon: Droplets, urgent: true  },
     { count: stats.myLabPending, label: 'Lab Samples Pending',          sub: 'Awaiting analysis in your territory',  path: '/lab/queue', icon: TestTube, urgent: false },
   ]
 
