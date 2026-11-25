@@ -67,8 +67,25 @@ class _WrapUpViewState extends State<WrapUpView> {
             })
         .toList();
 
-    final ok = await _controller.returnInventory(items);
-    if (ok) {
+    final returnCount = returnMap.length;
+    final confirmed = await Get.dialog<bool>(AlertDialog(
+      title: const Text('Complete route?'),
+      content: Text(returnCount > 0
+          ? 'Any undelivered chemical ($returnCount product(s)) will be returned to the warehouse, and this route will be marked complete.'
+          : 'This route will be marked complete.'),
+      actions: [
+        TextButton(
+            onPressed: () => Get.back<bool>(result: false),
+            child: const Text('Cancel')),
+        FilledButton(
+            onPressed: () => Get.back<bool>(result: true),
+            child: const Text('Complete')),
+      ],
+    ));
+    if (confirmed != true) return;
+
+    final done = await _controller.returnInventory(items);
+    if (done) {
       // Pop back to routes list
       Get.until((r) => r.settings.name == '/main' || r.isFirst);
     }

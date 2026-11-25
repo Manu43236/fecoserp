@@ -9,6 +9,7 @@ import 'package:fecos_mobile/app/data/services/db_service.dart';
 import 'package:fecos_mobile/app/data/services/dio_service.dart';
 import 'package:fecos_mobile/app/data/services/sync_service.dart';
 import 'package:fecos_mobile/app/modules/auth/controllers/auth_controller.dart';
+import 'package:fecos_mobile/app/modules/main/controllers/main_controller.dart';
 import 'package:fecos_mobile/app/modules/service_visit/controllers/service_visit_controller.dart';
 
 class HomeController extends GetxController {
@@ -35,8 +36,15 @@ class HomeController extends GetxController {
   final isLoading = true.obs;
   final hasError = false.obs;
 
-  bool get isTruckDriver => auth.user.value?.role == UserRole.truckDriver;
-  bool get isAccountRep => auth.user.value?.role == UserRole.accountRep;
+  bool get hasDriver => auth.user.value?.hasRole(UserRole.truckDriver) ?? false;
+  bool get hasTech => auth.user.value?.hasRole(UserRole.serviceTech) ?? false;
+  bool get isAccountRep =>
+      auth.user.value?.hasRole(UserRole.accountRep) ?? false;
+  bool get isDualRole => hasDriver && hasTech;
+
+  /// "Pure" single-role helpers so the existing single-role Home branches
+  /// still mean exactly what they used to.
+  bool get isTruckDriver => hasDriver && !hasTech;
 
   bool _hadPending = false;
 
@@ -45,6 +53,13 @@ class HomeController extends GetxController {
     super.onInit();
     load();
     ever(connectivity.isOnline, (online) { if (online) load(); });
+    // Re-open the Home tab → silently refresh so route state stays current
+    // after starting/delivering on another screen (works online and from cache).
+    if (Get.isRegistered<MainController>()) {
+      ever<int>(Get.find<MainController>().tabIndex, (i) {
+        if (i == 0) load(silent: true);
+      });
+    }
     // Only reload home after a sync actually drained the queue — not on every empty cycle
     ever(syncService.pendingCount, (count) {
       if (count > 0) {
@@ -56,22 +71,41 @@ class HomeController extends GetxController {
     });
   }
 
-  Future<void> load() async {
-    isLoading.value = true;
+  Future<void> load({bool silent = false}) async {
+    if (!silent) isLoading.value = true;
     hasError.value = false;
     try {
-      if (isTruckDriver) {
-        await _loadDriverData();
-      } else if (isAccountRep) {
+      if (isAccountRep) {
         await _loadArData();
-      } else {
-        await _loadServiceTechData();
+        return;
       }
+      // A dual-role user loads both streams; isolate them so a failure in one
+      // never blocks the other (each flow caches independently).
+      await Future.wait([
+        if (hasDriver) _runSafe(_loadDriverData),
+        if (hasTech) _runSafe(_loadServiceTechData),
+      ]);
+      // Only surface the hard error state when nothing at all is available.
+      if (isDualRole) {
+        hasError.value = dashboard.value == null && todayRoutes.isEmpty;
+      } else if (hasTech) {
+        hasError.value = dashboard.value == null;
+      }
+      // Pure driver shows an empty state rather than a hard error.
     } on DioException {
-      if (!isTruckDriver) hasError.value = true;
-      // Driver offline error is handled inside _loadDriverData via cache
+      if (isAccountRep) hasError.value = true;
     } finally {
-      isLoading.value = false;
+      if (!silent) isLoading.value = false;
+    }
+  }
+
+  // ponytail: driver online fetch has no cache fallback, so a failed fetch in
+  // dual mode leaves routes empty rather than stale — acceptable, tech still loads.
+  Future<void> _runSafe(Future<void> Function() task) async {
+    try {
+      await task();
+    } on DioException {
+      // isolated — the other flow and the cached section still render
     }
   }
 

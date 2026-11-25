@@ -51,6 +51,7 @@ class MyVisitStop {
 
 class MyVisit {
   final String id;
+  final String? refNumber;
   final String? name;
   final String visitDate;
   final String status;
@@ -58,6 +59,7 @@ class MyVisit {
 
   const MyVisit({
     required this.id,
+    this.refNumber,
     this.name,
     required this.visitDate,
     required this.status,
@@ -66,12 +68,37 @@ class MyVisit {
 
   factory MyVisit.fromJson(Map<String, dynamic> j) => MyVisit(
         id: j['id'],
+        refNumber: j['refNumber'] as String?,
         name: j['name'] as String?,
         visitDate: j['visitDate'],
         status: j['status'],
         stops: (j['stops'] as List)
             .map((s) => MyVisitStop.fromJson(s as Map<String, dynamic>))
             .toList(),
+      );
+}
+
+class WellOption {
+  final String id;
+  final String wellName;
+  final String leaseId;
+  final String leaseName;
+  final String clientName;
+
+  const WellOption({
+    required this.id,
+    required this.wellName,
+    required this.leaseId,
+    required this.leaseName,
+    required this.clientName,
+  });
+
+  factory WellOption.fromJson(Map<String, dynamic> j) => WellOption(
+        id: j['id'],
+        wellName: j['wellName'] ?? '',
+        leaseId: j['leaseId'] ?? '',
+        leaseName: j['leaseName'] ?? '',
+        clientName: j['clientName'] ?? '',
       );
 }
 
@@ -331,6 +358,42 @@ class ServiceVisitController extends GetxController {
     state.value = AsyncSuccess(raw.map(MyVisit.fromJson).toList());
     if (Get.isRegistered<HomeController>()) {
       await Get.find<HomeController>().markStopReported(visitId, stopId);
+    }
+  }
+
+  bool get isOnline => _connectivity.isOnline.value;
+
+  // Loads active wells for the self-scheduling picker. Online-only screen.
+  Future<List<WellOption>> loadSchedulableWells() async {
+    final res = await _dio.get(
+      '/wells',
+      queryParameters: {'size': 500},
+    );
+    final content =
+        (res.data['data']['content'] as List).cast<Map<String, dynamic>>();
+    return content.map(WellOption.fromJson).toList();
+  }
+
+  // Creates a self-scheduled visit assigned to the current tech (backend forces
+  // techId to self). Online-only — caller must check [isOnline] first.
+  Future<bool> createSelfVisit({
+    required String name,
+    required DateTime date,
+    String? notes,
+    required List<String> wellIds,
+  }) async {
+    try {
+      await _dio.post('/service-visits', data: {
+        'name': name,
+        'visitDate': _fmt(date),
+        if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
+        'wellIds': wellIds,
+      });
+      await loadVisits();
+      return true;
+    } on Exception {
+      FecosSnackbar.error('Error', 'Failed to create schedule');
+      return false;
     }
   }
 

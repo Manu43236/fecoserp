@@ -34,6 +34,9 @@ class RouteStop {
     required this.routeId,
     required this.wellName,
     required this.leaseName,
+    this.clientName,
+    this.gpsLat,
+    this.gpsLng,
     required this.sequenceOrder,
     required this.status,
     required this.items,
@@ -51,6 +54,9 @@ class RouteStop {
   final String routeId;
   final String? wellName;
   final String? leaseName;
+  final String? clientName;
+  final double? gpsLat; // lease/pad location for navigation
+  final double? gpsLng;
   final int sequenceOrder;
   final String status; // PENDING | COMPLETED | SKIPPED
   final List<RouteStopItem> items;
@@ -69,6 +75,7 @@ class RouteStop {
 
   RouteStop copyWith({String? status, String? skipReason, String? deliveredAt}) => RouteStop(
     id: id, routeId: routeId, wellName: wellName, leaseName: leaseName,
+    clientName: clientName, gpsLat: gpsLat, gpsLng: gpsLng,
     sequenceOrder: sequenceOrder, status: status ?? this.status,
     items: items, notes: notes, skipReason: skipReason ?? this.skipReason,
     deliveryPhotoUrl: deliveryPhotoUrl, deliveryLat: deliveryLat,
@@ -81,6 +88,9 @@ class RouteStop {
         routeId: json['routeId'] as String,
         wellName: json['wellName'] as String?,
         leaseName: json['leaseName'] as String?,
+        clientName: json['clientName'] as String?,
+        gpsLat: (json['gpsLat'] as num?)?.toDouble(),
+        gpsLng: (json['gpsLng'] as num?)?.toDouble(),
         sequenceOrder: json['sequenceOrder'] as int? ?? 0,
         status: json['status'] as String? ?? 'PENDING',
         items: (json['items'] as List? ?? [])
@@ -107,12 +117,16 @@ class RouteModel {
     required this.stopCount,
     required this.completedStopCount,
     required this.stops,
+    this.refNumber,
     this.notes,
     this.loadConfirmedAt,
     this.preTripConfirmedAt,
+    this.warehouseId,
+    this.warehouseName,
   });
 
   final String id;
+  final String? refNumber;
   final String? driverName;
   final String? truckNumber;
   final String routeDate;
@@ -123,6 +137,8 @@ class RouteModel {
   final String? notes;
   final String? loadConfirmedAt;
   final String? preTripConfirmedAt;
+  final String? warehouseId;    // pickup warehouse (null = none set)
+  final String? warehouseName;
 
   bool get isActive      => status == 'DISPATCHED' || status == 'IN_PROGRESS';
   bool get loadConfirmed => loadConfirmedAt != null;
@@ -140,8 +156,10 @@ class RouteModel {
     stopCount: stopCount,
     completedStopCount: completedStopCount ?? this.completedStopCount,
     stops: stops ?? this.stops, notes: notes,
+    refNumber: refNumber,
     loadConfirmedAt: loadConfirmedAt ?? this.loadConfirmedAt,
     preTripConfirmedAt: preTripConfirmedAt ?? this.preTripConfirmedAt,
+    warehouseId: warehouseId, warehouseName: warehouseName,
   );
   // Use backend-provided count when stops aren't loaded (list view), else compute from stops
   int get completedStops => stops.isNotEmpty
@@ -160,7 +178,10 @@ class RouteModel {
         stops: (json['stops'] as List? ?? [])
             .map((e) => RouteStop.fromJson(e as Map<String, dynamic>))
             .toList(),
+        refNumber: json['refNumber'] as String?,
         notes: json['notes'] as String?,
+        warehouseId: json['warehouseId'] as String?,
+        warehouseName: json['warehouseName'] as String?,
         loadConfirmedAt: _parseDateTime(json['loadConfirmedAt']),
         preTripConfirmedAt: _parseDateTime(json['preTripConfirmedAt']),
       );

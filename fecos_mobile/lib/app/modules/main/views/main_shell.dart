@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:fecos_mobile/app/data/models/user_model.dart';
-import 'package:fecos_mobile/app/modules/auth/controllers/auth_controller.dart';
 import 'package:fecos_mobile/app/theme/app_theme.dart';
 import 'package:fecos_mobile/app/modules/main/controllers/main_controller.dart';
 import 'package:fecos_mobile/app/modules/home/views/home_view.dart';
@@ -16,121 +14,82 @@ import 'package:fecos_mobile/app/modules/ar_lab/views/ar_lab_view.dart';
 class MainShell extends GetView<MainController> {
   const MainShell({super.key});
 
-  UserRole? get _role =>
-      Get.find<AuthController>().user.value?.role;
+  Widget _viewFor(AppTab tab) => switch (tab) {
+        AppTab.home => const HomeView(),
+        AppTab.visits => const ServiceVisitView(),
+        AppTab.routes => const MyRoutesView(),
+        AppTab.portfolio => const ArPortfolioView(),
+        AppTab.plans => const ArPlansView(),
+        AppTab.lab => const ArLabView(),
+        AppTab.profile => const ProfileView(),
+      };
 
-  bool get _isTruckDriver => _role == UserRole.truckDriver;
-  bool get _isAccountRep => _role == UserRole.accountRep;
-
-  List<Widget> get _tabs {
-    if (_isTruckDriver) {
-      return const [HomeView(), MyRoutesView(), ProfileView()];
-    }
-    if (_isAccountRep) {
-      return const [
-        HomeView(),
-        ArPortfolioView(),
-        ArPlansView(),
-        ArLabView(),
-        ProfileView(),
-      ];
-    }
-    return const [HomeView(), ServiceVisitView(), ProfileView()];
-  }
-
-  List<BottomNavigationBarItem> get _items {
-    if (_isTruckDriver) {
-      return const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home_outlined),
-          activeIcon: Icon(Icons.home_rounded),
-          label: 'Home',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.local_shipping_outlined),
-          activeIcon: Icon(Icons.local_shipping_rounded),
-          label: 'My Routes',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.person_outline_rounded),
-          activeIcon: Icon(Icons.person_rounded),
-          label: 'Profile',
-        ),
-      ];
-    }
-    if (_isAccountRep) {
-      return const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home_outlined),
-          activeIcon: Icon(Icons.home_rounded),
-          label: 'Home',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.business_outlined),
-          activeIcon: Icon(Icons.business_rounded),
-          label: 'Portfolio',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.assignment_outlined),
-          activeIcon: Icon(Icons.assignment_rounded),
-          label: 'Plans',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.science_outlined),
-          activeIcon: Icon(Icons.science_rounded),
-          label: 'Lab',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.person_outline_rounded),
-          activeIcon: Icon(Icons.person_rounded),
-          label: 'Profile',
-        ),
-      ];
-    }
-    return const [
-      BottomNavigationBarItem(
-        icon: Icon(Icons.home_outlined),
-        activeIcon: Icon(Icons.home_rounded),
-        label: 'Home',
-      ),
-      BottomNavigationBarItem(
-        icon: Icon(Icons.science_outlined),
-        activeIcon: Icon(Icons.science_rounded),
-        label: 'My Visits',
-      ),
-      BottomNavigationBarItem(
-        icon: Icon(Icons.person_outline_rounded),
-        activeIcon: Icon(Icons.person_rounded),
-        label: 'Profile',
-      ),
-    ];
-  }
+  BottomNavigationBarItem _itemFor(AppTab tab) => switch (tab) {
+        AppTab.home => const BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home_rounded),
+            label: 'Home',
+          ),
+        AppTab.visits => const BottomNavigationBarItem(
+            icon: Icon(Icons.science_outlined),
+            activeIcon: Icon(Icons.science_rounded),
+            label: 'Visits',
+          ),
+        AppTab.routes => const BottomNavigationBarItem(
+            icon: Icon(Icons.local_shipping_outlined),
+            activeIcon: Icon(Icons.local_shipping_rounded),
+            label: 'Routes',
+          ),
+        AppTab.portfolio => const BottomNavigationBarItem(
+            icon: Icon(Icons.business_outlined),
+            activeIcon: Icon(Icons.business_rounded),
+            label: 'Portfolio',
+          ),
+        AppTab.plans => const BottomNavigationBarItem(
+            icon: Icon(Icons.assignment_outlined),
+            activeIcon: Icon(Icons.assignment_rounded),
+            label: 'Plans',
+          ),
+        AppTab.lab => const BottomNavigationBarItem(
+            icon: Icon(Icons.science_outlined),
+            activeIcon: Icon(Icons.science_rounded),
+            label: 'Lab',
+          ),
+        AppTab.profile => const BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline_rounded),
+            activeIcon: Icon(Icons.person_rounded),
+            label: 'Profile',
+          ),
+      };
 
   @override
-  Widget build(BuildContext context) => Obx(
-        () => PopScope(
-          canPop: false,
-          onPopInvokedWithResult: (didPop, _) {
-            if (didPop) return;
-            if (controller.tabIndex.value != 0) {
-              controller.changeTab(0);
-            } else {
-              SystemNavigator.pop();
-            }
-          },
-          child: Scaffold(
-            body: IndexedStack(
-              index: controller.tabIndex.value,
-              children: _tabs,
-            ),
-            bottomNavigationBar: _NavBar(
-              currentIndex: controller.tabIndex.value,
-              items: _items,
-              onTap: controller.changeTab,
-            ),
+  Widget build(BuildContext context) {
+    final tabs = controller.tabs;
+    return Obx(
+      () => PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (didPop) return;
+          if (controller.tabIndex.value != 0) {
+            controller.changeTab(0);
+          } else {
+            SystemNavigator.pop();
+          }
+        },
+        child: Scaffold(
+          body: IndexedStack(
+            index: controller.tabIndex.value,
+            children: tabs.map(_viewFor).toList(),
+          ),
+          bottomNavigationBar: _NavBar(
+            currentIndex: controller.tabIndex.value,
+            items: tabs.map(_itemFor).toList(),
+            onTap: controller.changeTab,
           ),
         ),
-      );
+      ),
+    );
+  }
 }
 
 class _NavBar extends StatelessWidget {

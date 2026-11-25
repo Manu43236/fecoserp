@@ -46,6 +46,13 @@ class HomeView extends GetView<HomeController> {
                 if (controller.hasError.value) {
                   return _ErrorState(onRetry: controller.load);
                 }
+                if (controller.isDualRole) {
+                  controller.todayVisitsVersion.value; // rebuild on visit mutations
+                  return _DualRoleHome(
+                    visits: controller.todayVisits,
+                    routes: controller.todayRoutes,
+                  );
+                }
                 if (controller.isTruckDriver) {
                   return _DriverDashboardContent(
                     routes: controller.todayRoutes,
@@ -76,6 +83,407 @@ class HomeView extends GetView<HomeController> {
       ),
     );
   }
+}
+
+// ── Dual-role landing (Visits + Routes) ──────────────────────────────────────
+
+class _StreamStatus {
+  const _StreamStatus(this.label, this.color);
+  final String label;
+  final Color color;
+
+  static _StreamStatus of(int total, int done, bool inProgress) {
+    if (total == 0) return const _StreamStatus('Nothing', AppColors.textHint);
+    if (done >= total) return const _StreamStatus('Done', AppColors.success);
+    if (inProgress || done > 0) {
+      return const _StreamStatus('In progress', AppColors.warning);
+    }
+    return const _StreamStatus('Not started', AppColors.info);
+  }
+}
+
+class _DualRoleHome extends StatelessWidget {
+  const _DualRoleHome({required this.visits, required this.routes});
+
+  final List<MyVisit> visits;
+  final List<RouteModel> routes;
+
+  @override
+  Widget build(BuildContext context) {
+    // Service visits
+    final visitWells = visits.expand((v) => v.stops).toList();
+    final wellsTotal = visitWells.length;
+    final wellsDone = visitWells.where((s) => s.hasReport).length;
+    final visitInProgress = visits.any((v) => v.status == 'IN_PROGRESS');
+    String? nextWell;
+    for (final s in visitWells) {
+      if (!s.hasReport) {
+        nextWell = s.wellName;
+        break;
+      }
+    }
+
+    // Routes
+    final stopsTotal = routes.fold(0, (sum, r) => sum + r.stopCount);
+    final stopsDone = routes.fold(0, (sum, r) => sum + r.completedStops);
+    final routeInProgress = routes.any((r) => r.status == 'IN_PROGRESS');
+    RouteModel? nextRoute;
+    for (final r in routes) {
+      if (r.status == 'IN_PROGRESS') {
+        nextRoute = r;
+        break;
+      }
+      if (nextRoute == null &&
+          r.status != 'COMPLETED' &&
+          r.status != 'CANCELLED') {
+        nextRoute = r;
+      }
+    }
+
+    return SliverList(
+      delegate: SliverChildListDelegate([
+        _DayHero(
+          wellsDone: wellsDone,
+          wellsTotal: wellsTotal,
+          stopsDone: stopsDone,
+          stopsTotal: stopsTotal,
+          anyInProgress:
+              visitInProgress || routeInProgress || wellsDone + stopsDone > 0,
+        ),
+        const SizedBox(height: 24),
+        _WorkCard(
+          icon: Icons.science_rounded,
+          title: 'SERVICE VISITS',
+          headline: '${visits.length} visit${visits.length == 1 ? '' : 's'}',
+          progress: wellsTotal > 0 ? wellsDone / wellsTotal : 0,
+          status: _StreamStatus.of(wellsTotal, wellsDone, visitInProgress),
+          detail: wellsTotal == 0
+              ? 'Nothing scheduled today'
+              : '$wellsDone of $wellsTotal well${wellsTotal == 1 ? '' : 's'} serviced',
+          nextLabel: nextWell,
+          onTap: () => _goToTab(AppTab.visits),
+        ),
+        const SizedBox(height: 14),
+        _WorkCard(
+          icon: Icons.local_shipping_rounded,
+          title: 'ROUTES',
+          headline: '${routes.length} route${routes.length == 1 ? '' : 's'}',
+          progress: stopsTotal > 0 ? stopsDone / stopsTotal : 0,
+          status: _StreamStatus.of(stopsTotal, stopsDone, routeInProgress),
+          detail: stopsTotal == 0
+              ? 'Nothing assigned today'
+              : '$stopsDone of $stopsTotal stop${stopsTotal == 1 ? '' : 's'} delivered',
+          nextLabel: nextRoute?.truckNumber,
+          onTap: () => _goToTab(AppTab.routes),
+        ),
+      ]),
+    );
+  }
+
+  void _goToTab(AppTab tab) {
+    final main = Get.find<MainController>();
+    final idx = main.indexOf(tab);
+    if (idx >= 0) main.changeTab(idx);
+  }
+}
+
+class _DayHero extends StatelessWidget {
+  const _DayHero({
+    required this.wellsDone,
+    required this.wellsTotal,
+    required this.stopsDone,
+    required this.stopsTotal,
+    required this.anyInProgress,
+  });
+
+  final int wellsDone;
+  final int wellsTotal;
+  final int stopsDone;
+  final int stopsTotal;
+  final bool anyInProgress;
+
+  @override
+  Widget build(BuildContext context) {
+    final total = wellsTotal + stopsTotal;
+    final done = wellsDone + stopsDone;
+    final progress = total > 0 ? done / total : 0.0;
+    final allDone = total > 0 && done == total;
+    final pct = (progress * 100).toInt();
+    final statusLabel = total == 0
+        ? 'Nothing scheduled'
+        : allDone
+            ? 'All done'
+            : anyInProgress
+                ? 'In progress'
+                : 'Ready to go';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF3B0900), AppColors.primary],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.4),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text(
+                'TODAY',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: allDone ? 0.25 : 0.15),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (allDone) ...[
+                      const Icon(Icons.check_rounded,
+                          size: 12, color: Colors.white),
+                      const SizedBox(width: 4),
+                    ],
+                    Text(
+                      statusLabel,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          IntrinsicHeight(
+            child: Row(
+              children: [
+                _HeroStat(value: '$wellsDone/$wellsTotal', label: 'Wells serviced'),
+                _HeroDivider(),
+                _HeroStat(value: '$stopsDone/$stopsTotal', label: 'Stops delivered'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: progress,
+              backgroundColor: Colors.white.withValues(alpha: 0.2),
+              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+              minHeight: 5,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            total == 0 ? 'No work scheduled yet' : '$pct% of today complete',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.65),
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WorkCard extends StatelessWidget {
+  const _WorkCard({
+    required this.icon,
+    required this.title,
+    required this.headline,
+    required this.progress,
+    required this.status,
+    required this.detail,
+    required this.nextLabel,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String headline;
+  final double progress;
+  final _StreamStatus status;
+  final String detail;
+  final String? nextLabel;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.surfaceCard,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: status.color.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(icon, color: status.color, size: 24),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textSecondary,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            headline,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: status.color.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        status.label,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: status.color,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                child: Column(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        backgroundColor: AppColors.border,
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(status.color),
+                        minHeight: 5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            detail,
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          progress >= 1.0 ? 'View →' : 'Open →',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: status.color,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              if (nextLabel != null)
+                Container(
+                  width: double.infinity,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                  decoration: const BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(16),
+                      bottomRight: Radius.circular(16),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.arrow_forward_rounded,
+                          size: 14, color: AppColors.textHint),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Next: $nextLabel',
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
 }
 
 // ── Dashboard content (loaded) ───────────────────────────────────────────────

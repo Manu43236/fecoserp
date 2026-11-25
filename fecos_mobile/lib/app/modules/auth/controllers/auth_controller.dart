@@ -36,7 +36,7 @@ class AuthController extends GetxController {
       final res = await _dio.get<Map<String, dynamic>>('/auth/me');
       final data = res.data!['data'] as Map<String, dynamic>;
       final u = UserModel.fromJson(data);
-      if (!u.role.isMobileRole) {
+      if (u.mobileRoles.isEmpty) {
         await _storage.clearAll();
       } else {
         await _storage.setUser(jsonEncode(data));
@@ -70,7 +70,7 @@ class AuthController extends GetxController {
       final data = res.data!['data'] as Map<String, dynamic>;
       final token = data['token'] as String;
       final u = UserModel.fromJson(data);
-      if (!u.role.isMobileRole) {
+      if (u.mobileRoles.isEmpty) {
         _showError('This account is not authorized for mobile access.');
         return;
       }

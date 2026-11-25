@@ -42,8 +42,9 @@ class _StopDetailViewState extends State<StopDetailView> {
 
     _qtyControllers = {
       for (final item in _stop.items)
+        // Default to what was loaded (you can't deliver more than you carry).
         item.id: TextEditingController(
-            text: _formatQty(item.quantity))
+            text: _formatQty(item.loadedQty ?? item.quantity))
     };
 
     _captureLocation();
@@ -125,9 +126,18 @@ class _StopDetailViewState extends State<StopDetailView> {
     if (_photo == null || _position == null || _uploading) return;
     setState(() => _uploading = true);
 
+    // Delivered can't exceed what was loaded onto the truck.
+    final loadedByItem = <String, double>{
+      for (final i in _stop.items)
+        if (i.loadedQty != null) i.id: i.loadedQty!,
+    };
     final actualQtyMap = <String, double>{
       for (final entry in _qtyControllers.entries)
-        entry.key: double.tryParse(entry.value.text) ?? 0.0
+        entry.key: () {
+          final v = double.tryParse(entry.value.text) ?? 0.0;
+          final cap = loadedByItem[entry.key];
+          return cap != null && v > cap ? cap : v;
+        }()
     };
     final notes = _notesController.text.trim().isEmpty ? null : _notesController.text.trim();
 
@@ -185,7 +195,7 @@ class _StopDetailViewState extends State<StopDetailView> {
         }
       }
     } on DioException catch (e) {
-      final msg = e.response?.data?['error'] as String? ?? 'Upload failed';
+      final msg = (e.response?.data?['message'] ?? e.response?.data?['error']) as String? ?? 'Upload failed';
       if (mounted) FecosSnackbar.error('Error', msg);
     } finally {
       if (mounted) setState(() => _uploading = false);
@@ -227,7 +237,9 @@ class _StopDetailViewState extends State<StopDetailView> {
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      '${_stop.leaseName ?? 'Lease'} · ${_stop.wellName ?? 'Well'}',
+                      [_stop.clientName, _stop.leaseName, _stop.wellName]
+                          .where((e) => e != null)
+                          .join(' · '),
                       style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,

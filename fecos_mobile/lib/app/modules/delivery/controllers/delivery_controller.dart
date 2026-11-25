@@ -10,6 +10,7 @@ import 'package:fecos_mobile/app/data/services/dio_service.dart';
 import 'package:fecos_mobile/app/data/services/sync_service.dart';
 import 'package:fecos_mobile/app/widgets/fecos_snackbar.dart';
 import 'package:fecos_mobile/app/modules/home/controllers/home_controller.dart';
+import 'package:fecos_mobile/app/modules/auth/controllers/auth_controller.dart';
 
 class DeliveryController extends GetxController {
   final _dio          = Get.find<DioService>().dio;
@@ -23,6 +24,7 @@ class DeliveryController extends GetxController {
   final isLoading  = true.obs;
   final hasError   = false.obs;
   final isUpdating = false.obs;
+  final hasOtherActiveRoute = false.obs; // driver already has a different IN_PROGRESS route
 
   late final String routeId;
 
@@ -49,6 +51,7 @@ class DeliveryController extends GetxController {
       if (_connectivity.isOnline.value) {
         final res  = await _dio.get<Map<String, dynamic>>('/routes/$routeId');
         await _setRoute(res.data!['data'] as Map<String, dynamic>);
+        await _checkOtherActive();
       } else {
         final cached = await _dbService.getCachedResponse('route-$routeId');
         if (cached != null) {
@@ -61,6 +64,21 @@ class DeliveryController extends GetxController {
       hasError.value = true;
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  // Is another of this driver's routes already IN_PROGRESS? (Only one at a time.)
+  Future<void> _checkOtherActive() async {
+    try {
+      final driverId = Get.find<AuthController>().user.value?.id;
+      if (driverId == null) return;
+      final res = await _dio.get<Map<String, dynamic>>('/routes',
+          queryParameters: {'driverId': driverId, 'status': 'IN_PROGRESS', 'size': 50});
+      final content = res.data!['data']['content'] as List;
+      hasOtherActiveRoute.value =
+          content.any((e) => (e as Map<String, dynamic>)['id'] != routeId);
+    } on DioException {
+      // non-fatal — backend still blocks the start
     }
   }
 
@@ -119,7 +137,7 @@ class DeliveryController extends GetxController {
       FecosSnackbar.success('Load Confirmed', 'Quantities verified — ready to start route');
       return true;
     } on DioException catch (e) {
-      final msg = e.response?.data?['error'] as String? ?? 'Could not confirm load';
+      final msg = (e.response?.data?['message'] ?? e.response?.data?['error']) as String? ?? 'Could not confirm load';
       FecosSnackbar.error('Error', msg);
       return false;
     } finally {
@@ -170,10 +188,10 @@ class DeliveryController extends GetxController {
         queryParameters: {'status': 'IN_PROGRESS'},
       );
       await _setRoute(res.data!['data'] as Map<String, dynamic>);
-      await _updateHomeRoutesStatus('IN_PROGRESS');
+      await _syncRouteSummaryCaches(status: 'IN_PROGRESS');
       return true;
     } on DioException catch (e) {
-      final msg = e.response?.data?['error'] as String? ?? 'Could not start route';
+      final msg = (e.response?.data?['message'] ?? e.response?.data?['error']) as String? ?? 'Could not start route';
       FecosSnackbar.error('Error', msg);
       return false;
     } finally {
@@ -200,7 +218,7 @@ class DeliveryController extends GetxController {
         queryParameters: {'status': status},
       );
       await _setRoute(res.data!['data'] as Map<String, dynamic>);
-      await _updateHomeRoutesStatus(status);
+      await _syncRouteSummaryCaches(status: status);
       FecosSnackbar.success('Updated', 'Route marked as ${_statusLabel(status)}');
     } on DioException {
       FecosSnackbar.error('Error', 'Could not update route status');
@@ -234,7 +252,7 @@ class DeliveryController extends GetxController {
       return true;
     } on DioException catch (e) {
       final code = e.response?.statusCode ?? 0;
-      final msg  = e.response?.data?['error'] as String? ?? e.message ?? 'Unknown error';
+      final msg  = (e.response?.data?['message'] ?? e.response?.data?['error']) as String? ?? e.message ?? 'Unknown error';
       FecosSnackbar.error('Error ($code)', msg);
       return false;
     } finally {
@@ -263,7 +281,7 @@ class DeliveryController extends GetxController {
       'items': items, 'notes': notes,
       'performedAt': performedAt.toIso8601String(),
     });
-    _updateStopLocally(stopId, 'DELIVERED', deliveredAt: performedAt.toIso8601String());
+    _updateStopLocally(stopId, 'COMPLETED', deliveredAt: performedAt.toIso8601String());
     _showOfflineSnack();
   }
 
@@ -314,7 +332,7 @@ class DeliveryController extends GetxController {
         data: {'items': items},
       );
       await _setRoute(res.data!['data'] as Map<String, dynamic>);
-      await _updateHomeRoutesStatus('COMPLETED');
+      await _syncRouteSummaryCaches(status: 'COMPLETED');
       return true;
     } on DioException {
       FecosSnackbar.error('Error', 'Could not complete route');
@@ -357,6 +375,9 @@ class DeliveryController extends GetxController {
         .toList();
     route.value = current.copyWith(stops: stops);
     _persistRouteToCache(route.value!);
+    // Push the new delivered count to the Home + My Routes list caches so the
+    // offline delivery shows up there too (list items carry only the count).
+    _syncRouteSummaryCaches();
   }
 
   void _patchRouteLocally({
@@ -372,25 +393,34 @@ class DeliveryController extends GetxController {
       loadConfirmedAt:    loadConfirmedAt,
     );
     _persistRouteToCache(route.value!);
-    if (status != null) _updateHomeRoutesStatus(status);
+    if (status != null) _syncRouteSummaryCaches(status: status);
   }
 
-  Future<void> _updateHomeRoutesStatus(String status) async {
-    const key = 'driver-home-routes';
-    final cached = await _dbService.getCachedResponse(key);
-    if (cached != null) {
+  // Patch both driver route-list caches (Home + Routes tab) with the route's
+  // current status and delivered-stop count so offline changes stay correct
+  // there — list items carry only completedStopCount, not the stops array.
+  Future<void> _syncRouteSummaryCaches({String? status}) async {
+    final r = route.value;
+    if (r == null) return;
+    final newStatus = status ?? r.status;
+    final completed = r.completedStops;
+    for (final key in const ['driver-home-routes', 'driver-my-routes']) {
+      final cached = await _dbService.getCachedResponse(key);
+      if (cached == null) continue;
       final list = (jsonDecode(cached) as List).cast<Map<String, dynamic>>();
       final updated = list
-          .map((item) =>
-              item['id'] == routeId ? {...item, 'status': status} : item)
+          .map((item) => item['id'] == routeId
+              ? {...item, 'status': newStatus, 'completedStopCount': completed}
+              : item)
           .toList();
       await _dbService.cacheResponse(key, jsonEncode(updated));
     }
     if (Get.isRegistered<HomeController>()) {
       final home = Get.find<HomeController>();
-      final idx = home.todayRoutes.indexWhere((r) => r.id == routeId);
+      final idx = home.todayRoutes.indexWhere((rr) => rr.id == routeId);
       if (idx != -1) {
-        home.todayRoutes[idx] = home.todayRoutes[idx].copyWith(status: status);
+        home.todayRoutes[idx] = home.todayRoutes[idx]
+            .copyWith(status: newStatus, completedStopCount: completed);
       }
     }
   }

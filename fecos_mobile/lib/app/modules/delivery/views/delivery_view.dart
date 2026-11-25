@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:dio/dio.dart';
 import 'package:fecos_mobile/app/data/models/route_model.dart';
 import 'package:fecos_mobile/app/data/services/connectivity_service.dart';
+import 'package:fecos_mobile/app/data/services/dio_service.dart';
 import 'package:fecos_mobile/app/theme/app_theme.dart';
 import 'package:fecos_mobile/app/widgets/fecos_snackbar.dart';
 import 'stop_detail_view.dart';
@@ -34,9 +36,10 @@ class DeliveryView extends GetView<DeliveryController> {
             return _ErrorState(onRetry: controller.load);
           }
           final r = controller.route.value!;
+          final updating = controller.isUpdating.value; // read here so Obx tracks it
           return RefreshIndicator(
             onRefresh: controller.load,
-            child: _RouteBody(route: r, controller: controller),
+            child: _RouteBody(route: r, controller: controller, isUpdating: updating),
           );
         }),
         bottomNavigationBar: Obx(() {
@@ -56,7 +59,17 @@ class DeliveryView extends GetView<DeliveryController> {
             );
           }
 
-          if (r.status != 'DISPATCHED') return const SizedBox.shrink();
+          // Startable when dispatched by the office OR self-claimed (still Planned).
+          if (r.status != 'DISPATCHED' && r.status != 'PLANNED') {
+            return const SizedBox.shrink();
+          }
+
+          // Only one route can run at a time — grey out Start if another is active.
+          if (controller.hasOtherActiveRoute.value) {
+            return const _BlockedStart(
+              message: 'Finish your current route before starting this one.',
+            );
+          }
 
           return _StickyButton(
             label: 'Start Route',
@@ -72,9 +85,11 @@ class DeliveryView extends GetView<DeliveryController> {
 // ── Route body ────────────────────────────────────────────────────────────────
 
 class _RouteBody extends StatelessWidget {
-  const _RouteBody({required this.route, required this.controller});
+  const _RouteBody(
+      {required this.route, required this.controller, required this.isUpdating});
   final RouteModel route;
   final DeliveryController controller;
+  final bool isUpdating;
 
   @override
   Widget build(BuildContext context) => CustomScrollView(
@@ -88,7 +103,7 @@ class _RouteBody extends StatelessWidget {
                   stop: route.stops[i],
                   index: i,
                   isActive: route.status == 'IN_PROGRESS',
-                  isUpdating: controller.isUpdating.value,
+                  isUpdating: isUpdating,
                   onDeliver: () => _openStopDetail(context, route.stops[i]),
                   onSkip: () => _showSkipSheet(context, route.stops[i].id),
                   onViewCompleted: () => Get.to<void>(
@@ -285,6 +300,14 @@ class _RouteHeader extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (route.refNumber != null) ...[
+              Text(route.refNumber!,
+                  style: const TextStyle(
+                      fontSize: 11,
+                      fontFamily: 'monospace',
+                      color: AppColors.textSecondary)),
+              const SizedBox(height: 4),
+            ],
             Row(
               children: [
                 Container(
@@ -435,8 +458,11 @@ class _StopCard extends StatelessWidget {
                               fontWeight: FontWeight.w600,
                               color: AppColors.textPrimary),
                         ),
-                        if (stop.leaseName != null)
-                          Text(stop.leaseName!,
+                        if (stop.clientName != null || stop.leaseName != null)
+                          Text(
+                              [stop.clientName, stop.leaseName]
+                                  .where((e) => e != null)
+                                  .join(' · '),
                               style: const TextStyle(
                                   fontSize: 12,
                                   color: AppColors.textSecondary)),
@@ -643,6 +669,53 @@ class _StickyButton extends StatelessWidget {
       );
 }
 
+// ── Blocked Start (another route is active) ───────────────────────────────────
+
+class _BlockedStart extends StatelessWidget {
+  const _BlockedStart({required this.message});
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.info_outline_rounded,
+                      size: 15, color: AppColors.textHint),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(message,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              FilledButton.icon(
+                onPressed: null,
+                icon: const Icon(Icons.play_arrow_rounded, size: 20),
+                label: const Text('Start Route',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                style: FilledButton.styleFrom(
+                  disabledBackgroundColor: AppColors.border,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(52),
+                  shape:
+                      RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+}
+
 // ── Start Route bottom sheet ──────────────────────────────────────────────────
 
 class _StartRouteSheet extends StatefulWidget {
@@ -666,6 +739,8 @@ class _StartRouteSheetState extends State<_StartRouteSheet> {
   final _passed = List<bool>.filled(5, true);
   final _notesController = TextEditingController();
   late final Map<String, TextEditingController> _qtyControllers;
+  Map<String, double> _available = {}; // productId → current stock at warehouse
+  bool _stockLoaded = false; // true once we actually know the warehouse stock
 
   @override
   void initState() {
@@ -675,7 +750,54 @@ class _StartRouteSheetState extends State<_StartRouteSheet> {
         for (final item in stop.items)
           item.id: TextEditingController(text: _fmt(item.quantity)),
     };
+    _loadStock();
   }
+
+  // Show how much of each product the pickup warehouse actually has.
+  // The backend still hard-gates the load; this just warns the driver early.
+  Future<void> _loadStock() async {
+    final whId = widget.route.warehouseId;
+    if (whId == null) return;
+    try {
+      final res = await Get.find<DioService>().dio.get<Map<String, dynamic>>(
+        '/inventory/stock',
+        queryParameters: {'warehouseId': whId},
+      );
+      final list = res.data!['data'] as List;
+      final map = <String, double>{};
+      for (final e in list) {
+        final m = e as Map<String, dynamic>;
+        final pid = m['productId'] as String?;
+        final qty = (m['currentQty'] as num?)?.toDouble();
+        if (pid != null && qty != null) map[pid] = qty;
+      }
+      if (!mounted) return;
+      // Default the loaded amount to what's actually in stock for any short product,
+      // so the driver takes the available quantity (the shortfall is flagged).
+      for (final stop in widget.route.stops) {
+        for (final item in stop.items) {
+          final avail = map[item.productId];
+          if (avail != null && avail < item.quantity) {
+            _qtyControllers[item.id]?.text = _fmt(avail);
+          }
+        }
+      }
+      setState(() { _available = map; _stockLoaded = true; });
+    } on DioException {
+      // non-fatal — backend still caps the load / blocks on zero stock
+    }
+  }
+
+  // Partial stock (0 < available < planned) → warn and cap.
+  bool get _hasShortStock => widget.route.stops.any((s) => s.items.any((i) {
+        final a = _available[i.productId];
+        return a != null && a > 0 && a < i.quantity;
+      }));
+
+  // A needed product with no stock at all (absent from the stock list, or ≤ 0)
+  // → can't load anything, so starting is blocked.
+  bool get _hasZeroStock => widget.route.stops.any((s) => s.items.any((i) =>
+      i.quantity > 0 && (_available[i.productId] ?? 0) <= 0));
 
   @override
   void dispose() {
@@ -705,9 +827,20 @@ class _StartRouteSheetState extends State<_StartRouteSheet> {
   }
 
   Future<void> _submit() async {
+    // Loaded can never exceed what the warehouse has for that product.
+    final availByItem = <String, double>{
+      for (final stop in widget.route.stops)
+        for (final item in stop.items)
+          if (_available[item.productId] != null)
+            item.id: _available[item.productId]!,
+    };
     final loadedQtyMap = <String, double>{
       for (final e in _qtyControllers.entries)
-        e.key: double.tryParse(e.value.text) ?? 0.0,
+        e.key: () {
+          final entered = double.tryParse(e.value.text) ?? 0.0;
+          final cap = availByItem[e.key];
+          return cap != null && entered > cap ? cap : entered;
+        }(),
     };
     final ok = await widget.controller.startRoute(
       hasIssues: _hasAnyFail,
@@ -821,11 +954,65 @@ class _StartRouteSheetState extends State<_StartRouteSheet> {
                     ],
                   ),
                   const SizedBox(height: 10),
+                  if (_hasShortStock)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.warning.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                            color: AppColors.warning.withValues(alpha: 0.4)),
+                      ),
+                      child: const Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.warning_amber_rounded,
+                              size: 16, color: AppColors.warning),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Some products are low in stock. You\'ll load the available amount — the shortfall is recorded for the office.',
+                              style: TextStyle(
+                                  fontSize: 12, color: AppColors.textSecondary),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (_stockLoaded && _hasZeroStock)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.danger.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                            color: AppColors.danger.withValues(alpha: 0.4)),
+                      ),
+                      child: const Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.error_outline_rounded,
+                              size: 16, color: AppColors.danger),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'A product is out of stock at this warehouse. Ask the office to restock before starting.',
+                              style: TextStyle(
+                                  fontSize: 12, color: AppColors.danger),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ...widget.route.stops.asMap().entries.map((e) =>
                       _SheetStopLoad(
                         stop: e.value,
                         index: e.key,
                         controllers: _qtyControllers,
+                        available: _available,
+                        stockLoaded: _stockLoaded,
                       )),
                 ],
               ),
@@ -835,9 +1022,12 @@ class _StartRouteSheetState extends State<_StartRouteSheet> {
           SafeArea(
             child: Padding(
               padding: EdgeInsets.fromLTRB(20, 8, 20, bottomPad > 0 ? 8 : 16),
-              child: Obx(() => FilledButton.icon(
-                    onPressed:
-                        widget.controller.isUpdating.value ? null : _submit,
+              child: Obx(() {
+                final blocked = _stockLoaded && _hasZeroStock;
+                return FilledButton.icon(
+                    onPressed: (widget.controller.isUpdating.value || blocked)
+                        ? null
+                        : _submit,
                     icon: widget.controller.isUpdating.value
                         ? const SizedBox(
                             width: 18,
@@ -845,8 +1035,8 @@ class _StartRouteSheetState extends State<_StartRouteSheet> {
                             child: CircularProgressIndicator(
                                 strokeWidth: 2, color: Colors.white))
                         : const Icon(Icons.play_arrow_rounded, size: 20),
-                    label: const Text('Start Route',
-                        style: TextStyle(
+                    label: Text(blocked ? 'Out of stock' : 'Start Route',
+                        style: const TextStyle(
                             fontSize: 16, fontWeight: FontWeight.w700)),
                     style: FilledButton.styleFrom(
                       backgroundColor: _hasAnyFail
@@ -858,7 +1048,8 @@ class _StartRouteSheetState extends State<_StartRouteSheet> {
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14)),
                     ),
-                  )),
+                  );
+              }),
             ),
           ),
         ],
@@ -926,10 +1117,16 @@ class _ToggleRow extends StatelessWidget {
 
 class _SheetStopLoad extends StatelessWidget {
   const _SheetStopLoad(
-      {required this.stop, required this.index, required this.controllers});
+      {required this.stop,
+      required this.index,
+      required this.controllers,
+      required this.available,
+      required this.stockLoaded});
   final RouteStop stop;
   final int index;
   final Map<String, TextEditingController> controllers;
+  final Map<String, double> available;
+  final bool stockLoaded;
 
   String _fmt(double qty) =>
       qty % 1 == 0 ? qty.toInt().toString() : qty.toString();
@@ -998,6 +1195,32 @@ class _SheetStopLoad extends StatelessWidget {
                                           style: const TextStyle(
                                               fontSize: 11,
                                               color: AppColors.textSecondary)),
+                                      Builder(builder: (_) {
+                                        if (!stockLoaded) {
+                                          return const SizedBox.shrink();
+                                        }
+                                        final avail =
+                                            available[item.productId] ?? 0;
+                                        if (item.quantity > 0 && avail <= 0) {
+                                          return const Text('Out of stock',
+                                              style: TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: AppColors.danger));
+                                        }
+                                        final short = avail < item.quantity;
+                                        return Text(
+                                          'Available: ${_fmt(avail)} ${item.unit}',
+                                          style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: short
+                                                  ? FontWeight.w700
+                                                  : FontWeight.w400,
+                                              color: short
+                                                  ? AppColors.danger
+                                                  : AppColors.textHint),
+                                        );
+                                      }),
                                     ],
                                   ),
                                 ),

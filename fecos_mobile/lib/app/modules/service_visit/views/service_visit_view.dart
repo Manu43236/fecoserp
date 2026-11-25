@@ -8,6 +8,7 @@ import 'package:fecos_mobile/app/theme/app_theme.dart';
 import 'package:fecos_mobile/app/widgets/fecos_shimmer.dart';
 import 'package:fecos_mobile/app/data/services/sync_service.dart';
 import 'package:fecos_mobile/app/data/services/connectivity_service.dart';
+import 'package:fecos_mobile/app/widgets/fecos_snackbar.dart';
 import '../controllers/service_visit_controller.dart';
 
 const _months = [
@@ -144,6 +145,25 @@ class _MyVisitsScaffoldState extends State<_MyVisitsScaffold>
           _UpcomingTab(ctrl: _ctrl),
           _HistoryTab(ctrl: _ctrl),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add),
+        label: const Text('New Visit'),
+        onPressed: () {
+          // Online-only: creating a visit needs server-generated ids.
+          if (!_ctrl.isOnline) {
+            FecosSnackbar.error(
+              'Offline',
+              'Connect to the internet to create a schedule',
+            );
+            return;
+          }
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => _CreateVisitView(ctrl: _ctrl),
+          ));
+        },
       ),
     );
   }
@@ -614,6 +634,14 @@ class _VisitCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (visit.refNumber != null) ...[
+                Text(visit.refNumber!,
+                    style: const TextStyle(
+                        fontSize: 11,
+                        fontFamily: 'monospace',
+                        color: AppColors.textSecondary)),
+                const SizedBox(height: 4),
+              ],
               // Row 1: name + badges + status chip
               Row(
                 children: [
@@ -1512,4 +1540,258 @@ class _AckedBadge extends StatelessWidget {
               color: Colors.amber.shade800)),
     );
   }
+}
+
+// ── Create Visit (self-scheduling, online-only) ─────────────────────────────────
+
+class _CreateVisitView extends StatefulWidget {
+  const _CreateVisitView({required this.ctrl});
+  final ServiceVisitController ctrl;
+
+  @override
+  State<_CreateVisitView> createState() => _CreateVisitViewState();
+}
+
+class _CreateVisitViewState extends State<_CreateVisitView> {
+  late Future<List<WellOption>> _wellsFuture;
+  final _name = TextEditingController();
+  final _notes = TextEditingController();
+
+  String? _clientName;
+  String? _leaseId;
+  final _selectedWellIds = <String>{};
+  DateTime _date = DateTime.now();
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _wellsFuture = widget.ctrl.loadSchedulableWells();
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _notes.dispose();
+    super.dispose();
+  }
+
+  List<String> _clients(List<WellOption> wells) =>
+      wells.map((w) => w.clientName).where((c) => c.isNotEmpty).toSet().toList()
+        ..sort();
+
+  List<WellOption> _leases(List<WellOption> wells) {
+    final seen = <String>{};
+    return wells
+        .where((w) => w.clientName == _clientName && seen.add(w.leaseId))
+        .toList();
+  }
+
+  List<WellOption> _leaseWells(List<WellOption> wells) =>
+      wells.where((w) => w.leaseId == _leaseId).toList();
+
+  Future<void> _submit() async {
+    if (_name.text.trim().isEmpty) {
+      return FecosSnackbar.error('Missing name', 'Enter a schedule name');
+    }
+    if (_selectedWellIds.isEmpty) {
+      return FecosSnackbar.error('No wells', 'Select at least one well');
+    }
+    if (!widget.ctrl.isOnline) {
+      return FecosSnackbar.error(
+          'Offline', 'Connect to the internet to create a schedule');
+    }
+    setState(() => _saving = true);
+    final ok = await widget.ctrl.createSelfVisit(
+      name: _name.text,
+      date: _date,
+      notes: _notes.text,
+      wellIds: _selectedWellIds.toList(),
+    );
+    if (!mounted) return;
+    setState(() => _saving = false);
+    if (ok) {
+      Navigator.of(context).pop();
+      FecosSnackbar.success('Created', 'Your schedule is ready to start');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.surface,
+      appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        title: const Text('New Visit'),
+      ),
+      body: FutureBuilder<List<WellOption>>(
+        future: _wellsFuture,
+        builder: (context, snap) {
+          if (snap.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snap.hasError || snap.data == null) {
+            return _ErrorBody(
+              message: 'Failed to load wells. Check your connection.',
+              onRetry: () => setState(
+                  () => _wellsFuture = widget.ctrl.loadSchedulableWells()),
+            );
+          }
+          final wells = snap.data!;
+          final leaseWells = _leaseId == null ? const <WellOption>[] : _leaseWells(wells);
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              _label('Schedule Name'),
+              TextField(
+                controller: _name,
+                decoration: _dec('e.g. North District — Tue'),
+              ),
+              const SizedBox(height: 16),
+              _label('Visit Date'),
+              InkWell(
+                onTap: () async {
+                  final now = DateTime.now();
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: _date,
+                    firstDate: DateTime(now.year, now.month, now.day),
+                    lastDate: DateTime(now.year + 1),
+                  );
+                  if (picked != null) setState(() => _date = picked);
+                },
+                child: InputDecorator(
+                  decoration: _dec(null),
+                  child: Text(_fmtLabel(_date)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              _label('Client'),
+              DropdownButtonFormField<String>(
+                initialValue: _clientName,
+                isExpanded: true,
+                decoration: _dec('Select client'),
+                items: _clients(wells)
+                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                    .toList(),
+                onChanged: (v) => setState(() {
+                  _clientName = v;
+                  _leaseId = null;
+                  _selectedWellIds.clear();
+                }),
+              ),
+              const SizedBox(height: 16),
+              _label('Lease'),
+              DropdownButtonFormField<String>(
+                initialValue: _leaseId,
+                isExpanded: true,
+                decoration: _dec('Select lease'),
+                items: _leases(wells)
+                    .map((w) => DropdownMenuItem(
+                        value: w.leaseId, child: Text(w.leaseName)))
+                    .toList(),
+                onChanged: _clientName == null
+                    ? null
+                    : (v) => setState(() {
+                          _leaseId = v;
+                          _selectedWellIds.clear();
+                        }),
+              ),
+              const SizedBox(height: 16),
+              if (_leaseId != null) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _label('Wells (${_selectedWellIds.length} selected)'),
+                    TextButton(
+                      onPressed: () => setState(() {
+                        if (_selectedWellIds.length == leaseWells.length) {
+                          _selectedWellIds.clear();
+                        } else {
+                          _selectedWellIds
+                            ..clear()
+                            ..addAll(leaseWells.map((w) => w.id));
+                        }
+                      }),
+                      child: Text(
+                        _selectedWellIds.length == leaseWells.length
+                            ? 'Clear all'
+                            : 'Select all',
+                      ),
+                    ),
+                  ],
+                ),
+                ...leaseWells.map((w) => CheckboxListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      activeColor: AppColors.primary,
+                      value: _selectedWellIds.contains(w.id),
+                      title: Text(w.wellName),
+                      onChanged: (c) => setState(() {
+                        if (c == true) {
+                          _selectedWellIds.add(w.id);
+                        } else {
+                          _selectedWellIds.remove(w.id);
+                        }
+                      }),
+                    )),
+                const SizedBox(height: 16),
+              ],
+              _label('Notes (optional)'),
+              TextField(
+                controller: _notes,
+                maxLines: 3,
+                decoration: _dec('Anything the crew should know'),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: _saving ? null : _submit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: _saving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
+                      : const Text('Create Schedule'),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _label(String text) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Text(text,
+            style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary)),
+      );
+
+  InputDecoration _dec(String? hint) => InputDecoration(
+        hintText: hint,
+        isDense: true,
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+      );
 }
