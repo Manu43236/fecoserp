@@ -262,22 +262,24 @@ public class TreatmentPlanService {
         if (l.getTankOwner() != com.fecos.tanks.TankOwner.THIRD_PARTY
                 || l.getTankLevelPct() == null
                 || l.getTankLevelCheckedAt() == null
-                || l.getThirdPartyCapacityGallons() == null
-                || l.getRecRate() == null
-                || l.getThirdPartyCapacityGallons().compareTo(BigDecimal.ZERO) == 0) {
+                || l.getRecRate() == null) {
             return null;
         }
+        BigDecimal capacity = l.getTankId() != null
+                ? tankRepository.findById(l.getTankId()).map(t -> t.getCapacityGallons()).orElse(l.getThirdPartyCapacityGallons())
+                : l.getThirdPartyCapacityGallons();
+        if (capacity == null || capacity.compareTo(BigDecimal.ZERO) == 0) return null;
         long minutesElapsed = ChronoUnit.MINUTES.between(l.getTankLevelCheckedAt(), Instant.now());
         BigDecimal gallonsConsumed = l.getRecRate()
                 .multiply(BigDecimal.valueOf(minutesElapsed))
                 .divide(BigDecimal.valueOf(24 * 60), 4, RoundingMode.HALF_UP);
         BigDecimal baselineGallons = l.getTankLevelPct()
-                .multiply(l.getThirdPartyCapacityGallons())
+                .multiply(capacity)
                 .divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP);
         BigDecimal currentGallons = baselineGallons.subtract(gallonsConsumed);
         return currentGallons
                 .multiply(BigDecimal.valueOf(100))
-                .divide(l.getThirdPartyCapacityGallons(), 2, RoundingMode.HALF_UP)
+                .divide(capacity, 2, RoundingMode.HALF_UP)
                 .max(BigDecimal.ZERO)
                 .min(BigDecimal.valueOf(100));
     }

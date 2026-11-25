@@ -90,13 +90,9 @@ const lineSchema = z.object({
   method:             z.enum(['CONTINUOUS', 'BATCH']),
   schedule:           z.enum(['DAILY', 'WEEKLY', 'BIWEEKLY', 'MONTHLY']).optional(),
   notes:              z.string().optional().or(z.literal('')),
-  tankOwner:                z.enum(['OWN', 'THIRD_PARTY']).optional(),
-  tankId:                   z.string().optional().or(z.literal('')),
-  tankLevelPct:             z.string().optional().or(z.literal('')),
-  tankLevelCheckedAt:       z.string().optional().or(z.literal('')),
-  thirdPartyName:           z.string().optional().or(z.literal('')),
-  thirdPartyCapacityGallons: z.string().optional().or(z.literal('')),
-  thirdPartySerial:         z.string().optional().or(z.literal('')),
+  tankId:            z.string().optional().or(z.literal('')),
+  tankLevelPct:      z.string().optional().or(z.literal('')),
+  tankLevelCheckedAt: z.string().optional().or(z.literal('')),
 })
 type LineFormData = z.infer<typeof lineSchema>
 
@@ -508,7 +504,11 @@ function PlanDrawer({
   })
   const tankOptions: DropdownOption[] = tanks
     .filter(t => t.status === 'AVAILABLE' || t.id === editingLine?.tankId)
-    .map(t => ({ value: t.id, label: t.serialNumber ?? `Tank (${t.capacityGallons} gal)` }))
+    .map(t => {
+      const base = [t.refNumber, t.serialNumber ?? `Tank (${t.capacityGallons} gal)`].filter(Boolean).join(' · ')
+      const ownerLabel = t.owner === 'THIRD_PARTY' ? (t.thirdPartyName ?? t.ownerClientName) : null
+      return { value: t.id, label: ownerLabel ? `${base} — ${ownerLabel}` : base }
+    })
 
   const { data: inShopPumps = [] } = useQuery({
     queryKey: ['pumps-in-shop'],
@@ -534,7 +534,7 @@ function PlanDrawer({
 
   const { handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<LineFormData>({
     resolver: zodResolver(lineSchema),
-    defaultValues: { productId: '', recRate: '', method: 'CONTINUOUS', schedule: undefined, notes: '', tankOwner: undefined, tankId: '', tankLevelPct: '', tankLevelCheckedAt: '', thirdPartyName: '', thirdPartyCapacityGallons: '', thirdPartySerial: '' },
+    defaultValues: { productId: '', recRate: '', method: 'CONTINUOUS', schedule: undefined, notes: '', tankId: '', tankLevelPct: '', tankLevelCheckedAt: '' },
   })
 
   const tankEventMutation = useMutation({
@@ -634,20 +634,18 @@ function PlanDrawer({
   })
 
   function buildLinePayload(data: LineFormData): PlanLinePayload {
-    const isThirdParty = data.tankOwner === 'THIRD_PARTY'
+    const selectedTank = data.tankId ? tankMap.get(data.tankId) : undefined
+    const isThirdParty = selectedTank?.owner === 'THIRD_PARTY'
     return {
-      productId:                data.productId,
-      recRate:                  parseFloat(data.recRate),
-      method:                   data.method,
-      schedule:                 data.method === 'BATCH' ? data.schedule : null,
-      notes:                    data.notes || undefined,
-      tankOwner:                data.tankOwner || null,
-      tankId:                   data.tankOwner === 'OWN' && data.tankId ? data.tankId : null,
-      tankLevelPct:             isThirdParty && data.tankLevelPct ? parseFloat(data.tankLevelPct) : null,
-      tankLevelCheckedAt:       isThirdParty && data.tankLevelCheckedAt ? new Date(data.tankLevelCheckedAt).toISOString() : null,
-      thirdPartyName:           isThirdParty ? (data.thirdPartyName || null) : null,
-      thirdPartyCapacityGallons: isThirdParty && data.thirdPartyCapacityGallons ? parseFloat(data.thirdPartyCapacityGallons) : null,
-      thirdPartySerial:         isThirdParty ? (data.thirdPartySerial || null) : null,
+      productId:          data.productId,
+      recRate:            parseFloat(data.recRate),
+      method:             data.method,
+      schedule:           data.method === 'BATCH' ? data.schedule : null,
+      notes:              data.notes || undefined,
+      tankId:             data.tankId || null,
+      tankOwner:          selectedTank?.owner ?? null,
+      tankLevelPct:       isThirdParty && data.tankLevelPct ? parseFloat(data.tankLevelPct) : null,
+      tankLevelCheckedAt: isThirdParty && data.tankLevelCheckedAt ? new Date(data.tankLevelCheckedAt).toISOString() : null,
     }
   }
 
@@ -669,13 +667,9 @@ function PlanDrawer({
       method:                    line.method,
       schedule:                  line.schedule ?? undefined,
       notes:                     line.notes ?? '',
-      tankOwner:                 line.tankOwner ?? undefined,
-      tankId:                    line.tankId ?? '',
-      tankLevelPct:              line.tankLevelPct?.toString() ?? '',
-      tankLevelCheckedAt:        line.tankLevelCheckedAt ? new Date(line.tankLevelCheckedAt).toISOString().slice(0, 16) : '',
-      thirdPartyName:            line.thirdPartyName ?? '',
-      thirdPartyCapacityGallons: line.thirdPartyCapacityGallons?.toString() ?? '',
-      thirdPartySerial:          line.thirdPartySerial ?? '',
+      tankId:             line.tankId ?? '',
+      tankLevelPct:       line.tankLevelPct?.toString() ?? '',
+      tankLevelCheckedAt: line.tankLevelCheckedAt ? new Date(line.tankLevelCheckedAt).toISOString().slice(0, 16) : '',
     })
   }
 
@@ -1025,28 +1019,30 @@ function PlanDrawer({
                       ) : line.tankOwner === 'THIRD_PARTY' ? (
                         <div className="space-y-2">
                           <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                            {tank?.refNumber && (
+                              <div>
+                                <p className="text-[10px] text-gray-400 font-medium">Ref #</p>
+                                <p className="text-sm font-semibold text-gray-800">{tank.refNumber}</p>
+                              </div>
+                            )}
                             <div>
                               <p className="text-[10px] text-gray-400 font-medium">Type</p>
                               <p className="text-sm font-semibold text-gray-800">3rd Party</p>
                             </div>
-                            {line.thirdPartyName && (
-                              <div>
-                                <p className="text-[10px] text-gray-400 font-medium">Owner</p>
-                                <p className="text-sm font-semibold text-gray-800">{line.thirdPartyName}</p>
-                              </div>
-                            )}
-                            {line.thirdPartyCapacityGallons != null && (
-                              <div>
-                                <p className="text-[10px] text-gray-400 font-medium">Capacity</p>
-                                <p className="text-sm font-semibold text-gray-800">{line.thirdPartyCapacityGallons.toLocaleString()} gal</p>
-                              </div>
-                            )}
-                            {line.thirdPartySerial && (
-                              <div>
-                                <p className="text-[10px] text-gray-400 font-medium">Serial #</p>
-                                <p className="text-sm font-semibold text-gray-800">{line.thirdPartySerial}</p>
-                              </div>
-                            )}
+                            <div>
+                              <p className="text-[10px] text-gray-400 font-medium">Serial #</p>
+                              <p className="text-sm font-semibold text-gray-800">{tank?.serialNumber ?? line.thirdPartySerial ?? '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-gray-400 font-medium">Owner</p>
+                              <p className="text-sm font-semibold text-gray-800">{tank?.thirdPartyName ?? tank?.ownerClientName ?? line.thirdPartyName ?? '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-gray-400 font-medium">Capacity</p>
+                              <p className="text-sm font-semibold text-gray-800">
+                                {(tank?.capacityGallons ?? line.thirdPartyCapacityGallons)?.toLocaleString() ?? '—'} gal
+                              </p>
+                            </div>
                           </div>
                           {line.calculatedLevelPct != null && (
                             <div className="pt-1">
@@ -1293,71 +1289,26 @@ function PlanDrawer({
                     className="w-full h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 bg-white"
                   />
 
-                  {/* Tank section — toggle for new lines; 3rd party fields also shown when editing a 3rd party line */}
+                  {/* Tank section */}
                   {(!editingLine || editingLine.tankOwner === 'THIRD_PARTY') && (
                     <div className="space-y-2 pt-1" style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}>
                       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
                         {editingLine ? 'Update Level Check' : 'Tank'}
                       </p>
 
-                      {/* Toggle + OWN picker: new lines only */}
                       {!editingLine && (
-                        <>
-                          <div className="flex gap-2">
-                            {(['OWN', 'THIRD_PARTY'] as const).map(owner => (
-                              <button
-                                key={owner}
-                                type="button"
-                                onClick={() => setValue('tankOwner', watch('tankOwner') === owner ? undefined : owner)}
-                                className={`flex-1 h-8 text-xs font-semibold rounded-lg border transition-colors ${
-                                  watch('tankOwner') === owner
-                                    ? 'text-white border-transparent'
-                                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                                }`}
-                                style={watch('tankOwner') === owner ? { backgroundColor: 'var(--color-primary)' } : {}}>
-                                {owner === 'OWN' ? 'Our Tank' : '3rd Party Tank'}
-                              </button>
-                            ))}
-                          </div>
-                          {watch('tankOwner') === 'OWN' && (
-                            <SearchableDropdown
-                              value={watch('tankId') || null}
-                              onChange={v => setValue('tankId', v ?? '')}
-                              options={tankOptions}
-                              placeholder="Select tank from registry…"
-                              searchPlaceholder="Search tanks…"
-                            />
-                          )}
-                        </>
+                        <SearchableDropdown
+                          value={watch('tankId') || null}
+                          onChange={v => setValue('tankId', v ?? '')}
+                          options={tankOptions}
+                          placeholder="Select tank…"
+                          searchPlaceholder="Search by ref, serial, or owner…"
+                        />
                       )}
 
-                      {/* 3rd party fields: new lines AND editing a 3rd party line */}
-                      {watch('tankOwner') === 'THIRD_PARTY' && (
+                      {((!editingLine && tankMap.get(watch('tankId') ?? '')?.owner === 'THIRD_PARTY') ||
+                        editingLine?.tankOwner === 'THIRD_PARTY') && (
                         <div className="space-y-2">
-                          <input
-                            type="text"
-                            value={watch('thirdPartyName') ?? ''}
-                            onChange={e => setValue('thirdPartyName', e.target.value)}
-                            placeholder="Tank owner / company name"
-                            className="w-full h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 bg-white"
-                          />
-                          <div className="flex gap-2">
-                            <input
-                              type="number"
-                              min="0" step="1"
-                              value={watch('thirdPartyCapacityGallons') ?? ''}
-                              onChange={e => setValue('thirdPartyCapacityGallons', e.target.value)}
-                              placeholder="Capacity (gal)"
-                              className="flex-1 h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 bg-white"
-                            />
-                            <input
-                              type="text"
-                              value={watch('thirdPartySerial') ?? ''}
-                              onChange={e => setValue('thirdPartySerial', e.target.value)}
-                              placeholder="Serial # (optional)"
-                              className="flex-1 h-9 px-3 text-sm rounded-lg border border-gray-200 outline-none transition focus:ring-2 bg-white"
-                            />
-                          </div>
                           <div className="flex gap-2">
                             <input
                               type="number"
